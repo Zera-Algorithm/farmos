@@ -1,0 +1,8 @@
+stages:
+  - check-style
+
+check-style:
+  stage: check-style
+  script:
+    - make check-style
+
