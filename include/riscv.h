@@ -1,5 +1,11 @@
 #ifndef __ASSEMBLER__
 
+/* GCC 扩展内联汇编：
+ * asm volatile (instruction : OutputOprands : InputOprands : Clobbers(破坏列表))
+ * instruction表示汇编指令，其中用%0表示后面Oprands的占位符
+ * 对于Oprands（操作数），其格式为：constrains (variable)。constrains表示约束，一般输出用"=r"，输入用"r"
+ */
+
 // which hart (core) is this?
 static inline uint64
 r_mhartid()
