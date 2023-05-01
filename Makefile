@@ -21,7 +21,9 @@ OBJS = \
 	$(KERN)/dtb.o \
 	$(KERN)/proc.o \
 	$(KERN)/printf.o \
-	$(KERN)/string.o
+	$(KERN)/string.o \
+	$(KERN)/print.o \
+	$(KERN)/panic.o
 
 QEMU		= qemu-system-riscv64
 TOOLPREFIX	= riscv64-unknown-elf-

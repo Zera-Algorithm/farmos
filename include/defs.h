@@ -10,10 +10,8 @@ struct stat;
 struct superblock;
 
 // printf.c
-void            printf(char*, ...);
-void            panic(char*) __attribute__((noreturn));
+void            printf(const char*, ...);
 void            printfinit(void);
-
 
 // string.c
 int             memcmp(const void*, const void*, uint);

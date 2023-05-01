@@ -4,6 +4,7 @@
 #include "riscv.h"
 #include "defs.h"
 #include "dtb.h"
+#include "printf.h"
 
 uint64 dtb_entry;
 static void swap(void *a, void *b) {
@@ -25,8 +26,8 @@ void endian_big2little(void *bin, int size) {
 void parser_fdt_header(struct fdt_header* fdt_h) {
     endian_big2little(fdt_h, sizeof(struct fdt_header));
     printf("Read fdt_header:\n");
-    printf("magic             = 0x%l\n", (long)fdt_h->magic);
-    printf("totalsize's addr  = 0x%l\n", &(fdt_h->totalsize));
+    printf("magic             = 0x%lx\n", (long)fdt_h->magic);
+    printf("totalsize's addr  = 0x%lx\n", &(fdt_h->totalsize));
     printf("totalsize         = %d\n", fdt_h->totalsize);
     printf("off_dt_struct     = 0x%x\n", fdt_h->off_dt_struct);
     printf("off_dt_strings    = 0x%x\n", fdt_h->off_dt_strings);
@@ -112,7 +113,7 @@ void* parser_fdt_node(struct fdt_header *fdt_h, void *node, char* parent) {
 
 void dtb_parser() {
     extern uint64 dtb_entry;
-    printf("dtb_entry = %l\n", dtb_entry);
+    printf("dtb_entry = %lx\n", dtb_entry);
     struct fdt_header *fdt_h = (struct fdt_header *)dtb_entry;
     parser_fdt_header(fdt_h);
 

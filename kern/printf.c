@@ -1,7 +1,3 @@
-//
-// formatted console output -- printf, panic.
-//
-
 #include "types.h"
 #include "param.h"
 #include "spinlock.h"
@@ -12,19 +8,27 @@
 #include "riscv.h"
 #include "defs.h"
 #include "proc.h"
+#include "print.h"
+#include "printf.h"
+#include "SBI.h"
 
-// Print to the console. only understands %d, %x, %p, %s.
-void
-printf(char *fmt, ...)
-{
-  // TODO: TO IMPLEMENT
-
+void printcharc(char ch) {
+	SBI_PUTCHAR(ch);
 }
 
-void
-panic(char *s)
-{
-  // TODO: TO IMPLEMENT
-  
-  while(1);
+void output(void *data, const char *buf, size_t len) {
+	for (int i = 0; i < len; i++) {
+		printcharc(buf[i]);
+	}
+}
+
+void printf(const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	vprintfmt(output, NULL, fmt, ap);
+	va_end(ap);
+}
+
+void printfinit() {
+	
 }

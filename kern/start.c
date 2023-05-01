@@ -39,11 +39,13 @@ start(long hartid)
   // keep each CPU's hartid in its tp register, for cpuid().
   w_tp(hartid);
 
+  // 测试SBI的功能
   SBI_PUTCHAR('H');
   SBI_PUTCHAR('e');
   SBI_PUTCHAR('l');
   SBI_PUTCHAR('l');
   SBI_PUTCHAR('o');
+  SBI_PUTCHAR('\n');
 
   main();
 }
