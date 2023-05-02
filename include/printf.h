@@ -5,8 +5,7 @@
 
 void printf(const char *fmt, ...);
 
-void _panic(const char *, int, const char *, const char *, ...)
-    __attribute__((noreturn));
+void _panic(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
 
 #define panic(...) _panic(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
