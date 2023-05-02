@@ -17,10 +17,23 @@ uint64 timer_scratch[NCPU][5];
 // assembly code in kernelvec.S for machine-mode timer interrupt.
 extern void timervec();
 
+// // 测试SBI中的内联汇编是否能正常工作
+// void test() {
+//   struct sbiret ret;
+//   ret = SBI_RFENCE_SFENCE_VMA_ASID(1,2,3,4,5);
+//   printf("%lx, %lx\n", ret.error, ret.value);
+// }
+
 // entry.S jumps here in machine mode on stack0.
 void
-start(long hartid)
+start(long hartid, uint64 _dtb_entry)
 {
+  // 设置dtb_entry
+  extern uint64 dtb_entry;
+  if (hartid == 0) {
+    dtb_entry = _dtb_entry;
+  }
+
   // Supervisor: disable paging for now.
   w_satp(0);
 

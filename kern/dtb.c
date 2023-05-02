@@ -7,6 +7,11 @@
 #include "printf.h"
 
 uint64 dtb_entry;
+struct MemInfo {
+    uint64 start;
+    uint64 size;
+} memInfo;
+
 static void swap(void *a, void *b) {
     char c = *(char*)a;
     *(char *)a = *(char *)b;
@@ -49,6 +54,20 @@ inline uint32 read_bigendian32(void *p) {
     return ret;
 }
 
+inline uint64 read_bigendian64(void *p) {
+    uint64 ret = 0;
+    char *p1 = (char *)p, *p2 = (char *)(&ret);
+    p2[0] = p1[7];
+    p2[1] = p1[6];
+    p2[2] = p1[5];
+    p2[3] = p1[4];
+    p2[4] = p1[3];
+    p2[5] = p1[2];
+    p2[6] = p1[1];
+    p2[7] = p1[0];
+    return ret;
+}
+
 void assert(int v) {
     if (!v) {
         panic("assert error");
@@ -75,6 +94,9 @@ void* parser_fdt_node(struct fdt_header *fdt_h, void *node, char* parent) {
     while (1) {
         while (read_bigendian32(node) == FDT_NOP) node += 4;
         if (read_bigendian32(node) == FDT_PROP) {
+            char *nodeStr = NULL;
+            void* value = NULL;
+
             while (read_bigendian32(node) == FDT_PROP) {
                 node += 4;
                 uint32 len = read_bigendian32(node); node += 4;
@@ -87,15 +109,23 @@ void* parser_fdt_node(struct fdt_header *fdt_h, void *node, char* parent) {
                 printf("len:    %d\n", len);
                 printf("values: ");
                 if (len == 4 || len == 8 || len == 16 || len == 32) {
+                    value = (void *)node;
                     for (int i = 0; i < len; i++) {
                         printf("0x%x ", *(uint8*)(node+i));
                     }
                 } else {
-                    printf("%s", (char*)(node));
+                    nodeStr = (char *)node;
+                    printf("%s", nodeStr);
                 }
                 printf("\n");
                 node = (void*)FOURROUNDUP((uint64)(node+len));
                 while (read_bigendian32(node) == FDT_NOP) node += 4;
+            }
+
+            // 读完所有的FDT_PROP了
+            if (nodeStr != NULL && strncmp(nodeStr, "memory", 7) == 0) {
+                memInfo.start = read_bigendian64(value);
+                memInfo.size = read_bigendian64(value+8);
             }
         } else {
             break;
@@ -121,4 +151,7 @@ void dtb_parser() {
     do {
         node = parser_fdt_node(fdt_h, node, "root");
     } while(read_bigendian32(node) != FDT_END);
+
+    printf("Memory Start Addr = 0x%016lx, size = %d MB\n", 
+        memInfo.start, memInfo.size / 1024 / 1024);
 }

@@ -17,3 +17,5 @@ mkfs
 kern/kernel
 user/usys.S
 .gdbinit
+todo.txt
+dtb.txt

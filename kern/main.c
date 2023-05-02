@@ -4,8 +4,14 @@
 #include "riscv.h"
 #include "defs.h"
 #include "dtb.h"
+#include "SBI.h"
 
 volatile static int started = 0;
+
+void hart_init() {
+  SBI_HART_START(1, 0x80200000, 0);
+  SBI_HART_START(2, 0x80200000, 0);
+}
 
 // start() jumps here in supervisor mode on all CPUs.
 void
@@ -15,6 +21,7 @@ main()
     // consoleinit();
     printfinit();
     dtb_parser();
+    hart_init(); // 启动其他Hart
     printf("\n");
     printf("xv6 kernel is booting\n");
     printf("\n");
@@ -37,7 +44,7 @@ main()
     while(started == 0)
       ;
     __sync_synchronize();
-    // printf("hart %d starting\n", cpuid());
+    printf("hart %d starting\n", cpuid());
     // kvminithart();    // turn on paging
     // trapinithart();   // install kernel trap vector
     // plicinithart();   // ask PLIC for device interrupts

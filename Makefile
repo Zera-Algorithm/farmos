@@ -52,9 +52,10 @@ endif
 
 LDFLAGS = -z max-page-size=4096
 
-# kernel
+# 生成 kernel，并将其反汇编到kernel.asm
 $(KERN)/kernel: clean $(OBJS) $(KERN)/kernel.ld
 	$(LD) $(LDFLAGS) -T $(KERN)/kernel.ld -o $(KERN)/kernel $(OBJS)
+	$(OBJDUMP) -S $(KERN)/kernel > $(KERN)/kernel.asm
 
 # TODO: 需要实现。现在仅仅是使用了一个使用mkfs创建的默认镜像
 fs.img:
@@ -76,6 +77,7 @@ endif
 QEMUOPTS = -machine virt -bios default -kernel $(KERN)/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+# 加载的是一个virtio块设备
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 qemu: $(KERN)/kernel fs.img
