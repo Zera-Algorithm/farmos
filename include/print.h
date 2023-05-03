@@ -1,9 +1,9 @@
 #ifndef _print_h_
 #define _print_h_
 
+#include "types.h"
 #include <stdarg.h>
 #include <stddef.h>
-#include "types.h"
 
 typedef void (*fmt_callback_t)(void *data, const char *buf, size_t len);
 

@@ -12,13 +12,11 @@ _entry:
 
         # status = Supervisor, a0 = hartid, a1 = dtb
         la sp, stack0
-        la t0, dtb_entry # 读取dtb_entry并保存
-        sd a1, 0(t0)
 
         li t0, 1024*4
-        mv a1, a0
-        addi a1, a1, 1
-        mul t0, t0, a1
+        mv t1, a0
+        addi t1, t1, 1
+        mul t0, t0, t1
         add sp, sp, t0
 
         # jump to start() in start.c
