@@ -1,6 +1,7 @@
 #ifndef _DTB_H
 #define _DTB_H
 #include "types.h"
+// device tree blob: 设备树
 
 struct fdt_header {
 	unsigned int magic;

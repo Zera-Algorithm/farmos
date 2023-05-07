@@ -1,5 +1,5 @@
-#ifndef _MEMORY_H_
-#define _MEMORY_H_
+#ifndef _MEMORY_H
+#define _MEMORY_H
 
 #include <queue.h>
 #include <types.h>
@@ -113,4 +113,4 @@ inline Page *pteToPage(uint64 pte) {
 	return &pages[(pte - 0x80000000ul) >> PTE_PPNSHIFT]; // TODO: literal
 }
 
-#endif // _MEMORY_H_
+#endif // _MEMORY_H
