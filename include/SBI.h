@@ -1,3 +1,7 @@
+#ifndef _SBI_H
+#define _SBI_H
+#include "types.h"
+
 struct sbiret {
 	uint64 error;
 	uint64 value;
@@ -67,6 +71,13 @@ struct sbiret {
 #define RESUME_PENDING 6
 
 // 对于下面的宏函数，其返回值是sbiret结构体，定义在本文件的顶部
+
+
+/* 执行此函数后，会在stime_value **时刻** 触发一次时钟中断
+ * 注意是时刻而不是时间间隔，因此中断时需要将这个值刷新为 "当前时间+interval"
+ * 这个时钟是核内时钟，不同核的时钟不同
+ * virt下Riscv的时钟频率为10mHz，也就是当前时间一秒加10^7
+ */
 #define SBI_SET_TIMER(stime_value)                                                                 \
 	SBI_ECALL(SBI_TIMER_EID, SBI_SET_TIMER_FID, stime_value, 0, 0, 0, 0)
 
@@ -101,3 +112,4 @@ struct sbiret {
 
 #define SBI_SYSTEM_RESET(reset_type, reset_reason)                                                 \
 	SBI_ECALL(SBI_SYSTEM_RESET_EID, SBI_SYSTEM_RESET_FID, reset_type, reset_reason, 0, 0, 0)
+#endif

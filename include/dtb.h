@@ -1,3 +1,5 @@
+#ifndef _DTB_H
+#define _DTB_H
 #include "types.h"
 
 struct fdt_header {
@@ -21,3 +23,4 @@ void dtb_parser();
 #define FDT_PROP 0x00000003
 #define FDT_NOP 0x00000004
 #define FDT_END 0x00000009
+#endif

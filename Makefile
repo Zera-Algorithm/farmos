@@ -23,7 +23,10 @@ OBJS = \
 	$(KERN)/printf.o \
 	$(KERN)/string.o \
 	$(KERN)/print.o \
-	$(KERN)/panic.o
+	$(KERN)/panic.o \
+	$(KERN)/spinlock.o \
+	$(KERN)/trap.o \
+	$(KERN)/timer.o
 
 QEMU		= qemu-system-riscv64
 TOOLPREFIX	= riscv64-unknown-elf-

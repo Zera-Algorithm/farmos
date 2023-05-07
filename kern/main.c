@@ -13,6 +13,8 @@ void hart_init() {
 	SBI_HART_START(2, 0x80200000, 0);
 }
 
+extern void trapinithart();
+
 // start() jumps here in supervisor mode on all CPUs.
 void main() {
 	if (cpuid() == 0) {
@@ -28,7 +30,8 @@ void main() {
 		// kvminithart();   // turn on paging
 		// procinit();      // process table
 		// trapinit();      // trap vectors
-		// trapinithart();  // install kernel trap vector
+		trapinithart();  // install kernel trap vector
+		timerInit(); // 初始化核内时钟
 		// plicinit();      // set up interrupt controller
 		// plicinithart();  // ask PLIC for device interrupts
 		// binit();         // buffer cache
@@ -43,9 +46,10 @@ void main() {
 			;
 		}
 		__sync_synchronize();
-		printf("hart %d starting\n", cpuid());
+		printf("hart %d is starting\n", cpuid());
+		trapinithart();   // install kernel trap vector
+		timerInit();
 		// kvminithart();    // turn on paging
-		// trapinithart();   // install kernel trap vector
 		// plicinithart();   // ask PLIC for device interrupts
 	}
 
