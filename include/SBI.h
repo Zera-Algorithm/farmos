@@ -39,7 +39,7 @@ struct sbiret {
 		asm volatile("ecall\n"                                                             \
 			     "mv %[error], a0\n"                                                   \
 			     "mv %[value], a1\n"                                                   \
-			     : "+r"(a0), "+r"(a1), [error] "=r"(error), [value] "=r"(value)        \
+			     : "+r"(a0), "+r"(a1), [ error ] "=r"(error), [ value ] "=r"(value)    \
 			     : "r"(a2), "r"(a3), "r"(a4), "r"(a6), "r"(a7)                         \
 			     : "memory");                                                          \
 		(struct sbiret){error, value};                                                     \
@@ -71,7 +71,6 @@ struct sbiret {
 #define RESUME_PENDING 6
 
 // 对于下面的宏函数，其返回值是sbiret结构体，定义在本文件的顶部
-
 
 /* 执行此函数后，会在stime_value **时刻** 触发一次时钟中断
  * 注意是时刻而不是时间间隔，因此中断时需要将这个值刷新为 "当前时间+interval"
