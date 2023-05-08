@@ -1,7 +1,7 @@
 #ifndef _MEMORY_H
 #define _MEMORY_H
 
-#include <queue.h>
+#include <lib/queue.h>
 #include <types.h>
 
 // 缺的函数

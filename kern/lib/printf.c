@@ -4,7 +4,6 @@
 #include "file.h"
 #include "fs.h"
 #include "memlayout.h"
-#include "param.h"
 #include "print.h"
 #include "proc.h"
 #include "riscv.h"

@@ -101,7 +101,7 @@ clean:
 .PHONY: check-style fix-style
 
 check-style: clean
-	@bash utils/check-style.sh
+	@bash scripts/check-style.sh
 
 fix-style: clean
-	@bash utils/check-style.sh -f
+	@bash scripts/check-style.sh -f
