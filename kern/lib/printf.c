@@ -14,13 +14,9 @@
 // 建立一个printf的锁，保证同一个printf中的数据都能在一次输出完毕
 struct spinlock pr_lock;
 
-void printcharc(char ch) {
-	SBI_PUTCHAR(ch);
-}
-
 void output(void *data, const char *buf, size_t len) {
 	for (int i = 0; i < len; i++) {
-		printcharc(buf[i]);
+		SBI_PUTCHAR(buf[i]);
 	}
 }
 

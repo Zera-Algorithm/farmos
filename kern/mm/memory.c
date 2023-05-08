@@ -1,28 +1,6 @@
 #include <mm/memory.h>
+#include <lib/string.h>
 
-// (后续应删除或添加)
-void *clear(void *dst, uint64 n) {
-	void *dstaddr = dst;
-	void *max = dst + n;
-	uint8 byte = 0ull;
-	uint64 word = 0ull;
-
-	while (((uint64)dst & (sizeof(uint64) - 1)) && dst < max) {
-		*(uint8 *)dst++ = byte;
-	}
-
-	// fill machine words while possible
-	while (dst + sizeof(uint64) <= max) {
-		*(uint64 *)dst = word;
-		dst += sizeof(uint64);
-	}
-
-	// finish the remaining 0-7 bytes
-	while (dst < max) {
-		*(uint8 *)dst++ = byte;
-	}
-	return dstaddr;
-}
 extern void flushTlb();
 
 // 空闲物理页链表
@@ -99,7 +77,7 @@ static Page *pageAlloc() {
 	// 从空闲页链表中移除该页
 	LIST_REMOVE(pp, link);
 	// 清空页面内容并返回
-	clear((void *)pageToPa(pp), PAGE_SIZE); // todo: memset
+	memset((void *)pageToPa(pp), 0, PAGE_SIZE);
 	return pp;
 }
 
