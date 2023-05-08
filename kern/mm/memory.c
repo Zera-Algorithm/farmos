@@ -1,5 +1,5 @@
-#include <mm/memory.h>
 #include <lib/string.h>
+#include <mm/memory.h>
 
 extern void flushTlb();
 
