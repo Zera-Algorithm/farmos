@@ -88,6 +88,8 @@ riscv64-elf-gdb <kernel文件> # 用于加载kernel文件中的符号
 > info registers
 ```
 
+在任何时候，都可以在gdb中按tab补全命令。
+
 ### 1 查看内存值
 
 x \<addr\>: 显示addr处的内存值
@@ -138,7 +140,9 @@ break *\<address\>：支持无C语言栈帧的调试
 
 ### 6 显示寄存器
 
-info registers：显示寄存器的值
+* info registers：显示寄存器的值
+* info all-registers：显示所有寄存器的值，包括csr寄存器（S态、M态）
+* info reg <某个寄存器的名称，如satp>：显示特定寄存器的值
 
 ### 7 以TUI形式显示当前的寄存器位置
 
@@ -150,7 +154,7 @@ int: 32bit
 
 long: 64bit
 
-### 9 列出指定函数附近的源码
+### 9 列出指定函数附近的 C 源码
 
 list main
 

@@ -1,9 +1,9 @@
-#include "spinlock.h"
+#include "lock/spinlock.h"
 #include "defs.h"
-#include "memlayout.h"
+#include "lib/printf.h"
+#include "mm/memlayout.h"
 #include "param.h"
-#include "printf.h"
-#include "proc.h"
+#include "proc/proc.h"
 #include "riscv.h"
 #include "types.h"
 

@@ -12,11 +12,16 @@ SECTIONS
   .text : {
     *(.text .text.*)
     . = ALIGN(0x1000);
+    /* 需要定义一个trampsec: .section trampsec。
+      此section是用户态下的中断入口程序，与内核共享，
+      需要单独占据一个页的长度(参考trampoline.S)
+     */
     /* _trampoline = .;
     *(trampsec)
     . = ALIGN(0x1000);
     ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page"); */
-    PROVIDE(etext = .);
+    . = ALIGN(0x1000);
+    PROVIDE(end_text = .);
   }
 
   .rodata : {
@@ -40,5 +45,6 @@ SECTIONS
     *(.bss .bss.*)
   }
 
+  . = ALIGN(0x1000);
   PROVIDE(end = .);
 }

@@ -3,7 +3,7 @@
 #include "types.h"
 // device tree blob: 设备树
 
-struct fdt_header {
+struct FDTHeader {
 	unsigned int magic;
 	unsigned int totalsize;
 	unsigned int off_dt_struct;
@@ -16,8 +16,13 @@ struct fdt_header {
 	unsigned int size_dt_struct;
 };
 
-extern uint64 dtb_entry;
-void dtb_parser();
+struct MemInfo {
+	uint64 start;
+	uint64 size;
+};
+
+extern uint64 dtbEntry;
+void parseDtb();
 
 #define FDT_BEGIN_NODE 0x00000001
 #define FDT_END_NODE 0x00000002

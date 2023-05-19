@@ -7,6 +7,7 @@ struct sbiret {
 	uint64 value;
 };
 
+// 注意：SBI所有函数的参数都需要是ulong类型！
 // num表示SBI标号, a0是第一个参数，也是返回值
 // a1, a2是第2、3个参数
 #define SBI_LEGACY_ECALL(__num, __a0, __a1, __a2)                                                  \

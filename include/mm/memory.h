@@ -1,16 +1,9 @@
 #ifndef _MEMORY_H
 #define _MEMORY_H
 
+#include <lib/printf.h>
 #include <lib/queue.h>
 #include <types.h>
-
-// 缺的函数
-static inline void assert(uint64 expr) {
-	if (!expr) {
-		while (1)
-			;
-	}
-}
 
 // 内核映射：0x80000000+ 的内存地址在内核页表中均为直接映射
 #define NULL ((void *)0)
@@ -67,6 +60,7 @@ typedef uint32 MemErrCode;
 Pte pageLookup(Pte *pageDir, uint64 va);
 MemErrCode pageInsert(Pte *pageDir, uint64 va, uint64 pa, uint64 perm);
 MemErrCode pageRemove(Pte *pageDir, uint64 va);
+MemErrCode kernelPageMap(Pte *pageDir, uint64 va, uint64 pa, uint64 size, uint64 perm);
 
 // 内存管理错误码
 
@@ -82,7 +76,7 @@ enum MemErrorCode { SUCCESS = 0, NO_VALID_MAP };
 
 // 页结构体相关操作
 inline uint64 pageToPpn(Page *p) {
-	extern Page pages[];
+	extern Page *pages;
 	return p - pages;
 }
 
@@ -90,12 +84,12 @@ inline uint64 pageToPa(Page *p) {
 	return 0x80000000ul + (pageToPpn(p) << PAGE_SHIFT); // TODO: literal
 }
 
-inline uint64 pageToPte(Page *p) {
-	return 0x80000000ul + (pageToPpn(p) << PTE_PPNSHIFT); // TODO: literal
-}
-
 inline uint64 paToPte(uint64 pa) {
 	return (pa >> PAGE_SHIFT) << PTE_PPNSHIFT; // TODO: literal
+}
+
+inline uint64 pageToPte(Page *p) {
+	return paToPte(0x80000000ul) + (pageToPpn(p) << PTE_PPNSHIFT); // TODO: literal
 }
 
 inline uint64 pteToPa(uint64 pte) {
@@ -103,14 +97,19 @@ inline uint64 pteToPa(uint64 pte) {
 }
 
 inline Page *paToPage(uint64 pa) {
-	extern Page pages[];
+	extern Page *pages;
 	return &pages[(pa - 0x80000000ul) >> PAGE_SHIFT]; // TODO: literal
 }
 
 inline Page *pteToPage(uint64 pte) {
-	assert(pteToPa(pte) > 0x80000000ul); // TODO: literal
-	extern Page pages[];
-	return &pages[(pte - 0x80000000ul) >> PTE_PPNSHIFT]; // TODO: literal
+	// zrp: 不需要这个assert，因为映射设备内存的时候可以映射物理地址小于0x80000000的地址
+	// assert(pteToPa(pte) > 0x80000000ul); // TODO: literal
+	extern Page *pages;
+	return paToPage(pteToPa(pte));
 }
+
+void enablePagingHart();
+void initKernelMemory();
+void flushTlb();
 
 #endif // _MEMORY_H

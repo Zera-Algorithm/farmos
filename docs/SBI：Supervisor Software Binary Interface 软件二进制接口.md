@@ -71,6 +71,11 @@ SBI 实现的ID列表：
 
 ### 8.远程FENCE指令扩展
 
+The remote fence function acts as a full TLB flush if
+
+* start_addr and size are both 0
+* size is equal to 2^XLEN-1
+
 * ```c
   struct sbiret sbi_remote_fence_i(unsigned long hart_mask,
                                    unsigned long hart_mask_base)

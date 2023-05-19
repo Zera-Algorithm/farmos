@@ -1,7 +1,22 @@
-#include "print.h"
-#include "printf.h"
+#include "lib/print.h"
+#include "lib/printf.h"
+#include <defs.h>
+#include <lock/spinlock.h>
 
 void output(void *data, const char *buf, size_t len);
+
+void _log(const char *file, int line, const char *func, const char *fmt, ...) {
+	extern struct spinlock pr_lock;
+	acquire(&pr_lock);
+
+	printfNoLock("[%s:%d] %s(): ", file, line, func);
+	va_list ap;
+	va_start(ap, fmt);
+	vprintfmt(output, NULL, fmt, ap);
+	va_end(ap);
+
+	release(&pr_lock);
+}
 
 void _panic(const char *file, int line, const char *func, const char *fmt, ...) {
 	// uint64 sp, ra, badva, sr, cause, epc;

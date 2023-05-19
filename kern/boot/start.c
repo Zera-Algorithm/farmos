@@ -1,6 +1,6 @@
-#include "SBI.h"
 #include "defs.h"
-#include "memlayout.h"
+#include "dev/sbi.h"
+#include "mm/memlayout.h"
 #include "param.h"
 #include "riscv.h"
 #include "types.h"
@@ -8,6 +8,7 @@
 void main();
 
 // entry.S needs one stack per CPU.
+// Note：内核栈只占一页的大小，所以不要放太大的数据结构
 __attribute__((aligned(16))) char stack0[4096 * NCPU];
 
 // a scratch area per CPU for machine-mode timer interrupts.
@@ -23,9 +24,9 @@ uint64 timer_scratch[NCPU][5];
 // entry.S jumps here in machine mode on stack0.
 void start(long hartid, uint64 _dtb_entry) {
 	// 设置dtb_entry
-	extern uint64 dtb_entry;
+	extern uint64 dtbEntry;
 	if (hartid == 0) {
-		dtb_entry = _dtb_entry;
+		dtbEntry = _dtb_entry;
 	}
 
 	// Supervisor: disable paging for now.

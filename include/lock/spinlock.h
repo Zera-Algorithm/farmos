@@ -1,6 +1,7 @@
 #ifndef _SPINLOCK_H
 #define _SPINLOCK_H
 
+#include "types.h"
 // Mutual exclusion lock.
 struct spinlock {
 	uint locked; // Is the lock held?

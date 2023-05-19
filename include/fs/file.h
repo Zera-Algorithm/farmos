@@ -1,7 +1,7 @@
 #ifndef _FILE_H
 #define _FILE_H
-#include "fs.h"
-#include "sleeplock.h"
+#include "fs/fs.h"
+#include "lock/sleeplock.h"
 
 struct file {
 	enum { FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE } type;

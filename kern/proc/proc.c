@@ -1,6 +1,6 @@
-#include "proc.h"
+#include "proc/proc.h"
 #include "defs.h"
-#include "memlayout.h"
+#include "mm/memlayout.h"
 #include "param.h"
 #include "riscv.h"
 #include "types.h"
