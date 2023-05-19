@@ -78,7 +78,7 @@ MemErrCode kernelPageMap(Pte *pageDir, uint64 va, uint64 pa, uint64 size, uint64
 
 MemErrCode pageInsert(Pte *pageDir, uint64 va, uint64 pa, uint64 perm) {
 	// 如果页表项已经存在，抹除其内容（可优化）
-	if (pageDirWalk(pageDir, va, False) != NULL) { // zrp: 这里应该是False？
+	if (pageDirWalk(pageDir, va, False) != NULL) {
 		catchMemErr(pageRemove(pageDir, va));
 	}
 	// 页表项已经不存在，创建新的页表项

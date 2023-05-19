@@ -25,9 +25,8 @@ void main() {
 	if (numStart == 0) {
 		numStart += 1;
 		// consoleinit();
-		printfinit();
+		printInit();
 		printf("FarmOS kernel is booting (on hart %d)\n", cpuid());
-		// panic("\n"); // 测试非hart 0启动
 		parseDtb();
 		printf("\n");
 		initKernelMemory(); // 初始化内核页表

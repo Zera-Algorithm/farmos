@@ -11,4 +11,8 @@ struct spinlock {
 	struct cpu *cpu; // The cpu holding the lock.
 };
 
+void initlock(struct spinlock *lk, char *name);
+void acquire(struct spinlock *lk);
+void release(struct spinlock *lk);
+
 #endif

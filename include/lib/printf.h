@@ -3,11 +3,19 @@
 
 #include <stdarg.h>
 
-void printf(const char *fmt, ...);
-void printfNoLock(const char *fmt, ...);
+// 初始化锁
+void printInit(void);
 
-void _panic(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
+// 正常输出（带锁）
+void printf(const char *fmt, ...);
+
+// 日志级别（带锁）
 void _log(const char *, int, const char *, const char *, ...);
+void _warn(const char *, int, const char *, const char *, ...);
+void _error(const char *, int, const char *, const char *, ...);
+
+// In panic.c
+void _panic(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
 
 #define panic(...) _panic(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
@@ -44,5 +52,7 @@ void _log(const char *, int, const char *, const char *, ...);
  * @param va_args：额外参数
  */
 #define log(...) _log(__FILE__, __LINE__, __func__, __VA_ARGS__)
+#define warn(...) _warn(__FILE__, __LINE__, __func__, __VA_ARGS__)
+#define error(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
 #endif /* _printk_h_ */
