@@ -6,7 +6,7 @@
 #include "riscv.h"
 #include "types.h"
 
-uint64 dtbEntry;
+uint64 dtbEntry = 0;
 struct MemInfo memInfo;
 
 static void swapChar(void *a, void *b) {

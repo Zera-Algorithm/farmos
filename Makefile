@@ -43,16 +43,16 @@ CPUS := 3
 endif
 
 # 可以暂时不需要镜像文件
-# qemu: $(KERN)/kernel fs.img
-qemu: $(KERN)/kernel
+# qemu: $(KERN)/kernel
+qemu: $(KERN)/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
 # 可以暂时不需要镜像文件
-# qemu-gdb: $(KERN)/kernel .gdbinit fs.img
-qemu-gdb: $(KERN)/kernel .gdbinit
+# qemu-gdb: $(KERN)/kernel .gdbinit
+qemu-gdb: $(KERN)/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 

@@ -25,7 +25,7 @@ uint64 timer_scratch[NCPU][5];
 void start(long hartid, uint64 _dtb_entry) {
 	// 设置dtb_entry
 	extern uint64 dtbEntry;
-	if (hartid == 0) {
+	if (dtbEntry == 0) {
 		dtbEntry = _dtb_entry;
 	}
 
