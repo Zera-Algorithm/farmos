@@ -8,7 +8,7 @@ _entry:
         # set up a stack for C.
         # stack0 is declared in start.c,
         # with a 4096-byte stack per CPU.
-        # sp = stack0 + (hartid * 4096)
+        # sp = stack0 + ((hartid+1) * 4096)
 
         # status = Supervisor, a0 = hartid, a1 = dtb
         la sp, stack0
@@ -24,3 +24,7 @@ _entry:
         call start
 spin:
         j spin
+
+	// 下面的代码并非延迟槽，实际上，RISCV没有延迟槽
+	nop
+	nop

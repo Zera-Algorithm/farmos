@@ -16,10 +16,10 @@ SECTIONS
       此section是用户态下的中断入口程序，与内核共享，
       需要单独占据一个页的长度(参考trampoline.S)
      */
-    /* _trampoline = .;
-    *(trampsec)
+    _trampoline = .;
+    *(trampSec)
     . = ALIGN(0x1000);
-    ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page"); */
+    ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
     . = ALIGN(0x1000);
     PROVIDE(end_text = .);
   }

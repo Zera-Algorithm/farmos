@@ -5,7 +5,7 @@
 #include <mm/memory.h>
 #include <riscv.h>
 
-extern char end_text[];
+extern char end_text[], trampoline[];
 
 // 内核页表
 Pte *kernelPageTable;
@@ -13,7 +13,7 @@ extern struct MemInfo memInfo;
 
 // pages数组，其大小等于实际的物理内存页数npages
 uint64 npages;
-extern Page *pages;
+Page *pages;
 
 // 空闲链表
 PageList pageFreeList;
@@ -31,6 +31,18 @@ void enablePagingHart() {
 
 	// 刷新TLB（单核）
 	sfence_vma();
+}
+
+/**
+ * @brief 为内核映射连续的一段内存地址
+ * @note 调用者应当保证va, pa, size页对齐
+ * @author zrp
+ */
+static void kernelPageMap(Pte *pageDir, uint64 va, uint64 pa, uint64 size, uint64 perm) {
+	extern void kernelPageInsert(Pte * pageDir, uint64 va, uint64 pa, uint64 perm);
+	for (uint64 i = 0; i < size; i += PAGE_SIZE) {
+		kernelPageInsert(pageDir, va + i, pa + i, perm);
+	}
 }
 
 /**
@@ -65,7 +77,9 @@ Pte *initKvmPageTable() {
 	kernelPageMap(kPageTable, (uint64)end_text, (uint64)end_text,
 		      physicalTop - (uint64)end_text, PTE_R | PTE_W);
 
-	// TODO：Trampoline段的映射
+	// Trampoline段的映射
+	kernelPageMap(kPageTable, TRAMPOLINE, PGROUNDDOWN((u64)trampoline), PGSIZE, PTE_R | PTE_X);
+	assert(pteToPa(pageLookup(kPageTable, TRAMPOLINE)) == (u64)trampoline);
 
 	log("Init kernel page table SUCCESS!\n");
 	return kPageTable;

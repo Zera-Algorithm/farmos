@@ -73,9 +73,9 @@ static inline void w_sip(uint64 x) {
 }
 
 // Supervisor Interrupt Enable
-#define SIE_SEIE (1L << 9) // external
-#define SIE_STIE (1L << 5) // timer
-#define SIE_SSIE (1L << 1) // software
+#define SIE_SEIE (1L << 9) // external：中断控制器（外设）中断
+#define SIE_STIE (1L << 5) // timer：核内定时器中断
+#define SIE_SSIE (1L << 1) // software：核间中断
 static inline uint64 r_sie() {
 	uint64 x;
 	asm volatile("csrr %0, sie" : "=r"(x));
@@ -177,6 +177,10 @@ static inline uint64 r_satp() {
 	asm volatile("csrr %0, satp" : "=r"(x));
 	return x;
 }
+
+// 获取当前页目录物理地址
+// 注意：satp的低44位为物理页号PPN
+#define CUR_PGDIR ((r_satp() & ((1ul << 44) - 1)) << 12)
 
 static inline void w_mscratch(uint64 x) {
 	asm volatile("csrw mscratch, %0" : : "r"(x));

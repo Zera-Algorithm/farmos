@@ -16,6 +16,8 @@ CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+# 增加外部可控宏定义
+CFLAGS += -DNCPU=3
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
@@ -28,7 +30,7 @@ endif
 LDFLAGS = -z max-page-size=4096
 
 # -bios default: 缺省的SBI实现(OpenSBI)
-QEMUOPTS = -machine virt -bios default -kernel $(KERN)/kernel -m 128M -smp $(CPUS) -nographic
+QEMUOPTS = -machine virt -bios default -kernel $(KERN)/kernel -m 128M -smp $(NCPU) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 # 加载的是一个virtio块设备

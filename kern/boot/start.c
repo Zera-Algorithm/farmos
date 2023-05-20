@@ -11,9 +11,6 @@ void main();
 // Note：内核栈只占一页的大小，所以不要放太大的数据结构
 __attribute__((aligned(16))) char stack0[4096 * NCPU];
 
-// a scratch area per CPU for machine-mode timer interrupts.
-uint64 timer_scratch[NCPU][5];
-
 // // 测试SBI中的内联汇编是否能正常工作
 // void test() {
 //   struct sbiret ret;

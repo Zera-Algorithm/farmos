@@ -4,33 +4,14 @@
 #include "lock/spinlock.h"
 #include "param.h"
 #include "riscv.h"
-
-// Saved registers for kernel context switches.
-struct context {
-	uint64 ra;
-	uint64 sp;
-
-	// callee-saved
-	uint64 s0;
-	uint64 s1;
-	uint64 s2;
-	uint64 s3;
-	uint64 s4;
-	uint64 s5;
-	uint64 s6;
-	uint64 s7;
-	uint64 s8;
-	uint64 s9;
-	uint64 s10;
-	uint64 s11;
-};
+#include <lib/queue.h>
+#include <mm/memory.h>
 
 // Per-CPU state.
 struct cpu {
-	struct proc *proc;	// The process running on this cpu, or null.
-	struct context context; // swtch() here to enter scheduler().
-	int noff;		// Depth of push_off() nesting.
-	int intena;		// Were interrupts enabled before push_off()?
+	struct Proc *Proc; // The process running on this cpu, or null.
+	int noff;	   // Depth of push_off() nesting.
+	int intena;	   // Were interrupts enabled before push_off()?
 };
 
 extern struct cpu cpus[NCPU];
@@ -48,68 +29,81 @@ extern struct cpu cpus[NCPU];
 // return-to-user path via usertrapret() doesn't return through
 // the entire kernel call stack.
 struct trapframe {
-	/*   0 */ uint64 kernel_satp;	// kernel page table
-	/*   8 */ uint64 kernel_sp;	// top of process's kernel stack
-	/*  16 */ uint64 kernel_trap;	// usertrap()
-	/*  24 */ uint64 epc;		// saved user program counter
-	/*  32 */ uint64 kernel_hartid; // saved kernel tp
-	/*  40 */ uint64 ra;
-	/*  48 */ uint64 sp;
-	/*  56 */ uint64 gp;
-	/*  64 */ uint64 tp;
-	/*  72 */ uint64 t0;
-	/*  80 */ uint64 t1;
-	/*  88 */ uint64 t2;
-	/*  96 */ uint64 s0;
-	/* 104 */ uint64 s1;
-	/* 112 */ uint64 a0;
-	/* 120 */ uint64 a1;
-	/* 128 */ uint64 a2;
-	/* 136 */ uint64 a3;
-	/* 144 */ uint64 a4;
-	/* 152 */ uint64 a5;
-	/* 160 */ uint64 a6;
-	/* 168 */ uint64 a7;
-	/* 176 */ uint64 s2;
-	/* 184 */ uint64 s3;
-	/* 192 */ uint64 s4;
-	/* 200 */ uint64 s5;
-	/* 208 */ uint64 s6;
-	/* 216 */ uint64 s7;
-	/* 224 */ uint64 s8;
-	/* 232 */ uint64 s9;
-	/* 240 */ uint64 s10;
-	/* 248 */ uint64 s11;
-	/* 256 */ uint64 t3;
-	/* 264 */ uint64 t4;
-	/* 272 */ uint64 t5;
-	/* 280 */ uint64 t6;
+	u64 kernel_satp;  // 保存内核页表
+	u64 trap_handler; // 内核态异常针对用户异常的处理函数（C函数）
+	u64 epc;	  // 用户的epc
+	u64 hartid;	  // 当前的hartid，取自tp寄存器
+	u64 ra;
+	u64 sp;
+	u64 gp;
+	u64 tp;
+	u64 t0;
+	u64 t1;
+	u64 t2;
+	u64 s0;
+	u64 s1;
+	u64 a0;
+	u64 a1;
+	u64 a2;
+	u64 a3;
+	u64 a4;
+	u64 a5;
+	u64 a6;
+	u64 a7;
+	u64 s2;
+	u64 s3;
+	u64 s4;
+	u64 s5;
+	u64 s6;
+	u64 s7;
+	u64 s8;
+	u64 s9;
+	u64 s10;
+	u64 s11;
+	u64 t3;
+	u64 t4;
+	u64 t5;
+	u64 t6;
+	u64 kernel_sp; // 内核的sp指针
 };
 
-enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum ProcState { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+struct Proc;
 
 // Per-process state
-struct proc {
+struct Proc {
 	struct spinlock lock;
 
 	// p->lock must be held when using these:
-	enum procstate state; // Process state
+	enum ProcState state; // Process state
 	void *chan;	      // If non-zero, sleeping on chan
 	int killed;	      // If non-zero, have been killed
 	int xstate;	      // Exit status to be returned to parent's wait
-	int pid;	      // Process ID
+	u64 pid; // 进程ID，应当由进程在队列中的位置和累积创建进程排名组成
 
 	// wait_lock must be held when using this:
-	struct proc *parent; // Parent process
+	struct Proc *parent; // Parent process
 
 	// these are private to the process, so p->lock need not be held.
-	uint64 kstack;		     // Virtual address of kernel stack
 	uint64 sz;		     // Size of process memory (bytes)
-	pagetable_t pagetable;	     // User page table
+	Pte *pagetable;		     // User page table
 	struct trapframe *trapframe; // data page for trampoline.S
-	struct context context;	     // swtch() here to run process
 	struct file *ofile[NOFILE];  // Open files
 	struct inode *cwd;	     // Current directory
 	char name[16];		     // Process name (debugging)
+
+	LIST_ENTRY(Proc) procFreeLink;	       // 空闲链表链接
+	TAILQ_ENTRY(Proc) procSchedLink[NCPU]; // cpu调度队列链接
 };
+
+LIST_HEAD(ProcFreeList, Proc);
+TAILQ_HEAD(ProcSchedQueue, Proc);
+extern struct ProcFreeList procFreeList;
+extern struct ProcSchedQueue procSchedQueue[NCPU];
+
+int cpuid();
+struct cpu *mycpu(void);
+struct Proc *myProc();
+
 #endif

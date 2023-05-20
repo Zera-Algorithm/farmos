@@ -9,7 +9,7 @@ struct context;
 struct file;
 struct inode;
 struct pipe;
-struct proc;
+struct Proc;
 struct spinlock;
 struct sleeplock;
 struct stat;
@@ -19,16 +19,7 @@ struct superblock;
 void printf(const char *, ...);
 void printfinit(void);
 
-// string.c
-int memcmp(const void *, const void *, uint);
-void *memmove(void *, const void *, uint);
-void *memset(void *, int, uint);
-char *safestrcpy(char *, const char *, int);
-int strlen(const char *);
-int strncmp(const char *, const char *, uint);
-char *strncpy(char *, const char *, int);
-
-// proc.c
+// Proc.c
 int cpuid();
 struct cpu *mycpu(void);
 

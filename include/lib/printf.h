@@ -12,12 +12,9 @@ void printf(const char *fmt, ...);
 // 日志级别（带锁）
 void _log(const char *, int, const char *, const char *, ...);
 void _warn(const char *, int, const char *, const char *, ...);
-void _error(const char *, int, const char *, const char *, ...);
+void _error(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
 
-// In panic.c
-void _panic(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
-
-#define panic(...) _panic(__FILE__, __LINE__, __func__, __VA_ARGS__)
+#define panic(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
 #define panic_on(expr)                                                                             \
 	do {                                                                                       \
@@ -35,7 +32,7 @@ void _panic(const char *, int, const char *, const char *, ...) __attribute__((n
 	} while (0)
 
 /**
- * @brief assert的同时，输出格式化字符串
+ * @brief assert失败的同时，输出格式化字符串，帮助debug
  * @param msg：要输出的格式化字符串
  * @param ...：格式化字符串之后的可变长参数，至少要有1个
  * @example assertMsg(a == 2, "a != 2, a = %d\n", a);

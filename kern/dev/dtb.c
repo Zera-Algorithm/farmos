@@ -1,6 +1,6 @@
 #include "dev/dtb.h"
-#include "defs.h"
 #include "lib/printf.h"
+#include "lib/string.h"
 #include "mm/memlayout.h"
 #include "param.h"
 #include "riscv.h"
