@@ -170,5 +170,5 @@ void parseDtb() {
 	} while (readBigEndian32(node) != FDT_END);
 
 	log("Memory Start Addr = 0x%016lx, size = %d MB\n", memInfo.start,
-	       memInfo.size / 1024 / 1024);
+	    memInfo.size / 1024 / 1024);
 }
