@@ -1,10 +1,10 @@
 #ifndef _PROC_H
 #define _PROC_H
 
-#include "lock/spinlock.h"
 #include "param.h"
 #include "riscv.h"
 #include <lib/queue.h>
+#include <lock/spinlock.h>
 #include <mm/memory.h>
 
 // Per-CPU state.
@@ -28,7 +28,7 @@ extern struct cpu cpus[NCPU];
 // the trapframe includes callee-saved user registers like s0-s11 because the
 // return-to-user path via usertrapret() doesn't return through
 // the entire kernel call stack.
-struct trapframe {
+typedef struct trapframe {
 	u64 kernel_satp;  // 保存内核页表
 	u64 trap_handler; // 内核态异常针对用户异常的处理函数（C函数）
 	u64 epc;	  // 用户的epc
@@ -65,7 +65,7 @@ struct trapframe {
 	u64 t5;
 	u64 t6;
 	u64 kernel_sp; // 内核的sp指针
-};
+} Trapframe;
 
 enum ProcState { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 

@@ -10,6 +10,7 @@
 #include "types.h"
 
 extern void kernelvec();
+extern void syscallEntry(Trapframe *tf);
 
 #define SCAUSE_EXCEPTION 0
 #define SCAUSE_INTERRUPT 1
@@ -92,8 +93,7 @@ void userTrap() {
 		}
 	} else {
 		if (excCode == 8) { // TODO: literal
-				    // TODO: call do_syscall
-
+				    // syscallEntry();	    // TODO: call do_syscall
 		} else {
 			panic("uncaught exception.\n"
 			      "\tcpu: %d\n"

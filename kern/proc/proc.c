@@ -91,7 +91,7 @@ static u64 makeProcId(struct Proc *proc) {
  * @param pid 进程pid
  * @return struct Proc *：pid对应的进程。成功返回Proc指针，失败返回NULL
  */
-struct Proc *pidToProcess(pid) {
+struct Proc *pidToProcess(u64 pid) {
 	struct Proc *proc = &procs[pid & (NPROC - 1)];
 	if (proc->pid != pid || proc->state == UNUSED) {
 		return NULL;
@@ -107,6 +107,8 @@ struct Proc *pidToProcess(pid) {
  * @return int <0表示出错
  */
 int initProcPageTable(struct Proc *proc) {
+	// TODO
+	return 0;
 }
 
 /**
@@ -126,8 +128,7 @@ static int procAlloc(struct Proc **pproc) {
 	// 为此进程写入信息
 	proc->trapframe = (struct trapframe *)pageAlloc();
 
-	try
-		(initProcPageTable(proc));
+	TRY(initProcPageTable(proc));
 	*pproc = proc;
 	return 0;
 }
