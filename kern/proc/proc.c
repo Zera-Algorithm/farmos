@@ -68,7 +68,7 @@ void testProcRun() {
 
 	// 5. 设置Trapframe
 	testProc.trapframe->epc = 0;
-	testProc.trapframe->sp = PGSIZE;
+	testProc.trapframe->sp = PAGE_SIZE;
 
 	c->Proc = &testProc;
 	userTrapReturn();

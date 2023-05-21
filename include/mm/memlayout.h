@@ -46,6 +46,17 @@
 // the kernel expects there to be RAM
 // for use by the kernel and user pages
 // from physical address 0x80000000 to PHYSTOP.
+#ifndef MAXVA
+#define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+#endif
+// TODO：整理以上宏文件
+
+// FarmOS 物理页说明
+#define PAGE_SHIFT (12ull)	    // 基页大小为 4KB
+#define PAGE_SIZE (1 << PAGE_SHIFT) // 基页大小为 4KB
+#define PGROUNDUP(a) (((a) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
+#define PGROUNDDOWN(a) (((a)) & ~(PAGE_SIZE - 1))
+
 // 内核的起始位置
 #define KERNBASE 0x80200000ul
 
@@ -54,7 +65,7 @@
 
 // map the trampoline page to the highest address,
 // in both user and kernel space.
-#define TRAMPOLINE (MAXVA - PGSIZE)
+#define TRAMPOLINE (MAXVA - PAGE_SIZE)
 
 // User memory layout.
 // Address zero first:
@@ -65,5 +76,5 @@
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
-#define TRAPFRAME (TRAMPOLINE - PGSIZE)
+#define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 #endif

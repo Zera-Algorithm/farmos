@@ -1,9 +1,10 @@
 #include <defs.h>
 #include <dev/dtb.h>
 #include <dev/sbi.h>
-#include <mm/kalloc.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
+#include <mm/pmm.h>
+#include <mm/vmm.h>
 #include <param.h>
 #include <riscv.h>
 #include <types.h>
@@ -31,7 +32,10 @@ void main() {
 		printf("FarmOS kernel is booting (on hart %d)\n", cpuid());
 		parseDtb();
 		printf("\n");
-		initKernelMemory(); // 初始化内核页表
+		// 内存管理机制初始化
+		pmmInit();
+		vmmInit();
+		// initKernelMemory(); // 初始化内核页表
 		enablePagingHart(); // 开启分页
 		log("Finish Paging!\n");
 		// procinit();      // process table

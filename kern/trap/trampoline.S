@@ -14,7 +14,7 @@
 .section trampSec
 .globl trampoline
 trampoline:
-// 按4个字节的倍数对齐
+// 按4个字节的倍数对齐（TODO：trampoline按页对齐）
 .align 4
 .globl userVec
 userVec:

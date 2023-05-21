@@ -1,4 +1,7 @@
+#include <types.h>
+
 #define E_NOPROC 1
+#define E_NO_MAP 2
 
 /**
  * @brief 如果传入的expr小于0，则返回该值；否则无动作。适用于函数内错误的快速返回

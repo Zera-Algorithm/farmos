@@ -42,8 +42,8 @@ void _log(const char *file, int line, const char *func, const char *fmt, ...) {
 
 	acquire(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %s:%d \"%s\"" SGR_RESET ": ", FARM_INFO "[INFO]" SGR_RESET SGR_BLUE, file,
-		     line, func);
+	printfNoLock("%s %12s:%-4d %12s()" SGR_RESET ": ", FARM_INFO "[INFO]" SGR_RESET SGR_BLUE,
+		     file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
 	release(&pr_lock);
@@ -57,7 +57,7 @@ void _warn(const char *file, int line, const char *func, const char *fmt, ...) {
 
 	acquire(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %s:%d \"%s\"" SGR_RESET ": ", FARM_WARN "[WARN]" SGR_RESET SGR_YELLOW,
+	printfNoLock("%s %12s:%-4d %12s()" SGR_RESET ": ", FARM_WARN "[WARN]" SGR_RESET SGR_YELLOW,
 		     file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
@@ -72,8 +72,8 @@ void _error(const char *file, int line, const char *func, const char *fmt, ...) 
 
 	acquire(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %s:%d \"%s\"" SGR_RESET ": ", FARM_ERROR "[ERROR]" SGR_RESET SGR_RED, file,
-		     line, func);
+	printfNoLock("%s %12s:%-4d %12s()" SGR_RESET ": ", FARM_ERROR "[ERROR]" SGR_RESET SGR_RED,
+		     file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
 	release(&pr_lock);

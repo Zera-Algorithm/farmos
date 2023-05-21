@@ -20,8 +20,9 @@ typedef enum { false = 0, true = 1 } bool;
 #define NULL ((void *)0)
 
 // FarmOS 其它
-typedef unsigned long size_t;
-typedef long off_t;
+typedef u64 size_t;
+typedef u32 err_t;
+typedef i64 off_t;
 
 // Old Defination
 typedef unsigned int uint;

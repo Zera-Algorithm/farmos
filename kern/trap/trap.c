@@ -136,7 +136,7 @@ void userTrapReturn() {
 	p->trapframe->hartid = cpuid();
 
 	extern char stack0[];
-	p->trapframe->kernel_sp = (u64)stack0 + PGSIZE * (cpuid() + 1);
+	p->trapframe->kernel_sp = (u64)stack0 + PAGE_SIZE * (cpuid() + 1);
 
 	// 设置S态Previous Mode and Interrupt Enable，
 	// 以在sret时恢复状态
