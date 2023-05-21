@@ -101,7 +101,7 @@ static Page *_pageAlloc() {
 	LIST_REMOVE(pp, link);
 	// 清空页面内容并返回
 	memset((void *)pageToPa(pp), 0, PAGE_SIZE);
-	log("get page %d\n", pageToPpn(pp));
+	// log("get page %d\n", pageToPpn(pp));
 	return pp;
 }
 
@@ -120,7 +120,7 @@ static Pte *pageDirWalk(Pte *pageDir, uint64 va, uint8 create) {
 		} else {
 			// 如果不存在，创建下一级页表
 			if (create) {
-				log("create a page for level %d in va 0x%016lx\n", i, va);
+				// log("create a page for level %d in va 0x%016lx\n", i, va);
 				Page *newPage = _pageAlloc();
 				newPage->ref += 1;
 				// 将新页表的物理地址写入当前页表项
@@ -156,7 +156,7 @@ static void modifyPte(Pte *pte, Pte value) {
 		pteToPage(*pte)->ref += 1;
 	}
 
-	log("finish modidy Pte!\n");
+	// log("finish modidy Pte!\n");
 }
 
 static void clearPte(Pte *pte) {

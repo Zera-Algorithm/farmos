@@ -38,6 +38,7 @@ void main() {
 		// trapinit();      // trap vectors
 		trapInitHart(); // install kernel trap vector
 		timerInit();	// 初始化核内时钟
+		log("NCPU = %d\n", NCPU);
 		// plicinit();      // set up interrupt controller
 		// plicinithart();  // ask PLIC for device interrupts
 		// binit();         // buffer cache

@@ -108,10 +108,6 @@ static void pageInit() {
 	for (uint64 i = MEMBASE; i < (uint64)freeMem; i += PGSIZE) {
 		uint64 index = (i - MEMBASE) / PGSIZE;
 		pages[index].ref = 1;
-
-		if (index % 0x100 == 0) {
-			log("index = %d\n", index);
-		}
 	}
 
 	// 倒序插入空闲页，使队列中的内存从头至尾地址递增

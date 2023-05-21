@@ -32,18 +32,18 @@ void endianBigToLittle(void *bin, int size) {
  */
 void parserFdtHeader(struct FDTHeader *fdtHeader) {
 	endianBigToLittle(fdtHeader, sizeof(struct FDTHeader));
-	printf("Read FDTHeader:\n");
-	printf("magic             = 0x%lx\n", (long)fdtHeader->magic);
-	printf("totalsize's addr  = 0x%lx\n", &(fdtHeader->totalsize));
-	printf("totalsize         = %d\n", fdtHeader->totalsize);
-	printf("off_dt_struct     = 0x%x\n", fdtHeader->off_dt_struct);
-	printf("off_dt_strings    = 0x%x\n", fdtHeader->off_dt_strings);
-	printf("off_mem_rsvmap    = 0x%x\n", fdtHeader->off_mem_rsvmap);
-	printf("version           = %d\n", fdtHeader->version);
-	printf("last_comp_version = %d\n", fdtHeader->last_comp_version);
-	printf("boot_cpuid_phys   = %d\n", fdtHeader->boot_cpuid_phys);
-	printf("size_dt_strings   = %d\n", fdtHeader->size_dt_strings);
-	printf("size_dt_struct    = %d\n", fdtHeader->size_dt_struct);
+	log("Read FDTHeader:\n");
+	log("magic             = 0x%lx\n", (long)fdtHeader->magic);
+	log("totalsize's addr  = 0x%lx\n", &(fdtHeader->totalsize));
+	log("totalsize         = %d\n", fdtHeader->totalsize);
+	log("off_dt_struct     = 0x%x\n", fdtHeader->off_dt_struct);
+	log("off_dt_strings    = 0x%x\n", fdtHeader->off_dt_strings);
+	log("off_mem_rsvmap    = 0x%x\n", fdtHeader->off_mem_rsvmap);
+	log("version           = %d\n", fdtHeader->version);
+	log("last_comp_version = %d\n", fdtHeader->last_comp_version);
+	log("boot_cpuid_phys   = %d\n", fdtHeader->boot_cpuid_phys);
+	log("size_dt_strings   = %d\n", fdtHeader->size_dt_strings);
+	log("size_dt_struct    = %d\n", fdtHeader->size_dt_struct);
 }
 
 inline uint32 readBigEndian32(void *p) {
@@ -90,8 +90,8 @@ void *parseFdtNode(struct FDTHeader *fdtHeader, void *node, char *parent) {
 	node += 4;
 
 	node_name = (char *)node;
-	printf("node's name:    %s\n", node_name);
-	printf("node's parent:  %s\n", parent);
+	log("node's name:    %s\n", node_name);
+	log("node's parent:  %s\n", parent);
 	node += (strlen((char *)node) + 1);
 	node = (void *)FOURROUNDUP((uint64)node); // roundup to multiple of 4
 
@@ -113,10 +113,12 @@ void *parseFdtNode(struct FDTHeader *fdtHeader, void *node, char *parent) {
 				char *name = (char *)(node + fdtHeader->off_dt_strings + nameoff);
 
 				if (name[0] != '\0') {
-					printf("name:   %s\n", name);
+					log("name:   %s\n", name);
 				}
-				printf("len:    %d\n", len);
-				printf("values: ");
+				log("len:    %d\n", len);
+
+				// values需要以info形式输出
+				log("values: ");
 				if (len == 4 || len == 8 || len == 16 || len == 32) {
 					value = (void *)node;
 					for (int i = 0; i < len; i++) {
@@ -127,6 +129,8 @@ void *parseFdtNode(struct FDTHeader *fdtHeader, void *node, char *parent) {
 					printf("%s", nodeStr);
 				}
 				printf("\n");
+				// values输出完毕
+
 				node = (void *)FOURROUNDUP((uint64)(node + len));
 				while (readBigEndian32(node) == FDT_NOP) {
 					node += 4;
@@ -156,7 +160,7 @@ void *parseFdtNode(struct FDTHeader *fdtHeader, void *node, char *parent) {
 
 void parseDtb() {
 	extern uint64 dtbEntry;
-	printf("dtbEntry = %lx\n", dtbEntry);
+	log("dtbEntry = %lx\n", dtbEntry);
 	struct FDTHeader *fdt_h = (struct FDTHeader *)dtbEntry;
 	parserFdtHeader(fdt_h);
 
@@ -165,6 +169,6 @@ void parseDtb() {
 		node = parseFdtNode(fdt_h, node, "root");
 	} while (readBigEndian32(node) != FDT_END);
 
-	printf("Memory Start Addr = 0x%016lx, size = %d MB\n", memInfo.start,
+	log("Memory Start Addr = 0x%016lx, size = %d MB\n", memInfo.start,
 	       memInfo.size / 1024 / 1024);
 }

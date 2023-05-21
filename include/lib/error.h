@@ -6,7 +6,8 @@
  */
 #define TRY(expr)                                                                                  \
 	do {                                                                                       \
-		if ((expr) < 0) {                                                                  \
-			return (expr);                                                             \
+		int r = (expr);																	\
+		if (r < 0) {                                                                  \
+			return r;                                                             \
 		}                                                                                  \
 	} while (0)

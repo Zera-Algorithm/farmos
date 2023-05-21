@@ -13,7 +13,7 @@ void *freeMem;
 extern struct MemInfo memInfo;
 
 void kinit() {
-	printf("end = 0x%08lx\n", end);
+	log("end = 0x%08lx\n", end);
 	freeMem = (void *)PGROUNDUP((uint64)end);
 }
 
