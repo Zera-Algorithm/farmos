@@ -9,7 +9,7 @@
 
 // Per-CPU state.
 struct cpu {
-	struct Proc *Proc; // The process running on this cpu, or null.
+	struct Proc *proc; // The process running on this cpu, or null.
 	int noff;	   // Depth of push_off() nesting.
 	int intena;	   // Were interrupts enabled before push_off()?
 };
@@ -69,6 +69,7 @@ typedef struct trapframe {
 
 enum ProcState { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+#define MAX_PROC_NAME_LEN 16
 struct Proc;
 
 // Per-process state
@@ -87,12 +88,12 @@ struct Proc {
 	u64 priority;
 
 	// these are private to the process, so p->lock need not be held.
-	uint64 sz;		     // Size of process memory (bytes)
-	Pte *pageTable;		     // User page table
-	struct trapframe *trapframe; // data page for trampoline.S
-	struct file *ofile[NOFILE];  // Open files
-	struct inode *cwd;	     // Current directory
-	char name[16];		     // Process name (debugging)
+	uint64 sz;		      // Size of process memory (bytes)
+	Pte *pageTable;		      // User page table
+	struct trapframe *trapframe;  // data page for trampoline.S
+	struct file *ofile[NOFILE];   // Open files
+	struct inode *cwd;	      // Current directory
+	char name[MAX_PROC_NAME_LEN]; // Process name (debugging)
 
 	LIST_ENTRY(Proc) procFreeLink;	       // 空闲链表链接
 	TAILQ_ENTRY(Proc) procSchedLink[NCPU]; // cpu调度队列链接
@@ -108,14 +109,20 @@ struct cpu *mycpu(void);
 struct Proc *myProc();
 
 void procInit();
-struct Proc *procCreate(const void *binary, size_t size, u64 priority);
+struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 priority);
 void procRun(struct Proc *proc);
 
+inline int procCanRun(struct Proc *proc) {
+	return (proc->state == RUNNABLE || proc->state == RUNNING);
+}
+
+// #symbol 可以将symbol原封不动地转换为对应的字符串（即两边加引号）
 #define PROC_CREATE(programName, priority)                                                         \
 	({                                                                                         \
 		extern char binary_##programName[];                                                \
 		extern int binary_##programName##_size;                                            \
-		procCreate(binary_##programName, binary_##programName##_size, priority);           \
+		procCreate(#programName, binary_##programName, binary_##programName##_size,        \
+			   priority);                                                              \
 	})
 
 #endif

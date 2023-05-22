@@ -1,6 +1,6 @@
 #ifndef _DTB_H
 #define _DTB_H
-#include "types.h"
+#include <types.h>
 // device tree blob: 设备树
 
 struct FDTHeader {

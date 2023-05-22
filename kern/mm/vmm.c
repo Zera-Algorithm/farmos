@@ -21,11 +21,11 @@ inline u64 pteToPa(Pte pte) {
 	return (pte >> PTE_PPNSHIFT) << PAGE_SHIFT;
 }
 
-static inline Pte pageToPte(Page *p) {
+inline Pte pageToPte(Page *p) {
 	return paToPte(MEMBASE) + (pageToPpn(p) << PTE_PPNSHIFT);
 }
 
-static inline Page *pteToPage(Pte pte) {
+inline Page *pteToPage(Pte pte) {
 	assert(pteToPa(pte) > MEMBASE);
 	return paToPage(pteToPa(pte));
 }

@@ -9,6 +9,11 @@ void printInit(void);
 // 正常输出（带锁）
 void printf(const char *fmt, ...);
 
+// 条件输出（带锁）
+#define printfIf(isLog, ...)                                                                       \
+	if ((isLog))                                                                               \
+	printf(__VA_ARGS__)
+
 // 日志级别（带锁）
 void _log(const char *, int, const char *, const char *, ...);
 void _warn(const char *, int, const char *, const char *, ...);
@@ -51,5 +56,14 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 #define log(...) _log(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define warn(...) _warn(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define error(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
+
+/**
+ * @brief 条件输出日志，适用于隐藏调试信息
+ * @param isLog 若为真，则输出日志
+ * @param va_args 额外参数
+ */
+#define logIf(isLog, ...)                                                                          \
+	if ((isLog))                                                                               \
+	_log(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
 #endif /* _printk_h_ */

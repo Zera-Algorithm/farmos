@@ -1,3 +1,5 @@
+#ifndef _TRAPFRAME_H
+#define _TRAPFRAME_H
 /**
  * @brief 下面定义Trapframe各个字段的偏移
  */
@@ -37,3 +39,4 @@
 #define OFFSET_T5 264
 #define OFFSET_T6 272
 #define OFFSET_KERNEL_SP 280
+#endif

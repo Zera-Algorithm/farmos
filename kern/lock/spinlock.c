@@ -1,11 +1,14 @@
 #include "lock/spinlock.h"
-#include "defs.h"
 #include "lib/printf.h"
 #include "mm/memlayout.h"
 #include "param.h"
 #include "proc/proc.h"
 #include "riscv.h"
 #include "types.h"
+
+static int holding(struct spinlock *lk);
+static void push_off(void);
+static void pop_off(void);
 
 void initlock(struct spinlock *lk, char *name) {
 	lk->name = name;
@@ -45,7 +48,7 @@ void release(struct spinlock *lk) {
 	pop_off();
 }
 
-int holding(struct spinlock *lk) {
+static int holding(struct spinlock *lk) {
 	int r;
 	// 当前cpu holding条件：lk锁住，且持有的cpu是本cpu
 	r = (lk->locked && lk->cpu == mycpu());
@@ -53,7 +56,7 @@ int holding(struct spinlock *lk) {
 }
 
 // 叠加关中断的层次
-void push_off(void) {
+static void push_off(void) {
 	int old = intr_get();
 	intr_off();
 	if (mycpu()->noff == 0) {
@@ -62,7 +65,7 @@ void push_off(void) {
 	mycpu()->noff += 1;
 }
 
-void pop_off(void) {
+static void pop_off(void) {
 	struct cpu *c = mycpu();
 	c->noff -= 1;
 	if (c->noff == 0 && c->intena) {

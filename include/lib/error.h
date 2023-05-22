@@ -1,3 +1,6 @@
+#ifndef _ERROR_H
+#define _ERROR_H
+
 #include <types.h>
 
 #define E_NOPROC 1
@@ -16,3 +19,5 @@
 			return r;                                                                  \
 		}                                                                                  \
 	} while (0)
+
+#endif

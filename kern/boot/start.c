@@ -1,4 +1,3 @@
-#include "defs.h"
 #include "dev/sbi.h"
 #include "mm/memlayout.h"
 #include "param.h"

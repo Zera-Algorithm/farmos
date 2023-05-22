@@ -35,6 +35,8 @@ err_t ptUnmap(Pte *pgdir, u64 va);
 
 Pte paToPte(u64 pa);
 u64 pteToPa(Pte pte);
+Pte pageToPte(Page *p);
+Page *pteToPage(Pte pte);
 
 // deprecated
 #define pageAlloc() vmAlloc()

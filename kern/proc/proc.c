@@ -1,14 +1,15 @@
-#include "proc/proc.h"
-#include "defs.h"
-#include "mm/memlayout.h"
-#include "mm/memory.h"
-#include "param.h"
-#include "riscv.h"
-#include "types.h"
 #include <lib/elf.h>
 #include <lib/error.h>
+#include <lib/printf.h>
 #include <lib/string.h>
+#include <mm/memlayout.h>
+#include <mm/memory.h>
+#include <param.h>
+#include <proc/proc.h>
+#include <proc/schedule.h>
+#include <riscv.h>
 #include <trap/trap.h>
+#include <types.h>
 
 struct cpu cpus[NCPU];
 extern char trampoline[];
@@ -26,7 +27,7 @@ struct cpu *mycpu(void) {
 struct Proc *myProc() {
 	// TODO: 按照xv6的代码，可能需要开关中断？
 	struct cpu *c = mycpu();
-	struct Proc *p = c->Proc;
+	struct Proc *p = c->proc;
 	return p;
 }
 
@@ -73,7 +74,7 @@ void testProcRun() {
 	testProc.trapframe->epc = 0;
 	testProc.trapframe->sp = PAGE_SIZE;
 
-	c->Proc = &testProc;
+	c->proc = &testProc;
 	userTrapReturn();
 }
 
@@ -133,9 +134,11 @@ int initProcPageTable(struct Proc *proc) {
 /**
  * @brief 分配一个进程，将其从空闲进程结构体中删除
  * @param pproc 所需要写入的进程proc指针的指针
+ * @param parentId 父进程pid
  * @return int 错误类型
  */
 static int procAlloc(struct Proc **pproc, u64 parentId) {
+	// 1. 寻找可分配的进程控制块
 	struct Proc *proc = LIST_FIRST(&procFreeList);
 	if (proc == NULL) {
 		// 没有可分配的进程
@@ -144,9 +147,17 @@ static int procAlloc(struct Proc **pproc, u64 parentId) {
 
 	assert(proc->state == UNUSED);
 
+	// 2. 从空闲链表中删除此进程控制块
+	LIST_REMOVE(proc, procFreeLink);
+
+	// 3. 初始化进程proc的页表
 	TRY(initProcPageTable(proc));
+
+	// 4. 设置进程的pid和父亲id
+	proc->pid = makeProcId(proc);
 	proc->parentId = parentId;
 
+	// 5. 返回分配的进程控制块
 	*pproc = proc;
 	return 0;
 }
@@ -196,24 +207,31 @@ static int loadCode(struct Proc *proc, const void *binary, size_t size) {
 
 /**
  * @brief 创建一个进程，并加载一些必要的段(.text，.data)。该函数决定进程被加载到哪个CPU上
- *
+ * @param binary 要加载的进程的二进制数据指针
+ * @param size 二进制数据的大小
+ * @param priority 进程的优先级
+ * @param name 进程名称
  */
-struct Proc *procCreate(const void *binary, size_t size, u64 priority) {
+struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 priority) {
 	struct Proc *proc;
 
 	// 1. 申请一个Proc
 	panic_on(procAlloc(&proc, 0));
 
-	// 2. 设置进程优先级
+	// 2. 设置进程信息
 	proc->priority = priority;
 	proc->state = RUNNABLE;
+	strncpy(proc->name, name, MAX_PROC_NAME_LEN);
+	proc->name[MAX_PROC_NAME_LEN - 1] = 0; // 防止缓冲区溢出
 
 	// 3. 加载进程的代码段和数据段
 	panic_on(loadCode(proc, binary, size));
 
 	// 4. 寻找一个合适的CPU插入进程
 	int cpu = cpuid(); // TODO: 考虑随机分配的方法
+	log("insert proc %08lx\n", proc->pid);
 	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
+	assert(!TAILQ_EMPTY(&procSchedQueue[cpu]));
 
 	return proc;
 }
@@ -221,17 +239,92 @@ struct Proc *procCreate(const void *binary, size_t size, u64 priority) {
 /**
  * @brief 运行一个进程
  * @details 将该进程挂载到本cpu上（cpu->Proc = process），之后调用userTrapReturn
- *
+ * @param proc 待运行的进程
  */
 void procRun(struct Proc *proc) {
-	mycpu()->Proc = proc;
+	static int order = 0;
+	// 打印当前调度的进程的信息
+	log("%03d:  %8s(0x%08lx)\n", ++order, proc->name, proc->pid);
+
+	mycpu()->proc = proc;
 	proc->state = RUNNING;
 	userTrapReturn();
 }
 
 /**
- * @brief 结束一个进程
+ * @brief 回收一个进程控制块。包括回收进程页表映射的物理内存、回收页表存储等
  *
  */
-void procDestroy() {
+void procFree(struct Proc *proc) {
+	log("free proc %s(0x%08lx)\n", proc->name, proc->pid);
+
+	// 1. 回收页表
+	for (u32 i = 0; i < PTX(~0, 1); i++) {
+		if (!(proc->pageTable[i] & PTE_V)) {
+			continue;
+		}
+		Pte *pt1 = (Pte *)pteToPa(proc->pageTable[i]);
+
+		for (u32 j = 0; j < PTX(~0, 2); j++) {
+			if (!(pt1[j] & PTE_V)) {
+				continue;
+			}
+			Pte *pt2 = (Pte *)pteToPa(pt1[j]);
+
+			for (u32 k = 0; k < PTX(~0, 3); k++) {
+				if (!(pt2[k] & PTE_V)) {
+					continue;
+				}
+
+				u64 va = (i << 30) | (j << 21) | (k << 12);
+				ptUnmap(proc->pageTable, va);
+			}
+
+			// 清空二级页表项，回收三级页表
+			pmPageDecRef(pteToPage(pt1[j]));
+			((u64 *)pt1)[j] = 0;
+		}
+
+		// 清空一级页表项，回收二级页表
+		pmPageDecRef(pteToPage(proc->pageTable[i]));
+		((u64 *)proc->pageTable)[i] = 0;
+	}
+
+	// 回收一级页表（页目录）
+	pmPageDecRef(paToPage((u64)proc->pageTable));
+	proc->pageTable = 0;
+
+	// 2. 从调度队列中删除，并插入到空闲链表
+	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
+	for (int i = 0; i < NCPU; i++) {
+		struct Proc *tmp;
+		int isRemove = 0;
+		TAILQ_FOREACH (tmp, &procSchedQueue[i], procSchedLink[i]) {
+			if (tmp == proc) {
+				TAILQ_REMOVE(&procSchedQueue[i], proc, procSchedLink[i]);
+				isRemove = 1;
+				break;
+			}
+		}
+		if (isRemove) {
+			break;
+		}
+	}
+
+	// 3. 清空进程结构体
+	memset((void *)proc, 0, sizeof(struct Proc));
+}
+
+/**
+ * @brief 结束一个进程
+ * @param proc 要结束的进程
+ */
+void procDestroy(struct Proc *proc) {
+	procFree(proc);
+
+	if (myProc() == proc) {
+		mycpu()->proc = NULL;
+		log("cpu %d's running process has been killed.\n", cpuid());
+		schedule(1);
+	}
 }

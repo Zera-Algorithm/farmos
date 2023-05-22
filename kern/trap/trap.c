@@ -1,13 +1,14 @@
-#include "trap/trap.h"
-#include "defs.h"
-#include "dev/sbi.h"
-#include "lib/printf.h"
-#include "lock/spinlock.h"
-#include "mm/memlayout.h"
-#include "param.h"
-#include "proc/proc.h"
-#include "riscv.h"
-#include "types.h"
+#include <dev/sbi.h>
+#include <dev/timer.h>
+#include <lib/printf.h>
+#include <lock/spinlock.h>
+#include <mm/memlayout.h>
+#include <param.h>
+#include <proc/proc.h>
+#include <proc/schedule.h>
+#include <riscv.h>
+#include <trap/trap.h>
+#include <types.h>
 
 extern void kernelvec();
 extern void syscallEntry(Trapframe *tf);
@@ -87,13 +88,14 @@ void userTrap() {
 			log("timer interrupt on CPU %d!\n", cpuid());
 			timerSetNextTick();
 
-			// TODO: call schedule
+			schedule(0); // 请求调度
 		} else {
 			log("unknown interrupt.\n");
 		}
 	} else {
-		if (excCode == 8) {			   // TODO: literal
-			syscallEntry(myProc()->trapframe); // TODO: call do_syscall
+		if (excCode == EXCCODE_SYSCALL) {
+			// 处理系统调用
+			syscallEntry(myProc()->trapframe);
 		} else {
 			if (excCode == 2) {
 				u32 *code = (u32 *)pteToPa(ptLookup(myProc()->pageTable, r_sepc()));
