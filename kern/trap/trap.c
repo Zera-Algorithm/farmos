@@ -92,9 +92,14 @@ void userTrap() {
 			log("unknown interrupt.\n");
 		}
 	} else {
-		if (excCode == 8) { // TODO: literal
-				    // syscallEntry();	    // TODO: call do_syscall
+		if (excCode == 8) {			   // TODO: literal
+			syscallEntry(myProc()->trapframe); // TODO: call do_syscall
 		} else {
+			if (excCode == 2) {
+				u32 *code = (u32 *)pteToPa(ptLookup(myProc()->pageTable, r_sepc()));
+				log("code = 0x%08x\n", *code);
+			}
+
 			panic("uncaught exception.\n"
 			      "\tcpu: %d\n"
 			      "\tExcCode: %d\n"
@@ -148,7 +153,7 @@ void userTrapReturn() {
 	// 恢复epc
 	w_sepc(p->trapframe->epc);
 
-	u64 satp = MAKE_SATP(p->pagetable);
+	u64 satp = MAKE_SATP(p->pageTable);
 
 	u64 trampolineUserRet = TRAMPOLINE + (userRet - trampoline);
 	// log("goto trampoline, func = 0x%016lx\n", trampolineUserRet);

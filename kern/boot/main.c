@@ -6,6 +6,7 @@
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <param.h>
+#include <proc/proc.h>
 #include <riscv.h>
 #include <types.h>
 
@@ -42,7 +43,9 @@ void main() {
 		// trapinit();      // trap vectors
 		trapInitHart(); // install kernel trap vector
 		timerInit();	// 初始化核内时钟
-		log("NCPU = %d\n", NCPU);
+
+		extern int binary_test_size;
+		log("NCPU = %d, binary_test_size = %d\n", NCPU, binary_test_size);
 		// plicinit();      // set up interrupt controller
 		// plicinithart();  // ask PLIC for device interrupts
 		// binit();         // buffer cache
@@ -55,7 +58,10 @@ void main() {
 		__sync_synchronize();
 		started = 1;
 
-		testProcRun();
+		// testProcRun();
+		procInit();
+		struct Proc *proc = PROC_CREATE(test, 1);
+		procRun(proc);
 	} else {
 		while (started == 0) {
 			;

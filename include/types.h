@@ -34,4 +34,11 @@ typedef unsigned short uint16;
 typedef unsigned int uint32;
 typedef unsigned long uint64;
 
+#define MIN(_a, _b)                                                                                \
+	({                                                                                         \
+		typeof(_a) __a = (_a);                                                             \
+		typeof(_b) __b = (_b);                                                             \
+		__a <= __b ? __a : __b;                                                            \
+	})
+
 #endif

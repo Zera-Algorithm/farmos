@@ -65,7 +65,7 @@ userVec:
 	sd t0, OFFSET_A0(a0)
 
 	// tp加载当前的hartid
-	ld tp, OFFSET_TP(a0)
+	ld tp, OFFSET_HARTID(a0)
 
 	// 保存epc
 	csrr t0, sepc

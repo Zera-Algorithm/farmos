@@ -120,6 +120,14 @@ Hart 状态管理(HSM)扩展引入了一组Hart状态和一组功能，允许Sup
 
 ![image-20230502145817030](./assets/image-20230502145817030.png)
 
+HSM 是指 Hart State Management Extension，硬件线程（hart）状态管理扩展。它引入了一组 hart 状态和一组 S 模式软件用于获取和改变 hart 状态的函数。
+
+OpenSBI 曾经强制选择 hart0 进行重定位和早期的初始化工作。在 v0.6 版本中引入了彩票机制（lottery mechanism）。彩票机制会**随机选择**一个 hart 作为冷启动 hart （coldboot hart），这个 hart 也被称为 boot/main hart。它负责进行每个 hart 的暂存空间 （scratch space） 的初始化并将 OpenSBI 重定位到其链接地址，其它的 hart 被称为热启动 hart（warmboot hart）。
+
+在 U-Boot SPL 中，有一个 main hart 负责让所有其它 harts （secondary harts）先跳转到 OpenSBI，它自己最后跳转。这使得彩票机制总是会选择 secondary harts 中的一个。若 U-Boot SPL 和 OpenSBI 的链接地址范围有重叠，彩票机制可能会在其它 hart 仍运行在上一引导阶段时进行重定位，覆盖其它 hart 的数据，从而导致启动时崩溃（boot-time crash）。
+
+reference: https://tinylab.org/opensbi-firmware-and-sbi-hsm/
+
 ### 10.Legacy SBI Call
 
 ![image-20230501210337224](./assets/image-20230501210337224.png)

@@ -5,11 +5,13 @@
 #include "param.h"
 #include "riscv.h"
 #include "types.h"
+#include <lib/elf.h>
 #include <lib/error.h>
 #include <lib/string.h>
 #include <trap/trap.h>
 
 struct cpu cpus[NCPU];
+extern char trampoline[];
 
 int cpuid() {
 	int id = r_tp();
@@ -35,7 +37,9 @@ struct Proc *myProc() {
  * 		调度只能在用户态的时钟中断中实现。所以需要手动运行第一个进程
  */
 struct Proc testProc;
+// 下面的测试程序仅包含两条指令：j spin; nop
 u8 initcode[] = {0x01, 0xa0, 0x01, 0x00};
+// deprecated
 void testProcRun() {
 	log("start init...\n");
 	struct cpu *c = mycpu();
@@ -47,10 +51,9 @@ void testProcRun() {
 	// 2. 分配页表
 	Pte *pgDir = (Pte *)pageAlloc(); // TODO: ref += 1
 	// bug: 自映射？你这个TODO的 ref++ 应该由 pageInsert() 添加自映射的时候来做
-	testProc.pagetable = pgDir;
+	testProc.pageTable = pgDir;
 
 	// 3. 内存映射
-	extern char trampoline[];
 	pageInsert(pgDir, TRAMPOLINE, PGROUNDDOWN((u64)trampoline), PTE_R | PTE_X);
 
 	log("to Alloc a page\n");
@@ -102,12 +105,28 @@ struct Proc *pidToProcess(u64 pid) {
 
 /**
  * @brief 初始化proc的页表
- * @note 需要配置代码段、数据段、栈、Trampoline、Trapframe、页表（自映射）的映射
+ * @note 需要配置Trampoline、Trapframe、栈、页表（自映射）的映射
  * @param proc 进程指针
  * @return int <0表示出错
  */
 int initProcPageTable(struct Proc *proc) {
-	// TODO
+	// 分配页表
+	proc->pageTable = (Pte *)pageAlloc();
+
+	// TRAMPOLINE
+	TRY(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X));
+
+	// 该进程的trapframe
+	proc->trapframe = (struct trapframe *)pageAlloc();
+	TRY(ptMap(proc->pageTable, TRAPFRAME, (u64)proc->trapframe, PTE_R | PTE_W));
+
+	// 该进程的栈
+	u64 stack = pageAlloc();
+	TRY(ptMap(proc->pageTable, USTACKTOP - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
+	proc->trapframe->sp = USTACKTOP;
+
+	// TODO：页表自映射
+
 	return 0;
 }
 
@@ -116,7 +135,7 @@ int initProcPageTable(struct Proc *proc) {
  * @param pproc 所需要写入的进程proc指针的指针
  * @return int 错误类型
  */
-static int procAlloc(struct Proc **pproc) {
+static int procAlloc(struct Proc **pproc, u64 parentId) {
 	struct Proc *proc = LIST_FIRST(&procFreeList);
 	if (proc == NULL) {
 		// 没有可分配的进程
@@ -125,19 +144,78 @@ static int procAlloc(struct Proc **pproc) {
 
 	assert(proc->state == UNUSED);
 
-	// 为此进程写入信息
-	proc->trapframe = (struct trapframe *)pageAlloc();
-
 	TRY(initProcPageTable(proc));
+	proc->parentId = parentId;
+
 	*pproc = proc;
 	return 0;
 }
 
+static int loadCodeMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
+			  size_t len) {
+	struct Proc *proc = (struct Proc *)data;
+
+	// Step1: 分配一个页
+	u64 pa = pageAlloc();
+
+	// Step2: 复制段内数据
+	if (src != NULL) {
+		memcpy((void *)pa + offset, src, len);
+	}
+
+	// Step3: 将页pa插入到proc的页表中
+	return pageInsert(proc->pageTable, va, pa, perm);
+}
+
 /**
- * @brief 创建一个进程，并加载一些必要的段(.text，.data)
+ * @brief 加载ELF文件的各个段到指定的位置
+ * @attention 你需要保证proc->trapframe已经设置完毕
+ */
+static int loadCode(struct Proc *proc, const void *binary, size_t size) {
+	const ElfHeader *elfHeader = getElfFrom(binary, size);
+
+	// 1. 判断ELF文件是否合法
+	if (elfHeader == NULL) {
+		return -E_BAD_ELF;
+	}
+
+	// 2. 加载文件到指定的虚拟地址
+	size_t phOff;
+	ELF_FOREACH_PHDR_OFF (phOff, elfHeader) {
+		ProgramHeader *ph = (ProgramHeader *)(binary + phOff);
+		// 只加载能加载的段
+		if (ph->p_type == ELF_PROG_LOAD) {
+			panic_on(loadElfSegment(ph, binary + ph->p_off, loadCodeMapper, proc));
+		}
+	}
+
+	// 设置代码入口点
+	proc->trapframe->epc = elfHeader->e_entry;
+	return 0;
+}
+
+/**
+ * @brief 创建一个进程，并加载一些必要的段(.text，.data)。该函数决定进程被加载到哪个CPU上
  *
  */
-void procCreate() {
+struct Proc *procCreate(const void *binary, size_t size, u64 priority) {
+	struct Proc *proc;
+
+	// 1. 申请一个Proc
+	panic_on(procAlloc(&proc, 0));
+
+	// 2. 设置进程优先级
+	proc->priority = priority;
+	proc->state = RUNNABLE;
+
+	// 3. 加载进程的代码段和数据段
+	panic_on(loadCode(proc, binary, size));
+
+	// 4. 寻找一个合适的CPU插入进程
+	int cpu = cpuid(); // TODO: 考虑随机分配的方法
+	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
+
+	return proc;
 }
 
 /**
@@ -145,7 +223,10 @@ void procCreate() {
  * @details 将该进程挂载到本cpu上（cpu->Proc = process），之后调用userTrapReturn
  *
  */
-void procRun() {
+void procRun(struct Proc *proc) {
+	mycpu()->Proc = proc;
+	proc->state = RUNNING;
+	userTrapReturn();
 }
 
 /**

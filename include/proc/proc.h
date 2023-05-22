@@ -83,11 +83,12 @@ struct Proc {
 	u64 pid; // 进程ID，应当由进程在队列中的位置和累积创建进程排名组成
 
 	// wait_lock must be held when using this:
-	struct Proc *parent; // Parent process
+	u64 parentId; // Parent process
+	u64 priority;
 
 	// these are private to the process, so p->lock need not be held.
 	uint64 sz;		     // Size of process memory (bytes)
-	Pte *pagetable;		     // User page table
+	Pte *pageTable;		     // User page table
 	struct trapframe *trapframe; // data page for trampoline.S
 	struct file *ofile[NOFILE];  // Open files
 	struct inode *cwd;	     // Current directory
@@ -105,5 +106,16 @@ extern struct ProcSchedQueue procSchedQueue[NCPU];
 int cpuid();
 struct cpu *mycpu(void);
 struct Proc *myProc();
+
+void procInit();
+struct Proc *procCreate(const void *binary, size_t size, u64 priority);
+void procRun(struct Proc *proc);
+
+#define PROC_CREATE(programName, priority)                                                         \
+	({                                                                                         \
+		extern char binary_##programName[];                                                \
+		extern int binary_##programName##_size;                                            \
+		procCreate(binary_##programName, binary_##programName##_size, priority);           \
+	})
 
 #endif

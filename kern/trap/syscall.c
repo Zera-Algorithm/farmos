@@ -10,6 +10,9 @@ void syscallEntry(Trapframe *tf) {
 	u64 ret = tf->a0;
 	// 根据系统调用号，调用对应的系统调用处理函数
 	warn("unimplement: syscall %d\n", sysno);
+
+	// 根据反汇编结果，一个ecall占用4字节的空间
+	tf->epc += 4;
 	return;
 	switch (sysno) {
 	case SYS_brk:
@@ -33,7 +36,7 @@ u64 sysMunmap(u64 start, u64 len) {
 	u64 to = PGROUNDDOWN(start + len);
 	for (u64 va = from; va < to; va += PAGE_SIZE) {
 		// 释放虚拟地址所在的页
-		catchMemErr(pageRemove(myProc()->pagetable, va));
+		catchMemErr(pageRemove(myProc()->pageTable, va));
 	}
 	return 0;
 }

@@ -20,7 +20,7 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 	do {                                                                                       \
 		int r = (expr);                                                                    \
 		if (r != 0) {                                                                      \
-			panic("'" #expr "' returned %d", r);                                       \
+			panic("'" #expr "' returned %d\n", r);                                     \
 		}                                                                                  \
 	} while (0)
 

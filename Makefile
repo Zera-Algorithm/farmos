@@ -14,8 +14,8 @@ include include.mk
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # 编译好待链接的目标文件
-OBJS := $(KERN)/*/*.o $(LIB)/*.o
-modules := $(KERN) $(LIB)
+OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x
+modules := $(KERN) $(LIB) $(USER)
 
 .PHONY: clean $(modules) fs.img
 
@@ -57,9 +57,11 @@ qemu-gdb: $(KERN)/kernel .gdbinit fs.img
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
 clean:
-	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
-		*/*/*.o */*/*.d */*/*.asm */*/*.sym \
-		kern/kernel
+	for d in $(modules); \
+		do \
+			$(MAKE) --directory=$$d clean; \
+		done
+	rm -f $(KERN)/kernel
 
 .PHONY: check-style fix-style
 

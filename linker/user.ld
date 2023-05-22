@@ -1,10 +1,10 @@
 OUTPUT_ARCH( "riscv" )
-ENTRY( _main )
+ENTRY( _userStart )
 
 
 SECTIONS
 {
- . = 0x0;
+  . = 0x0;
 
   .text : {
     *(.text .text.*)

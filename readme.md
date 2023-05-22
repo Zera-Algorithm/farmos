@@ -23,6 +23,7 @@
     (其实可以设置，见 https://zhuanlan.zhihu.com/p/578765652)
 3. 使用OpenSBI作为BIOS启动时，其他核默认是关闭的，需要使用HSM SBI Call来打开。
 4. 参考https://zhuanlan.zhihu.com/p/501901665可以实现直接使用vscode的gdb功能来调试内核。
+5. 注意：我们使用的用户程序是通过 `riscv64-unknown-elf-gcc` 编译的，所以ELF结构里面的大部分参数都是64位的。
 
 ## 参考的仓库列表
 

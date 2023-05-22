@@ -63,6 +63,8 @@
 // 可访问内存的起始位置
 #define MEMBASE 0x80000000ul
 
+// 以下是用户空间的内存布局图
+
 // map the trampoline page to the highest address,
 // in both user and kernel space.
 #define TRAMPOLINE (MAXVA - PAGE_SIZE)
@@ -77,4 +79,6 @@
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
+#define USTACKTOP TRAPFRAME
+
 #endif

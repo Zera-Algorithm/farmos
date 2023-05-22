@@ -2,6 +2,7 @@
 
 #define E_NOPROC 1
 #define E_NO_MAP 2
+#define E_BAD_ELF 3
 
 /**
  * @brief 如果传入的expr小于0，则返回该值；否则无动作。适用于函数内错误的快速返回
@@ -11,6 +12,7 @@
 	do {                                                                                       \
 		int r = (expr);                                                                    \
 		if (r < 0) {                                                                       \
+			log("TRY error\n");                                                        \
 			return r;                                                                  \
 		}                                                                                  \
 	} while (0)
