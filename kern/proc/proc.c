@@ -1,3 +1,4 @@
+#include <dev/timer.h>
 #include <lib/elf.h>
 #include <lib/error.h>
 #include <lib/printf.h>
@@ -42,7 +43,7 @@ struct Proc testProc;
 u8 initcode[] = {0x01, 0xa0, 0x01, 0x00};
 // deprecated
 void testProcRun() {
-	log("start init...\n");
+	loga("start init...\n");
 	struct cpu *c = mycpu();
 
 	// 1. 设置proc
@@ -57,7 +58,7 @@ void testProcRun() {
 	// 3. 内存映射
 	pageInsert(pgDir, TRAMPOLINE, PGROUNDDOWN((u64)trampoline), PTE_R | PTE_X);
 
-	log("to Alloc a page\n");
+	loga("to Alloc a page\n");
 	void *trapframe = (void *)pageAlloc();
 	pageInsert(pgDir, TRAPFRAME, (u64)trapframe, PTE_R | PTE_W);
 	assert(pteToPa(pageLookup(pgDir, TRAPFRAME)) == (u64)trapframe);
@@ -110,9 +111,11 @@ struct Proc *pidToProcess(u64 pid) {
  * @param proc 进程指针
  * @return int <0表示出错
  */
-int initProcPageTable(struct Proc *proc) {
+static int initProcPageTable(struct Proc *proc) {
 	// 分配页表
-	proc->pageTable = (Pte *)pageAlloc();
+	u64 pa = vmAlloc();
+	proc->pageTable = (Pte *)pa;
+	pmPageIncRef(paToPage(pa));
 
 	// TRAMPOLINE
 	TRY(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X));
@@ -181,14 +184,17 @@ static int loadCodeMapper(void *data, u64 va, size_t offset, u64 perm, const voi
 /**
  * @brief 加载ELF文件的各个段到指定的位置
  * @attention 你需要保证proc->trapframe已经设置完毕
+ * @param maxva 你分给进程的虚拟地址的最大值，用于计算最初的Program Break
  */
-static int loadCode(struct Proc *proc, const void *binary, size_t size) {
+static int loadCode(struct Proc *proc, const void *binary, size_t size, u64 *maxva) {
 	const ElfHeader *elfHeader = getElfFrom(binary, size);
 
 	// 1. 判断ELF文件是否合法
 	if (elfHeader == NULL) {
 		return -E_BAD_ELF;
 	}
+
+	*maxva = 0;
 
 	// 2. 加载文件到指定的虚拟地址
 	size_t phOff;
@@ -197,8 +203,11 @@ static int loadCode(struct Proc *proc, const void *binary, size_t size) {
 		// 只加载能加载的段
 		if (ph->p_type == ELF_PROG_LOAD) {
 			panic_on(loadElfSegment(ph, binary + ph->p_off, loadCodeMapper, proc));
+			*maxva = MAX(*maxva, ph->p_vaddr + ph->p_memsz - 1);
 		}
 	}
+
+	*maxva = PGROUNDUP(*maxva);
 
 	// 设置代码入口点
 	proc->trapframe->epc = elfHeader->e_entry;
@@ -225,11 +234,11 @@ struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 p
 	proc->name[MAX_PROC_NAME_LEN - 1] = 0; // 防止缓冲区溢出
 
 	// 3. 加载进程的代码段和数据段
-	panic_on(loadCode(proc, binary, size));
+	panic_on(loadCode(proc, binary, size, &proc->programBreak));
 
 	// 4. 寻找一个合适的CPU插入进程
 	int cpu = cpuid(); // TODO: 考虑随机分配的方法
-	log("insert proc %08lx\n", proc->pid);
+	loga("insert proc %08lx\n", proc->pid);
 	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
 	assert(!TAILQ_EMPTY(&procSchedQueue[cpu]));
 
@@ -237,17 +246,36 @@ struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 p
 }
 
 /**
+ * @brief 审计进程运行的时间(utime)
+ */
+static void countProcTime(struct Proc *prev, struct Proc *next) {
+	u64 curTime = getTime();
+
+	// 防止prev为NULL
+	if (prev) {
+		u64 lastTime = curTime - prev->procTime.lastTime;
+		prev->procTime.totalUtime += lastTime;
+	}
+
+	if (next) {
+		next->procTime.lastTime = curTime;
+	}
+}
+
+/**
  * @brief 运行一个进程
  * @details 将该进程挂载到本cpu上（cpu->Proc = process），之后调用userTrapReturn
  * @param proc 待运行的进程
  */
-void procRun(struct Proc *proc) {
-	static int order = 0;
-	// 打印当前调度的进程的信息
-	log("%03d:  %8s(0x%08lx)\n", ++order, proc->name, proc->pid);
+void procRun(struct Proc *prev, struct Proc *next) {
+	countProcTime(prev, next);
 
-	mycpu()->proc = proc;
-	proc->state = RUNNING;
+	// static int order = 0;
+	// // 打印当前调度的进程的信息
+	// loga("%03d:  %8s(0x%08lx)\n", ++order, next->name, next->pid);
+
+	mycpu()->proc = next;
+	next->state = RUNNING;
 	userTrapReturn();
 }
 
@@ -255,8 +283,8 @@ void procRun(struct Proc *proc) {
  * @brief 回收一个进程控制块。包括回收进程页表映射的物理内存、回收页表存储等
  *
  */
-void procFree(struct Proc *proc) {
-	log("free proc %s(0x%08lx)\n", proc->name, proc->pid);
+static void procFree(struct Proc *proc) {
+	loga("free proc %s(0x%08lx)\n", proc->name, proc->pid);
 
 	// 1. 回收页表
 	for (u32 i = 0; i < PTX(~0, 1); i++) {
@@ -295,6 +323,7 @@ void procFree(struct Proc *proc) {
 	proc->pageTable = 0;
 
 	// 2. 从调度队列中删除，并插入到空闲链表
+	assert(procCanRun(proc)); // 假定进程在运行队列中（如果不在的话，处理起来比较困难）
 	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
 	for (int i = 0; i < NCPU; i++) {
 		struct Proc *tmp;
@@ -320,11 +349,12 @@ void procFree(struct Proc *proc) {
  * @param proc 要结束的进程
  */
 void procDestroy(struct Proc *proc) {
+	// 释放进程结构体
 	procFree(proc);
 
 	if (myProc() == proc) {
 		mycpu()->proc = NULL;
-		log("cpu %d's running process has been killed.\n", cpuid());
+		loga("cpu %d's running process has been killed.\n", cpuid());
 		schedule(1);
 	}
 }

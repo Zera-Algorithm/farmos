@@ -1,5 +1,5 @@
 #include <libMain.h>
-#include <syscallLib.h>
+#include <unistd.h>
 
 void libMain(int argc, char **argv) {
 	int ret = main(argc, argv);

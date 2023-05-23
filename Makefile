@@ -3,7 +3,8 @@ KERN = kern
 USER = user
 LIB  = lib
 KERNEL_LD := linker/kernel.ld
-INCLUDES = -I./include
+INCLUDES := -I./include
+KERNEL_ELF := kernel-qemu
 
 include include.mk
 
@@ -20,9 +21,9 @@ modules := $(KERN) $(LIB) $(USER)
 .PHONY: clean $(modules) fs.img
 
 # 生成 kernel，并将其反汇编到kernel.asm
-$(KERN)/kernel: clean $(modules) $(KERNEL_LD)
-	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERN)/kernel $(OBJS)
-	$(OBJDUMP) -S $(KERN)/kernel > $(KERN)/kernel.asm
+$(KERNEL_ELF): clean $(modules) $(KERNEL_LD)
+	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
+	$(OBJDUMP) -S $(KERNEL_ELF) > $(KERN)/kernel.asm
 
 $(modules):
 	$(MAKE) build --directory=$@
@@ -43,16 +44,16 @@ NCPU := 3
 endif
 
 # 可以暂时不需要镜像文件
-# qemu: $(KERN)/kernel
-qemu: $(KERN)/kernel fs.img
+# qemu: $(KERNEL_ELF)
+qemu: $(KERNEL_ELF) fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
 # 可以暂时不需要镜像文件
-# qemu-gdb: $(KERN)/kernel .gdbinit
-qemu-gdb: $(KERN)/kernel .gdbinit fs.img
+# qemu-gdb: $(KERNEL_ELF) .gdbinit
+qemu-gdb: $(KERNEL_ELF) .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
@@ -61,7 +62,7 @@ clean:
 		do \
 			$(MAKE) --directory=$$d clean; \
 		done
-	rm -f $(KERN)/kernel
+	rm -f $(KERNEL_ELF)
 
 .PHONY: check-style fix-style
 

@@ -20,7 +20,7 @@
 void schedule(u64 yield) {
 	static int count = 1;
 	struct Proc *proc = myProc();
-	log("schedule: count = %d\n", count);
+	// loga("schedule: count = %d\n", count);
 	int cpu = cpuid();
 
 	if (yield || count == 0 || proc == NULL || !procCanRun(proc)) {
@@ -36,5 +36,5 @@ void schedule(u64 yield) {
 		count = proc->priority;
 	}
 	count -= 1;
-	procRun(proc);
+	procRun(myProc(), proc);
 }

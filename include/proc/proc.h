@@ -78,7 +78,7 @@ struct Proc {
 
 	// p->lock must be held when using these:
 	enum ProcState state; // Process state
-	void *chan;	      // If non-zero, sleeping on chan
+	char sleepReason[16]; // 睡眠原因
 	int killed;	      // If non-zero, have been killed
 	int xstate;	      // Exit status to be returned to parent's wait
 	u64 pid; // 进程ID，应当由进程在队列中的位置和累积创建进程排名组成
@@ -88,18 +88,32 @@ struct Proc {
 	u64 priority;
 
 	// these are private to the process, so p->lock need not be held.
-	uint64 sz;		      // Size of process memory (bytes)
-	Pte *pageTable;		      // User page table
+	uint64 sz;	  // Size of process memory (bytes)
+	Pte *pageTable;	  // User page table
+	u64 programBreak; // 用于brk系统调用，以增减该进程的堆空间
+	// 进程可以访问任何处于programBreak及以下的内存
+
+	struct ProcTime {
+		u64 totalUtime; // 进程运行的总时钟数
+		u64 lastTime;	// 进程上一次运行时的时钟数
+		u64 totalStime; // 系统时间（可以实现为系统调用花掉的时间）
+
+		u64 procSleepClocks; // 进程要睡眠的周期数
+		u64 procSleepBegin;  // 进程开始睡眠的时间
+	} procTime;
+
 	struct trapframe *trapframe;  // data page for trampoline.S
 	struct file *ofile[NOFILE];   // Open files
 	struct inode *cwd;	      // Current directory
 	char name[MAX_PROC_NAME_LEN]; // Process name (debugging)
 
-	LIST_ENTRY(Proc) procFreeLink;	       // 空闲链表链接
+	LIST_ENTRY(Proc) procFreeLink;	// 空闲链表链接
+	LIST_ENTRY(Proc) procSleepLink; // 进程睡眠链表(进程可以因为多种原因睡眠)
 	TAILQ_ENTRY(Proc) procSchedLink[NCPU]; // cpu调度队列链接
 };
 
 LIST_HEAD(ProcFreeList, Proc);
+LIST_HEAD(ProcSleepList, Proc);
 TAILQ_HEAD(ProcSchedQueue, Proc);
 extern struct ProcFreeList procFreeList;
 extern struct ProcSchedQueue procSchedQueue[NCPU];
@@ -109,8 +123,10 @@ struct cpu *mycpu(void);
 struct Proc *myProc();
 
 void procInit();
+struct Proc *pidToProcess(u64 pid);
 struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 priority);
-void procRun(struct Proc *proc);
+void procRun(struct Proc *prev, struct Proc *next);
+void procDestroy(struct Proc *proc);
 
 inline int procCanRun(struct Proc *proc) {
 	return (proc->state == RUNNABLE || proc->state == RUNNING);

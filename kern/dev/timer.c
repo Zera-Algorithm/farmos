@@ -4,18 +4,24 @@
 #include "param.h"
 #include "riscv.h"
 #include "types.h"
-
-#define INTERVAL 5000000
+#include <dev/timer.h>
 
 /**
  * @brief 获取当前的时间（以Cycles为单位）
  * 		  RISCV的核内时钟发生器的频率为10^7Hz
  * @returns 设备启动到现在总共运行的时钟数
  */
-uint64 getTime() {
+u64 getTime() {
 	uint64 n;
 	asm volatile("rdtime %0" : "=r"(n));
 	return n;
+}
+
+/**
+ * @brief 获取以微秒记的时间
+ */
+u64 getUSecs() {
+	return getTime() / CLOCK_PER_USEC;
 }
 
 /**

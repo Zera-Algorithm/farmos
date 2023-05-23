@@ -12,7 +12,7 @@ os.chdir(os.path.dirname(__file__))
 
 def addHeader(path, item):
     with open(path, "r") as f:
-        is_have = f.readline().startswith("#ifndef")
+        is_have = "#ifndef" in f.read()
 
     symbol = "_" + item[0:-2].upper() + "_H"
 

@@ -53,9 +53,18 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
  * @brief 输出日志，并打印所在文件、行、函数的信息
  * @param va_args：额外参数
  */
-#define log(...) _log(__FILE__, __LINE__, __func__, __VA_ARGS__)
+// 定义的日志等级，越大，打印的信息越重要
+#define LOG_LEVEL 1
+#define log(level, ...)                                                                            \
+	if ((level) >= LOG_LEVEL)                                                                  \
+	_log(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define warn(...) _warn(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define error(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
+
+/**
+ * @brief 旧版log
+ */
+#define loga(...) log(1, __VA_ARGS__)
 
 /**
  * @brief 条件输出日志，适用于隐藏调试信息

@@ -7,6 +7,5 @@
 
 _userStart:
 	// 保证初始时，a0 = argc, a1 = argv
-	ecall
 	j libMain
 

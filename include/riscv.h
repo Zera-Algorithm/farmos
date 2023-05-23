@@ -107,6 +107,11 @@ static inline void w_sepc(uint64 x) {
 	asm volatile("csrw sepc, %0" : : "r"(x));
 }
 
+// 等待中断。在等待时，使CPU处于低功耗状态
+static inline void riscv_wfi() {
+	asm volatile("wfi");
+}
+
 static inline uint64 r_sepc() {
 	uint64 x;
 	asm volatile("csrr %0, sepc" : "=r"(x));

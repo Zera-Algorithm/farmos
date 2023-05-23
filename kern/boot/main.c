@@ -1,4 +1,5 @@
 #include <dev/dtb.h>
+#include <dev/plic.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
 #include <mm/memlayout.h>
@@ -38,16 +39,13 @@ void main() {
 		vmmInit();
 		// initKernelMemory(); // 初始化内核页表
 		enablePagingHart(); // 开启分页
-		log("Finish Paging!\n");
+		loga("Finish Paging!\n");
 		// procinit();      // process table
 		// trapinit();      // trap vectors
 		trapInitHart(); // install kernel trap vector
 		timerInit();	// 初始化核内时钟
-
-		extern int binary_test_size;
-		log("NCPU = %d, binary_test_size = %d\n", NCPU, binary_test_size);
-		// plicinit();      // set up interrupt controller
-		// plicinithart();  // ask PLIC for device interrupts
+		plicInit();	// 设置中断控制器
+		plicInitHart(); // 设置本hart的中断控制器
 		// binit();         // buffer cache
 		// iinit();         // inode table
 		// fileinit();      // file table
@@ -60,11 +58,10 @@ void main() {
 
 		// testProcRun();
 		procInit();
-		struct Proc *proc = PROC_CREATE(test, 1);
-		PROC_CREATE(test, 2);
-		PROC_CREATE(test, 3);
+		struct Proc *proc = PROC_CREATE(test_sleep, 1);
+		PROC_CREATE(test_while, 2);
 
-		procRun(proc);
+		procRun(NULL, proc);
 	} else {
 		while (started == 0) {
 			;

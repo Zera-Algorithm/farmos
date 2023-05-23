@@ -15,7 +15,7 @@
 	do {                                                                                       \
 		int r = (expr);                                                                    \
 		if (r < 0) {                                                                       \
-			log("TRY error\n");                                                        \
+			loga("TRY error\n");                                                       \
 			return r;                                                                  \
 		}                                                                                  \
 	} while (0)

@@ -1,3 +1,4 @@
+#include <dev/plic.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
 #include <lib/printf.h>
@@ -6,6 +7,7 @@
 #include <param.h>
 #include <proc/proc.h>
 #include <proc/schedule.h>
+#include <proc/sleep.h>
 #include <riscv.h>
 #include <trap/trap.h>
 #include <types.h>
@@ -16,6 +18,7 @@ extern void syscallEntry(Trapframe *tf);
 #define SCAUSE_EXCEPTION 0
 #define SCAUSE_INTERRUPT 1
 #define INTERRUPT_TIMER 5
+#define INTERRUPT_EXTERNEL 9
 
 extern char trampoline[], userVec[], userRet[];
 
@@ -48,14 +51,28 @@ void kerneltrap() {
 	uint64 type = (scause >> 63ul);
 	uint64 excCode = (scause & ((1ul << 63) - 1));
 
-	log("kernel trap: cpu = %d, type = %ld, excCode = %ld\n", cpuid(), type, excCode);
+	loga("kernel trap: cpu = %d, type = %ld, excCode = %ld\n", cpuid(), type, excCode);
 	if (type == SCAUSE_INTERRUPT) {
 		if (excCode == INTERRUPT_TIMER) {
-			log("timer interrupt on CPU %d!\n", cpuid());
+			loga("timer interrupt on CPU %d!\n", cpuid());
 			// TODO: 实现更丰富的中断处理
 			timerSetNextTick();
+		} else if (excCode == INTERRUPT_EXTERNEL) {
+			loga("externel interrupt on CPU %d!\n", cpuid());
+			int irq = plicClaim();
+
+			if (irq == VIRTIO0_IRQ) {
+				// TODO: call virtio intr handler
+
+			} else {
+				loga("unknown externel interrupt irq = %d\n", irq);
+			}
+
+			if (irq) {
+				plicComplete(irq);
+			}
 		} else {
-			log("unknown interrupt.\n");
+			loga("unknown interrupt.\n");
 		}
 	} else {
 		panic("uncaught exception.\n"
@@ -80,28 +97,23 @@ void userTrap() {
 	uint64 type = (scause >> 63ul);
 	uint64 excCode = (scause & ((1ul << 63) - 1));
 
-	log("user trap: cpu = %d, type = %ld, excCode = %ld\n", cpuid(), type, excCode);
+	// loga("user trap: cpu = %d, type = %ld, excCode = %ld\n", cpuid(), type, excCode);
 	if (type == SCAUSE_INTERRUPT) {
 
 		// 时钟中断
 		if (excCode == INTERRUPT_TIMER) {
-			log("timer interrupt on CPU %d!\n", cpuid());
+			// loga("timer interrupt on CPU %d!\n", cpuid());
 			timerSetNextTick();
-
+			wakeupProc();
 			schedule(0); // 请求调度
 		} else {
-			log("unknown interrupt.\n");
+			loga("unknown interrupt.\n");
 		}
 	} else {
 		if (excCode == EXCCODE_SYSCALL) {
 			// 处理系统调用
 			syscallEntry(myProc()->trapframe);
 		} else {
-			if (excCode == 2) {
-				u32 *code = (u32 *)pteToPa(ptLookup(myProc()->pageTable, r_sepc()));
-				log("code = 0x%08x\n", *code);
-			}
-
 			panic("uncaught exception.\n"
 			      "\tcpu: %d\n"
 			      "\tExcCode: %d\n"
@@ -120,7 +132,7 @@ void userTrap() {
  * @brief 从内核态返回某个用户的用户态
  */
 void userTrapReturn() {
-	// log("userTrap return begins:\n");
+	// loga("userTrap return begins:\n");
 	/**
 	 * @brief 获取当前CPU上应当运行的下一个进程
 	 * @note 若发生进程切换，需要更改CPU上的下一个进程，以在这里切换
@@ -158,7 +170,7 @@ void userTrapReturn() {
 	u64 satp = MAKE_SATP(p->pageTable);
 
 	u64 trampolineUserRet = TRAMPOLINE + (userRet - trampoline);
-	// log("goto trampoline, func = 0x%016lx\n", trampolineUserRet);
+	// loga("goto trampoline, func = 0x%016lx\n", trampolineUserRet);
 	((void (*)(u64))trampolineUserRet)(satp);
 }
 

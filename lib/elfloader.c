@@ -47,7 +47,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 		perm |= PTE_X;
 	}
 
-	log("load segment to va 0x%016lx, size = 0x%x, perm = 0x%x\n", va, memSize, perm);
+	loga("load segment to va 0x%016lx, size = 0x%x, perm = 0x%x\n", va, memSize, perm);
 
 	// 1. 映射第一个页
 	int r;
@@ -71,7 +71,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 
 	// 3. 当fileSize < memSize时，分配一些空页，以补足缺失的空间
 	while (i < memSize) {
-		// 勘误：这里应作 memSize
+		// MOS勘误：这里应作 memSize
 		if ((r = mapPage(data, va + i, 0, perm, NULL, MIN(memSize - i, PAGE_SIZE))) != 0) {
 			return r;
 		}

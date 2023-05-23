@@ -21,7 +21,7 @@ typedef enum { false = 0, true = 1 } bool;
 
 // FarmOS 其它
 typedef u64 size_t;
-typedef u32 err_t;
+typedef i32 err_t; // err_t允许返回负数，不能用u开头的类型
 typedef i64 off_t;
 
 // Old Defination
@@ -34,11 +34,26 @@ typedef unsigned short uint16;
 typedef unsigned int uint32;
 typedef unsigned long uint64;
 
+/**
+ * @brief 返回两数中最小的那个
+ * @note 这里我们使用typeof(_a) __a = (_a); 是为了避免多次执行_a（_a可能是一个有后效的函数）
+ */
 #define MIN(_a, _b)                                                                                \
 	({                                                                                         \
 		typeof(_a) __a = (_a);                                                             \
 		typeof(_b) __b = (_b);                                                             \
 		__a <= __b ? __a : __b;                                                            \
+	})
+
+/**
+ * @brief 返回两数中最大的那个
+ * @note 这里我们使用typeof(_a) __a = (_a); 是为了避免多次执行_a（_a可能是一个有后效的函数）
+ */
+#define MAX(_a, _b)                                                                                \
+	({                                                                                         \
+		typeof(_a) __a = (_a);                                                             \
+		typeof(_b) __b = (_b);                                                             \
+		__a >= __b ? __a : __b;                                                            \
 	})
 
 #endif
