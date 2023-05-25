@@ -1,5 +1,7 @@
 #ifndef _FS_H
 #define _FS_H
+
+#include <types.h>
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
