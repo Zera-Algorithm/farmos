@@ -1,5 +1,6 @@
 #include <dev/rtc.h>
 #include <dev/timer.h>
+#include <lib/printf.h>
 #include <lib/string.h>
 #include <proc/proc.h>
 #include <proc/schedule.h>
@@ -75,7 +76,7 @@ i64 sysMunmap(u64 start, u64 len) {
 	u64 to = PGROUNDDOWN(start + len - 1);
 	for (u64 va = from; va <= to; va += PAGE_SIZE) {
 		// 释放虚拟地址所在的页
-		catchMemErr(pageRemove(myProc()->pageTable, va));
+		panic_on(ptUnmap(myProc()->pageTable, va));
 	}
 	return 0;
 }

@@ -1,11 +1,10 @@
+#include <lib/printf.h>
 #include <lib/string.h>
-#include <mm/memlayout.h>
-#include <mm/memory.h>
+#include <mm/vmm.h>
 #include <param.h>
 #include <proc/proc.h>
 #include <riscv.h>
 #include <trap/trap.h>
-#include <types.h>
 
 /**
  * @brief 需要为每个cpu都定义一个调度队列，

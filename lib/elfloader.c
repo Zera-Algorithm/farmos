@@ -2,8 +2,9 @@
  * 此文件用于解析ELF文件
  */
 #include <lib/elf.h>
+#include <lib/printf.h>
 #include <mm/memlayout.h>
-#include <mm/memory.h>
+#include <mm/vmm.h>
 #include <riscv.h>
 #include <stddef.h>
 

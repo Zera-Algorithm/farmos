@@ -1,3 +1,4 @@
+#include <lib/printf.h>
 #include <lib/string.h>
 #include <proc/proc.h>
 #include <proc/sleep.h>

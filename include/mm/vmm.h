@@ -1,7 +1,7 @@
 #ifndef _VMM_H
 #define _VMM_H
 
-#include <mm/pmm.h>
+#include <mm/memlayout.h>
 #include <types.h>
 
 // 页表项硬件标志
@@ -28,20 +28,13 @@ typedef const u64 Pte;
 
 void vmmInit();
 
-u64 vmAlloc();
-Pte ptLookup(Pte *pgdir, u64 va);
-err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm);
-err_t ptUnmap(Pte *pgdir, u64 va);
+u64 vmAlloc() __attribute__((warn_unused_result));
+u64 kvmAlloc() __attribute__((warn_unused_result)); // Auto Inc Ref
+Pte ptLookup(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
+err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) __attribute__((warn_unused_result));
+err_t ptUnmap(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
 
 Pte paToPte(u64 pa);
 u64 pteToPa(Pte pte);
-Pte pageToPte(Page *p);
-Page *pteToPage(Pte pte);
-
-// deprecated
-#define pageAlloc() vmAlloc()
-#define pageLookup(pgdir, va) ptLookup(pgdir, va)
-#define pageInsert(pgdir, va, pa, perm) ptMap(pgdir, va, pa, perm)
-#define pageRemove(pgdir, va) ptUnmap(pgdir, va)
 
 #endif // _VMM_H

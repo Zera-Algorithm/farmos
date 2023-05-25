@@ -3,6 +3,7 @@
 #include <dev/rtc.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
+#include <lib/printf.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
 #include <mm/pmm.h>

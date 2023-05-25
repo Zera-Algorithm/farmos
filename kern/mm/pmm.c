@@ -10,7 +10,7 @@
 
 struct Page {
 	u32 ref;
-	PageLink link;
+	LIST_ENTRY(Page) link;
 };
 
 u64 npage = 0;

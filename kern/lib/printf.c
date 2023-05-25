@@ -98,6 +98,7 @@ void _error(const char *file, int line, const char *func, const char *fmt, ...) 
 		     file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
+	printfNoLock("\n\n");
 	release(&pr_lock);
 
 	va_end(ap);

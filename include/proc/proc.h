@@ -5,7 +5,7 @@
 #include "riscv.h"
 #include <lib/queue.h>
 #include <lock/spinlock.h>
-#include <mm/memory.h>
+#include <mm/vmm.h>
 
 // Per-CPU state.
 struct cpu {

@@ -13,7 +13,6 @@
 // 物理页面结构体相关声明
 typedef struct Page Page;
 typedef LIST_HEAD(PageList, Page) PageList;
-typedef LIST_ENTRY(Page) PageLink;
 
 void pmmInit();
 

@@ -32,7 +32,7 @@ inline Page *pteToPage(Pte pte) {
 
 // 内部功能接口函数 TODO::STATIC
 
-void ptModify(Pte *pte, Pte value) {
+static void ptModify(Pte *pte, Pte value) {
 	// 取消原先的映射
 	if ((*pte & PTE_V) && pteToPa(*pte) >= MEMBASE) {
 		Page *page = pteToPage(*pte);
@@ -48,7 +48,7 @@ void ptModify(Pte *pte, Pte value) {
 	log(LEVEL_MODULE, "finish modidy Pte!\n");
 }
 
-void ptClear(Pte *pte) {
+static void ptClear(Pte *pte) {
 	// 取消原先的映射
 	if (*pte & PTE_V) {
 		Page *page = pteToPage(*pte);
@@ -57,7 +57,7 @@ void ptClear(Pte *pte) {
 	*(u64 *)pte = 0;
 }
 
-Pte *ptWalk(Pte *pageDir, u64 va, bool create) { // TODO:STATIC!!!!!!!!!!!!!!!!!
+static Pte *ptWalk(Pte *pageDir, u64 va, bool create) { // TODO:STATIC!!!!!!!!!!!!!!!!!
 	Pte *curPageTable = pageDir;
 
 	// 从顶级页目录开始，依次获取每一级页表
@@ -141,6 +141,11 @@ void vmmInit() {
 }
 
 // 功能接口函数
+u64 kvmAlloc() {
+	Page *pp = pmAlloc();
+	pmPageIncRef(pp);
+	return pageToPa(pp);
+}
 
 u64 vmAlloc() {
 	Page *pp = pmAlloc();

@@ -52,25 +52,25 @@ void testProcRun() {
 	strncpy(testProc.name, "init", 16);
 
 	// 2. 分配页表
-	Pte *pgDir = (Pte *)pageAlloc(); // TODO: ref += 1
+	Pte *pgDir = (Pte *)vmAlloc(); // TODO: ref += 1
 	// bug: 自映射？你这个TODO的 ref++ 应该由 pageInsert() 添加自映射的时候来做
 	testProc.pageTable = pgDir;
 
 	// 3. 内存映射
-	pageInsert(pgDir, TRAMPOLINE, PGROUNDDOWN((u64)trampoline), PTE_R | PTE_X);
+	panic_on(ptMap(pgDir, TRAMPOLINE, PGROUNDDOWN((u64)trampoline), PTE_R | PTE_X));
 
 	loga("to Alloc a page\n");
-	void *trapframe = (void *)pageAlloc();
-	pageInsert(pgDir, TRAPFRAME, (u64)trapframe, PTE_R | PTE_W);
-	assert(pteToPa(pageLookup(pgDir, TRAPFRAME)) == (u64)trapframe);
+	void *trapframe = (void *)vmAlloc();
+	panic_on(ptMap(pgDir, TRAPFRAME, (u64)trapframe, PTE_R | PTE_W));
+	assert(pteToPa(ptLookup(pgDir, TRAPFRAME)) == (u64)trapframe);
 
 	testProc.trapframe = trapframe;
 
 	// 4. 映射代码段
-	void *code = (void *)pageAlloc();
+	void *code = (void *)vmAlloc();
 	memcpy(code, initcode, sizeof(initcode));
-	pageInsert(pgDir, 0, (u64)code, PTE_R | PTE_X | PTE_U); // 需要设置PTE_U允许用户访问
-	assert(pteToPa(pageLookup(pgDir, 0)) == (u64)code);
+	panic_on(ptMap(pgDir, 0, (u64)code, PTE_R | PTE_X | PTE_U)); // 需要设置PTE_U允许用户访问
+	assert(pteToPa(ptLookup(pgDir, 0)) == (u64)code);
 
 	// 5. 设置Trapframe
 	testProc.trapframe->epc = 0;
@@ -114,19 +114,18 @@ struct Proc *pidToProcess(u64 pid) {
  */
 static int initProcPageTable(struct Proc *proc) {
 	// 分配页表
-	u64 pa = vmAlloc();
+	u64 pa = kvmAlloc();
 	proc->pageTable = (Pte *)pa;
-	pmPageIncRef(paToPage(pa));
 
 	// TRAMPOLINE
 	TRY(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X));
 
 	// 该进程的trapframe
-	proc->trapframe = (struct trapframe *)pageAlloc();
+	proc->trapframe = (struct trapframe *)vmAlloc();
 	TRY(ptMap(proc->pageTable, TRAPFRAME, (u64)proc->trapframe, PTE_R | PTE_W));
 
 	// 该进程的栈
-	u64 stack = pageAlloc();
+	u64 stack = vmAlloc();
 	TRY(ptMap(proc->pageTable, USTACKTOP - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
 	proc->trapframe->sp = USTACKTOP;
 
@@ -172,7 +171,7 @@ static int loadCodeMapper(void *data, u64 va, size_t offset, u64 perm, const voi
 	struct Proc *proc = (struct Proc *)data;
 
 	// Step1: 分配一个页
-	u64 pa = pageAlloc();
+	u64 pa = vmAlloc();
 
 	// Step2: 复制段内数据
 	if (src != NULL) {
@@ -180,7 +179,7 @@ static int loadCodeMapper(void *data, u64 va, size_t offset, u64 perm, const voi
 	}
 
 	// Step3: 将页pa插入到proc的页表中
-	return pageInsert(proc->pageTable, va, pa, perm);
+	return ptMap(proc->pageTable, va, pa, perm);
 }
 
 /**
@@ -313,21 +312,26 @@ static void killProc(struct Proc *proc) {
 				}
 
 				u64 va = (i << 30) | (j << 21) | (k << 12);
-				ptUnmap(proc->pageTable, va);
+				panic_on(ptUnmap(proc->pageTable, va));
 			}
 
 			// 清空二级页表项，回收三级页表
-			pmPageDecRef(pteToPage(pt1[j]));
+			// pmPageDecRef(pteToPage(pt1[j]));
+			warn("Please Fix pm* functions\n");
 			((u64 *)pt1)[j] = 0;
 		}
 
 		// 清空一级页表项，回收二级页表
-		pmPageDecRef(pteToPage(proc->pageTable[i]));
+		// pmPageDecRef(pteToPage(proc->pageTable[i]));
+
+		warn("Please Fix pm* functions\n");
 		((u64 *)proc->pageTable)[i] = 0;
 	}
 
 	// 回收一级页表（页目录）
-	pmPageDecRef(paToPage((u64)proc->pageTable));
+	// pmPageDecRef(paToPage((u64)proc->pageTable));
+
+	warn("Please Fix pm* functions\n");
 	proc->pageTable = 0;
 
 	// 2. 从调度队列中删除
