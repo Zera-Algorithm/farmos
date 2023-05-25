@@ -25,31 +25,31 @@ extern char end[];
 static void *pmInitPush(u64 start, u64 size, u64 *freemem) {
 	u64 push = PGROUNDUP(size);
 	*freemem = start + push;
-	loga("\tPhysical Memory Used: 0x%08x~0x%08x\n", start, *freemem);
+	log(LEVEL_MODULE, "\tPhysical Memory Used: 0x%08lx~0x%08lx\n", start, *freemem);
 	return memset((void *)start, 0, push);
 }
 
 void pmmInit() {
 	// 第一部分：读取设备信息，获取内存信息，初始化内存页数组
-	loga("Physical Memory Init Start: End = 0x%08x\n", end);
+	log(LEVEL_MODULE, "Physical Memory Init Start: End = 0x%08lx\n", end);
 	u64 freemem = PGROUNDUP((u64)end); // 空闲内存页的起始地址
 	npage = memInfo.size / PAGE_SIZE;  // 内存页数
 	pages = pmInitPush(freemem, npage * sizeof(Page), &freemem); // 初始化内存页数组
 
 	// 第二部分：初始化空闲链表
-	loga("Physical Memory Freelist Init Start: Freemem = 0x%08x\n", freemem);
+	log(LEVEL_MODULE, "Physical Memory Freelist Init Start: Freemem = 0x%08x\n", freemem);
 	LIST_INIT(&pageFreeList);
 	u64 pageused = (freemem - MEMBASE) >> PAGE_SHIFT; // 已经使用的内存页数
 	for (u64 i = 0; i < pageused; i++) {
 		pages[i].ref = 1;
 	}
-	loga("\tTo pages[0:%d) used\n", pageused);
+	log(LEVEL_MODULE, "\tTo pages[0:%d) used\n", pageused);
 	for (u64 i = pageused; i < npage; i++) {
 		LIST_INSERT_HEAD(&pageFreeList, &pages[i], link);
 	}
-	loga("\tFrom pages[%d:] free\n", pageused);
+	log(LEVEL_MODULE, "\tFrom pages[%d:] free\n", pageused);
 
-	loga("Physical Memory Init Finished, `pm` Functions Available!\n");
+	log(LEVEL_GLOBAL, "Physical Memory Init Finished, `pm` Functions Available!\n");
 }
 
 // 纯接口函数
@@ -79,7 +79,7 @@ Page *__attribute__((warn_unused_result)) pmAlloc() {
 	LIST_REMOVE(pp, link);
 	// 清空页面内容并返回
 	memset((void *)pageToPa(pp), 0, PAGE_SIZE);
-	loga("\tAlloc pm-page: %d\n", pageToPpn(pp));
+	log(LEVEL_MODULE, "\tAlloc pm-page: %d\n", pageToPpn(pp));
 	return pp;
 }
 

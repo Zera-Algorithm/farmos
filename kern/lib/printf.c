@@ -12,6 +12,16 @@ void printInit() {
 	initlock(&pr_lock, "printf");
 }
 
+// vprintfmt只调用output输出可输出字符，不包括0，所以需要记得在字符串后补0
+static void outputToStr(void *data, const char *buf, size_t len) {
+	char **strBuf = (char **)data;
+	for (int i = 0; i < len; i++) {
+		(*strBuf)[i] = buf[i];
+	}
+	(*strBuf)[len] = 0;
+	*strBuf += len;
+}
+
 static void output(void *data, const char *buf, size_t len) {
 	for (int i = 0; i < len; i++) {
 		SBI_PUTCHAR(buf[i]);
@@ -31,6 +41,18 @@ void printf(const char *fmt, ...) {
 
 	acquire(&pr_lock);
 	vprintfmt(output, NULL, fmt, ap);
+	release(&pr_lock);
+
+	va_end(ap);
+}
+
+void sprintf(char *buf, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	char *mybuf = buf;
+
+	acquire(&pr_lock);
+	vprintfmt(outputToStr, &mybuf, fmt, ap);
 	release(&pr_lock);
 
 	va_end(ap);

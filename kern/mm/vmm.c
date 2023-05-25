@@ -45,7 +45,7 @@ void ptModify(Pte *pte, Pte value) {
 		pmPageIncRef(pteToPage(*pte));
 	}
 
-	// loga("finish modidy Pte!\n");
+	log(LEVEL_MODULE, "finish modidy Pte!\n");
 }
 
 void ptClear(Pte *pte) {
@@ -71,7 +71,8 @@ Pte *ptWalk(Pte *pageDir, u64 va, bool create) { // TODO:STATIC!!!!!!!!!!!!!!!!!
 		} else {
 			// 如果不存在，创建下一级页表
 			if (create) {
-				loga("\tcreate a page for level %d in va 0x%016lx\n", i, va);
+				log(LEVEL_MODULE, "\tcreate a page for level %d in va 0x%016lx\n",
+				    i, va);
 				Page *newPage = pmAlloc();
 				pmPageIncRef(newPage);
 				// 将新页表的物理地址写入当前页表项
@@ -104,12 +105,12 @@ static void memoryTest() {
 		assertMsg(pteToPa(pte) == va, "map error! va(0x%016lx) mapped to pa(0x%016lx)!\n",
 			  va, pteToPa(pte));
 	}
-	loga("Passed Kernel MemMap Test!\n");
+	log(LEVEL_GLOBAL, "Passed Kernel MemMap Test!\n");
 }
 
 void vmmInit() {
 	// 第一步：初始化内核页目录
-	loga("Virtual Memory Init Start\n");
+	log(LEVEL_GLOBAL, "Virtual Memory Init Start\n");
 	kernPd = (Pte *)pageToPa(pmAlloc());
 
 	// 第二步：映射UART寄存器，用于串口输入输出
@@ -117,6 +118,8 @@ void vmmInit() {
 
 	// 第三步：映射MMIO的硬盘寄存器，可读可写
 	vmInitMap(VIRTIO0, VIRTIO0, PAGE_SIZE, PTE_R | PTE_W);
+
+	vmInitMap(RTC_BASE, RTC_BASE, PAGE_SIZE, PTE_R | PTE_W);
 
 	// 第四步：PLIC寄存器
 	vmInitMap(PLIC, PLIC, 0x400000, PTE_R | PTE_W); // todo:literal
@@ -134,7 +137,7 @@ void vmmInit() {
 
 	// 第八步：测试
 	memoryTest();
-	loga("Virtual Memory Init Finished, `vm` Functions Available!\n");
+	log(LEVEL_GLOBAL, "Virtual Memory Init Finished, `vm` Functions Available!\n");
 }
 
 // 功能接口函数
@@ -158,7 +161,7 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 	// 页表项已经不存在，创建新的页表项
 	Pte *pte = ptWalk(pgdir, va, true);
 
-	loga("begin modify Pte...\n");
+	log(LEVEL_MODULE, "begin modify Pte...\n");
 
 	// 建立新的映射
 	ptModify(pte, paToPte(pa) | perm | PTE_V);
@@ -166,7 +169,7 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 		flushTlb();
 	}
 
-	loga("end insert of va 0x%016lx, pa 0x%016lx\n", va, pa);
+	log(LEVEL_MODULE, "end insert of va 0x%016lx, pa 0x%016lx\n", va, pa);
 	return 0;
 }
 

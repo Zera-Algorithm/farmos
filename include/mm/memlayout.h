@@ -27,6 +27,9 @@
 #define VIRTIO0 0x10001000ul
 #define VIRTIO0_IRQ 1
 
+// RTC实时时钟地址映射
+#define RTC_BASE 0x101000ul
+
 // core local interruptor (CLINT), which contains the timer.
 #define CLINT 0x2000000ul
 #define CLINT_MTIMECMP(hartid) (CLINT + 0x4000 + 8 * (hartid))

@@ -1,5 +1,6 @@
 #include <dev/dtb.h>
 #include <dev/plic.h>
+#include <dev/rtc.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
 #include <mm/memlayout.h>
@@ -58,9 +59,9 @@ void main() {
 
 		// testProcRun();
 		procInit();
-		struct Proc *proc = PROC_CREATE(test_sleep, 1);
 		PROC_CREATE(test_while, 2);
 
+		struct Proc *proc = PROC_CREATE(test_sleep, 1);
 		procRun(NULL, proc);
 	} else {
 		while (started == 0) {

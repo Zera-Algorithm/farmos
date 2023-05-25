@@ -11,7 +11,7 @@
 
 struct Proc procs[NPROC];
 // 空闲进程链表
-struct ProcFreeList procFreeList;
+struct ProcList procFreeList;
 // 调度进程队列
 struct ProcSchedQueue procSchedQueue[NCPU];
 

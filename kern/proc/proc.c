@@ -8,6 +8,7 @@
 #include <param.h>
 #include <proc/proc.h>
 #include <proc/schedule.h>
+#include <proc/wait.h>
 #include <riscv.h>
 #include <trap/trap.h>
 #include <types.h>
@@ -156,9 +157,10 @@ static int procAlloc(struct Proc **pproc, u64 parentId) {
 	// 3. 初始化进程proc的页表
 	TRY(initProcPageTable(proc));
 
-	// 4. 设置进程的pid和父亲id
+	// 4. 设置进程的pid和父亲id，初始化子进程列表
 	proc->pid = makeProcId(proc);
 	proc->parentId = parentId;
+	LIST_INIT(&proc->childList);
 
 	// 5. 返回分配的进程控制块
 	*pproc = proc;
@@ -227,6 +229,11 @@ struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 p
 	// 1. 申请一个Proc
 	panic_on(procAlloc(&proc, 0));
 
+	// 设置父进程
+	if (proc->pid != PROCESS_INIT) {
+		proc->parentId = PROCESS_INIT;
+	}
+
 	// 2. 设置进程信息
 	proc->priority = priority;
 	proc->state = RUNNABLE;
@@ -280,11 +287,12 @@ void procRun(struct Proc *prev, struct Proc *next) {
 }
 
 /**
- * @brief 回收一个进程控制块。包括回收进程页表映射的物理内存、回收页表存储等
+ * @brief 杀死进程，回收一个进程控制块的大部分资源。包括回收进程页表映射的物理内存、回收页表存储等
+ * 		  将进程变为僵尸进程
  *
  */
-static void procFree(struct Proc *proc) {
-	loga("free proc %s(0x%08lx)\n", proc->name, proc->pid);
+static void killProc(struct Proc *proc) {
+	loga("kill proc %s(0x%08lx)\n", proc->name, proc->pid);
 
 	// 1. 回收页表
 	for (u32 i = 0; i < PTX(~0, 1); i++) {
@@ -322,9 +330,9 @@ static void procFree(struct Proc *proc) {
 	pmPageDecRef(paToPage((u64)proc->pageTable));
 	proc->pageTable = 0;
 
-	// 2. 从调度队列中删除，并插入到空闲链表
+	// 2. 从调度队列中删除
 	assert(procCanRun(proc)); // 假定进程在运行队列中（如果不在的话，处理起来比较困难）
-	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
+	// LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
 	for (int i = 0; i < NCPU; i++) {
 		struct Proc *tmp;
 		int isRemove = 0;
@@ -340,8 +348,49 @@ static void procFree(struct Proc *proc) {
 		}
 	}
 
-	// 3. 清空进程结构体
-	memset((void *)proc, 0, sizeof(struct Proc));
+	// 3. 将进程变为僵尸进程
+	proc->state = ZOMBIE;
+}
+
+/**
+ * @brief 回收僵尸进程的进程控制块
+ */
+void procFree(struct Proc *proc) {
+	assert(proc->state == ZOMBIE);
+
+	// 1. 插入到空闲链表
+	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
+
+	// 2. 从父进程的子进程列表删除
+	LIST_REMOVE(proc, procChildLink);
+
+	// 3. 清空进程控制块
+	memset(proc, 0, sizeof(struct Proc));
+}
+
+/**
+ * @brief 在父进程结束后，处理子进程。
+ *        若ZOMBIE，直接free；否则改变父亲为init
+ */
+static void doChildManage(struct Proc *parent) {
+	struct Proc *proc, *tmp;
+	struct Proc *init = pidToProcess(PROCESS_INIT);
+	assert(init != NULL);
+
+	LIST_FOREACH_DELETE(proc, &parent->childList) {
+		tmp = proc;			       // 要删除的子进程
+		proc = LIST_NEXT(proc, procChildLink); // 迭代
+
+		if (tmp->state == ZOMBIE) {
+			procFree(tmp); // 会从本链表中删除
+		} else {
+			// 改变父进程为init
+			tmp->parentId = PROCESS_INIT;
+			LIST_REMOVE(tmp, procChildLink);
+			// 插入到INIT进程的子进程列表
+			LIST_INSERT_HEAD(&init->childList, tmp, procChildLink);
+		}
+	}
 }
 
 /**
@@ -349,8 +398,14 @@ static void procFree(struct Proc *proc) {
  * @param proc 要结束的进程
  */
 void procDestroy(struct Proc *proc) {
-	// 释放进程结构体
-	procFree(proc);
+	// 杀死进程
+	killProc(proc);
+
+	// 处理子进程
+	doChildManage(proc);
+
+	// 尝试唤醒父进程
+	tryWakeupParentProc(proc);
 
 	if (myProc() == proc) {
 		mycpu()->proc = NULL;

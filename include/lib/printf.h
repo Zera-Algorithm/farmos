@@ -9,6 +9,9 @@ void printInit(void);
 // 正常输出（带锁）
 void printf(const char *fmt, ...);
 
+// 输出到字符串
+void sprintf(char *buf, const char *fmt, ...);
+
 // 条件输出（带锁）
 #define printfIf(isLog, ...)                                                                       \
 	if ((isLog))                                                                               \
@@ -53,11 +56,18 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
  * @brief 输出日志，并打印所在文件、行、函数的信息
  * @param va_args：额外参数
  */
-// 定义的日志等级，越大，打印的信息越重要
-#define LOG_LEVEL 1
+
+// 模块级日志
+#define LEVEL_MODULE 1
+// 全局级日志
+#define LEVEL_GLOBAL 2
+
+// 定义的日志等级：越大，打印的信息越重要
+#define LOG_LEVEL LEVEL_GLOBAL
 #define log(level, ...)                                                                            \
 	if ((level) >= LOG_LEVEL)                                                                  \
 	_log(__FILE__, __LINE__, __func__, __VA_ARGS__)
+
 #define warn(...) _warn(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define error(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
 

@@ -1,8 +1,10 @@
+#include <dev/rtc.h>
 #include <dev/timer.h>
 #include <lib/string.h>
 #include <proc/proc.h>
 #include <proc/schedule.h>
 #include <proc/sleep.h>
+#include <proc/wait.h>
 #include <trap/syscallDataStruct.h>
 #include <trap/syscall_ids.h>
 
@@ -143,13 +145,23 @@ u64 sysExecve() {
 	return 0;
 }
 
-u64 sysWait4() {
-	panic("unimplemented");
-	return 0;
+/**
+ * @brief 等待子进程改变状态（一般是等待进程结束）
+ * @param pid 要等待的进程。若为-1，表示等待任意的子进程；否则等待特定的子进程
+ * @param pStatus 用户的int *status指针。用来存储进程的状态信息
+ * @param options
+ * 选项。包括WUNTRACED(因信号而停止)、WCONTINUED(因收到SIGCONT而恢复的)、WNOHANG(立即返回，无阻塞)
+ */
+u64 sysWait4(u64 pid, u64 pStatus, int options) {
+	// panic("unimplemented");
+	return wait(myProc(), pid, pStatus, options);
 }
 
 void sysExit() {
-	procDestroy(myProc());
+	struct Proc *proc = myProc();
+	// 设置退出码
+	proc->wait.exitCode = proc->trapframe->a0;
+	procDestroy(proc);
 }
 
 u64 sysGetPpid() {
@@ -160,20 +172,28 @@ u64 sysGetPid() {
 	return myProc()->pid;
 }
 
+/**
+ * @brief 获取当前的Unix时间戳
+ */
 u64 sysGetTimeOfDay(u64 pTimeSpec) {
 	struct timespec timeSpec;
-	u64 usec = getUSecs();
+	u64 usec = rtcReadTime();
 	timeSpec.second = usec / 1000000;
 	timeSpec.usec = usec % 1000000;
 	copyOut(pTimeSpec, &timeSpec, sizeof(struct timespec));
 	return 0;
 }
 
+/**
+ * @brief 执行线程睡眠
+ * @param pTimeSpec 包含秒和微秒两个字段，指明进程要睡眠的时间数
+ */
 void sysNanoSleep(u64 pTimeSpec) {
 	struct timespec timeSpec;
 	copyIn(pTimeSpec, &timeSpec, sizeof(timeSpec));
 	u64 usec = timeSpec.second * 1000000 + timeSpec.usec;
 	u64 clocks = usec * CLOCK_PER_USEC;
+	log(LEVEL_MODULE, "time to wait: %d clocks\n", clocks);
 
 	// 设置返回值
 	myProc()->trapframe->a0 = 0;

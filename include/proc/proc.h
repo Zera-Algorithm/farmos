@@ -72,15 +72,33 @@ enum ProcState { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 #define MAX_PROC_NAME_LEN 16
 struct Proc;
 
-// Per-process state
+LIST_HEAD(ProcList, Proc);
+TAILQ_HEAD(ProcSchedQueue, Proc);
+extern struct ProcList procFreeList;
+extern struct ProcSchedQueue procSchedQueue[NCPU];
+
+/**
+ * zrp注：当前没有实现内核线程，每个用户进程只有用户态一种状态，难以处理
+ * 睡眠问题。目前的策略是由唤醒者帮助睡眠者完成其事务，但这需要在进程控制块中
+ * 存入较多的数据，并且耦合度较高。
+ *
+ * 之后会考虑实现内核线程。
+ */
+// 进程控制块
 struct Proc {
 	struct spinlock lock;
 
 	// p->lock must be held when using these:
 	enum ProcState state; // Process state
 	char sleepReason[16]; // 睡眠原因
-	int killed;	      // If non-zero, have been killed
-	int xstate;	      // Exit status to be returned to parent's wait
+	/**
+	 * 有下面几种情况：
+	 * nanosleep：线程睡眠
+	 * wait：等待子进程
+	 *
+	 */
+	int killed; // If non-zero, have been killed
+	int xstate; // Exit status to be returned to parent's wait
 	u64 pid; // 进程ID，应当由进程在队列中的位置和累积创建进程排名组成
 
 	// wait_lock must be held when using this:
@@ -102,21 +120,25 @@ struct Proc {
 		u64 procSleepBegin;  // 进程开始睡眠的时间
 	} procTime;
 
+	// 实现等待机制的结构体
+	struct Wait {
+		u64 pid;
+		u64 uPtr_status; // int *
+		int options;
+		u8 exitCode; // 进程的退出状态
+	} wait;
+
 	struct trapframe *trapframe;  // data page for trampoline.S
 	struct file *ofile[NOFILE];   // Open files
 	struct inode *cwd;	      // Current directory
 	char name[MAX_PROC_NAME_LEN]; // Process name (debugging)
 
 	LIST_ENTRY(Proc) procFreeLink;	// 空闲链表链接
-	LIST_ENTRY(Proc) procSleepLink; // 进程睡眠链表(进程可以因为多种原因睡眠)
+	LIST_ENTRY(Proc) procSleepLink; // 进程睡眠链接(进程可以因为多种原因睡眠)
+	LIST_ENTRY(Proc) procChildLink; // 子进程列表链接
 	TAILQ_ENTRY(Proc) procSchedLink[NCPU]; // cpu调度队列链接
+	struct ProcList childList;	       // 子进程列表
 };
-
-LIST_HEAD(ProcFreeList, Proc);
-LIST_HEAD(ProcSleepList, Proc);
-TAILQ_HEAD(ProcSchedQueue, Proc);
-extern struct ProcFreeList procFreeList;
-extern struct ProcSchedQueue procSchedQueue[NCPU];
 
 int cpuid();
 struct cpu *mycpu(void);
@@ -127,10 +149,13 @@ struct Proc *pidToProcess(u64 pid);
 struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 priority);
 void procRun(struct Proc *prev, struct Proc *next);
 void procDestroy(struct Proc *proc);
+void procFree(struct Proc *proc);
 
 inline int procCanRun(struct Proc *proc) {
 	return (proc->state == RUNNABLE || proc->state == RUNNING);
 }
+
+#define PROCESS_INIT 0x0400ul
 
 // #symbol 可以将symbol原封不动地转换为对应的字符串（即两边加引号）
 #define PROC_CREATE(programName, priority)                                                         \
