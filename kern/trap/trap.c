@@ -56,7 +56,6 @@ void kerneltrap() {
 	if (type == SCAUSE_INTERRUPT) {
 		if (excCode == INTERRUPT_TIMER) {
 			loga("timer interrupt on CPU %d!\n", cpuid());
-			// TODO: 实现更丰富的中断处理
 			timerSetNextTick();
 		} else if (excCode == INTERRUPT_EXTERNEL) {
 			loga("externel interrupt on CPU %d!\n", cpuid());
