@@ -58,6 +58,7 @@ void sprintf(char *buf, const char *fmt, ...) {
 	va_end(ap);
 }
 
+// TODO: 加上时间戳、CPU编号等信息
 void _log(const char *file, int line, const char *func, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
