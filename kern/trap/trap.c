@@ -1,6 +1,7 @@
 #include <dev/plic.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
+#include <dev/virtio.h>
 #include <lib/printf.h>
 #include <lock/spinlock.h>
 #include <mm/memlayout.h>
@@ -55,17 +56,18 @@ void kerneltrap() {
 	if (type == SCAUSE_INTERRUPT) {
 		if (excCode == INTERRUPT_TIMER) {
 			loga("timer interrupt on CPU %d!\n", cpuid());
-			// TODO: 实现更丰富的中断处理
 			timerSetNextTick();
 		} else if (excCode == INTERRUPT_EXTERNEL) {
 			loga("externel interrupt on CPU %d!\n", cpuid());
 			int irq = plicClaim();
 
 			if (irq == VIRTIO0_IRQ) {
-				// TODO: call virtio intr handler
-
+				// Note: call virtio intr handler
+				loga("[cpu %d] catch virtio intr\n", cpuid());
+				virtio_disk_intr();
 			} else {
-				loga("unknown externel interrupt irq = %d\n", irq);
+				loga("[cpu %d] unknown externel interrupt irq = %d\n", cpuid(),
+				     irq);
 			}
 
 			if (irq) {

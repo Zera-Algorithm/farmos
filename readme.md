@@ -31,5 +31,11 @@
 * 北航MOS操作系统：https://gitee.com/osbuaa/mos
 * 2022年一等奖得主"图漏图森破"操作系统：https://gitlab.eduxiji.net/educg-group-13484-858191/19373469-1384
 
-TODO: 做一个工具，能够自动从.c文件生成其对应的.o文件，并在Makefile中实现
-TODO: 考虑引入分级日志，能够显示INFO, WARNING, FATAL三种类型的信息
+## 未来想做的事情
+[ ] 做一个工具，能够自动从.c文件生成其对应的.h文件，并在Makefile中实现
+
+[x] 考虑引入分级日志，能够显示INFO, WARNING, FATAL三种类型的信息
+
+[ ] 实现内核的动态内存分配，可参考Linux的buddy system等
+
+[ ] 更改Makefile的逻辑，支持根据日期决定是否编译。（实现方法：去除一些不必要的 `.PHONY` 项目，如 build 等）

@@ -36,6 +36,10 @@ void pmmInit() {
 	npage = memInfo.size / PAGE_SIZE;  // 内存页数
 	pages = pmInitPush(freemem, npage * sizeof(Page), &freemem); // 初始化内存页数组
 
+	// 为virtio驱动分配连续的两页
+	extern void *virtioDriverBuffer;
+	virtioDriverBuffer = pmInitPush(freemem, 2 * sizeof(Page), &freemem);
+
 	// 第二部分：初始化空闲链表
 	log(LEVEL_MODULE, "Physical Memory Freelist Init Start: Freemem = 0x%08x\n", freemem);
 	LIST_INIT(&pageFreeList);

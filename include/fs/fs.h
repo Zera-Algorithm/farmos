@@ -1,10 +1,12 @@
 #ifndef _FS_H
 #define _FS_H
+
+#include <types.h>
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
-#define ROOTINO 1  // root i-number
-#define BSIZE 1024 // block size
+#define ROOTINO 1 // root i-number
+#define BSIZE 512 // block size
 
 // Disk layout:
 // [ boot block | super block | log | inode blocks |
