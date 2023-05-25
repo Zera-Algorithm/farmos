@@ -67,7 +67,8 @@ void kerneltrap() {
 				loga("[cpu %d] catch virtio intr\n", cpuid());
 				virtio_disk_intr();
 			} else {
-				loga("[cpu %d] unknown externel interrupt irq = %d\n", cpuid(), irq);
+				loga("[cpu %d] unknown externel interrupt irq = %d\n", cpuid(),
+				     irq);
 			}
 
 			if (irq) {

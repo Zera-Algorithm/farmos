@@ -1,13 +1,13 @@
-#include <riscv.h>
-#include <types.h>
 #include <dev/virtio.h>
-#include <lib/printf.h>
 #include <fs/buf.h>
 #include <fs/fs.h>
+#include <lib/printf.h>
 #include <lib/string.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
 #include <param.h>
+#include <riscv.h>
+#include <types.h>
 
 // the address of virtio mmio register r.
 #define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
@@ -291,7 +291,7 @@ void virtioTest() {
 	virtio_disk_init();
 	struct buf bufR, bufW;
 
-    // 测试写入0号扇区（块）
+	// 测试写入0号扇区（块）
 	bufW.blockno = 0;
 	for (int i = 0; i < BSIZE; i++) {
 		bufW.data[i] = '0' + i % 10;
@@ -299,24 +299,24 @@ void virtioTest() {
 	bufW.data[BSIZE - 1] = 0;
 	virtio_disk_rw(&bufW, 1); // write
 
-    // 测试读出0号扇区
-    bufR.blockno = 0;
+	// 测试读出0号扇区
+	bufR.blockno = 0;
 	virtio_disk_rw(&bufR, 0); // read
-    assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BSIZE) == 0);
+	assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BSIZE) == 0);
 
-    // 测试写入1号扇区
+	// 测试写入1号扇区
 	bufW.blockno = 1;
 	for (int i = 0; i < BSIZE; i++) {
 		bufW.data[i] = '2' + i % 6;
 	}
 	virtio_disk_rw(&bufW, 1); // write
 
-    // 测试读出1号扇区
-    bufR.blockno = 1;
+	// 测试读出1号扇区
+	bufR.blockno = 1;
 	virtio_disk_rw(&bufR, 0); // read
-    assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BSIZE) == 0);
+	assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BSIZE) == 0);
 
 	log(LEVEL_MODULE, "buf:\n%s", bufR.data);
 
-    log(LEVEL_GLOBAL, "virtio driver test passed!\n");
+	log(LEVEL_GLOBAL, "virtio driver test passed!\n");
 }

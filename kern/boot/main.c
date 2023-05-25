@@ -2,8 +2,8 @@
 #include <dev/plic.h>
 #include <dev/rtc.h>
 #include <dev/sbi.h>
-#include <dev/virtio.h>
 #include <dev/timer.h>
+#include <dev/virtio.h>
 #include <lib/printf.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
@@ -108,7 +108,7 @@ void main() {
 		trapInitHart(); // install kernel trap vector
 		timerInit();
 
-		plicInitHart();   // 启动中断控制器，开始接收中断
+		plicInitHart(); // 启动中断控制器，开始接收中断
 
 		isStarted[cpuid()] = 1;
 		__sync_synchronize(); // TODO: 封装一层
