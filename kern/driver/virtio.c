@@ -181,6 +181,14 @@ static int alloc3_desc(int *idx) {
 	return 0;
 }
 
+/**
+ * @brief virtio读写接口，此函数使用忙等策略，若磁盘未准备好，则驱动会一直阻塞等待到磁盘就绪。
+ * 		  调用示例可以参见virtioTest函数
+ * @param b 要读或写的缓冲区描述符（定义在fs/buf.h）。在调用之前，b->blockno需要设置为要读或写的扇区号，
+ * 		  每个扇区512字节。若为读取，调用此函数后，b->data的内容就是对应扇区的数据；若为写入，则b->data
+ * 		  需要提前写入要写入的数据
+ * @param write 是否读。设为0表示读取，1表示写入
+ */
 void virtio_disk_rw(struct buf *b, int write) {
 	uint64 sector = b->blockno * (BSIZE / 512);
 
@@ -286,6 +294,9 @@ void virtio_disk_intr() {
 	log(LEVEL_MODULE, "finish virtio intr\n");
 }
 
+/**
+ * @brief 进行virtio驱动的读写测试
+ */
 void virtioTest() {
 	log(LEVEL_GLOBAL, "begin virtio test!\n");
 	virtio_disk_init();
