@@ -59,11 +59,13 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 
 // 模块级日志
 #define LEVEL_MODULE 1
+#define MM_GLOBAL 2
+#define BUF_MODULE 3
 // 全局级日志
-#define LEVEL_GLOBAL 2
+#define LEVEL_GLOBAL 10
 
 // 定义的日志等级：越大，打印的信息越重要
-#define LOG_LEVEL LEVEL_GLOBAL
+#define LOG_LEVEL MM_GLOBAL
 #define log(level, ...)                                                                            \
 	if ((level) >= LOG_LEVEL)                                                                  \
 	_log(__FILE__, __LINE__, __func__, __VA_ARGS__)

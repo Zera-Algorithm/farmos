@@ -4,6 +4,7 @@
 #include <dev/sbi.h>
 #include <dev/timer.h>
 #include <dev/virtio.h>
+#include <fs/buf.h>
 #include <lib/printf.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
@@ -56,6 +57,8 @@ void main() {
 		// 内存管理机制初始化
 		pmmInit();
 		vmmInit();
+		bufInit();
+
 		// initKernelMemory(); // 初始化内核页表
 		enablePagingHart(); // 开启分页
 		loga("Finish Paging!\n");
@@ -90,6 +93,16 @@ void main() {
 
 		// virtio驱动读写测试
 		virtioTest();
+		bufTest(0);
+		bufTest(1);
+		bufTest(2);
+		bufTest(0);
+		bufTest(3);
+		bufTest(4);
+		bufTest(0);
+		bufTest(5);
+		bufTest(6);
+		bufTest(7);
 
 		// testProcRun();
 		procInit();

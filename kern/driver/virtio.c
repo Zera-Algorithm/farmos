@@ -23,7 +23,8 @@ static struct disk {
 	uint16 used_idx;
 
 	struct {
-		struct buf *b;
+		// struct buf *b;
+		Buffer *b;
 		char status;
 	} info[NUM];
 
@@ -190,7 +191,7 @@ static int alloc3_desc(int *idx) {
  * 		  需要提前写入要写入的数据
  * @param write 是否读。设为0表示读取，1表示写入
  */
-void virtio_disk_rw(struct buf *b, int write) {
+void virtio_disk_rw(Buffer *b, int write) {
 	uint64 sector = b->blockno * (BSIZE / 512);
 
 	// the spec's Section 5.2 says that legacy block operations use
@@ -283,7 +284,7 @@ void virtio_disk_intr() {
 		if (disk.info[id].status != 0)
 			panic("virtio_disk_intr status");
 
-		struct buf *b = disk.info[id].b;
+		Buffer *b = disk.info[id].b;
 		__sync_synchronize();
 		assert(b->disk == 1);
 		b->disk = 0; // disk is done with buf
@@ -301,14 +302,17 @@ void virtio_disk_intr() {
 void virtioTest() {
 	log(LEVEL_GLOBAL, "begin virtio test!\n");
 	virtio_disk_init();
-	struct buf bufR, bufW;
+	Buffer bufR, bufW;
+	BufferData bufDataR, bufDataW;
+	bufR.data = &bufDataR;
+	bufW.data = &bufDataW;
 
 	// 测试写入0号扇区（块）
 	bufW.blockno = 0;
 	for (int i = 0; i < BSIZE; i++) {
-		bufW.data[i] = '0' + i % 10;
+		bufW.data->data[i] = '0' + i % 10;
 	}
-	bufW.data[BSIZE - 1] = 0;
+	bufW.data->data[BSIZE - 1] = 0;
 	virtio_disk_rw(&bufW, 1); // write
 
 	// 测试读出0号扇区
@@ -319,7 +323,7 @@ void virtioTest() {
 	// 测试写入1号扇区
 	bufW.blockno = 1;
 	for (int i = 0; i < BSIZE; i++) {
-		bufW.data[i] = '2' + i % 6;
+		bufW.data->data[i] = '2' + i % 6;
 	}
 	virtio_disk_rw(&bufW, 1); // write
 
