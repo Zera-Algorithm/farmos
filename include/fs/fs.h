@@ -1,63 +1,77 @@
 #ifndef _FS_H
 #define _FS_H
 
+#include <lib/queue.h>
 #include <types.h>
-// On-disk file system format.
-// Both the kernel and user programs use this header file.
 
-#define ROOTINO 1 // root i-number
-#define BSIZE 512 // block size
+#define MAX_NAME_LEN 100
 
-// Disk layout:
-// [ boot block | super block | log | inode blocks |
-//                                          free bit map | data blocks]
-//
-// mkfs computes the super block and builds an initial file system. The
-// super block describes the disk layout:
-struct superblock {
-	uint magic;	 // Must be FSMAGIC
-	uint size;	 // Size of file system image (blocks)
-	uint nblocks;	 // Number of data blocks
-	uint ninodes;	 // Number of inodes.
-	uint nlog;	 // Number of log blocks
-	uint logstart;	 // Block number of first log block
-	uint inodestart; // Block number of first inode block
-	uint bmapstart;	 // Block number of first free map block
+typedef struct FileSystem FileSystem;
+typedef struct Dirent Dirent;
+typedef struct SuperBlock SuperBlock;
+
+// FarmOS Dirent
+struct Dirent {
+	// char filename[FAT32_MAX_FILENAME + 1];
+	u8 attribute; // 是文件还是目录
+	// u8   create_time_tenth;
+	// u16  create_time;
+	// u16  create_date;
+	// u16  last_access_date;
+	u32 first_clus;
+	// u16  last_write_time;
+	// u16  last_write_date;
+	u32 file_size;
+
+	u32 cur_clus;
+	u32 inodeMaxCluster;
+	u32 clus_cnt;
+	// Inode inode;
+
+	u8 _nt_res;
+	FileSystem *fileSystem;
+	/* for OS */
+	// 操作系统相关的数据结构
+	enum { ZERO = 10, OSRELEASE = 12, NONE = 15 } dev;
+	FileSystem *head;
+	u32 off;	// offset in the parent dir entry, for writing convenience
+	Dirent *parent; // because FAT32 doesn't have such thing like inum,
+	Dirent *nextBrother;
+	Dirent *firstChild;
 };
 
-#define FSMAGIC 0x10203040
+// FarmOS SuperBlock
+struct SuperBlock {
+	u32 first_data_sec;
+	u32 data_sec_cnt;
+	u32 data_clus_cnt;
+	u32 bytes_per_clus;
 
-#define NDIRECT 12
-#define NINDIRECT (BSIZE / sizeof(uint))
-#define MAXFILE (NDIRECT + NINDIRECT)
-
-// On-disk inode structure
-struct dinode {
-	short type;		 // File type
-	short major;		 // Major device number (T_DEVICE only)
-	short minor;		 // Minor device number (T_DEVICE only)
-	short nlink;		 // Number of links to inode in file system
-	uint size;		 // Size of file (bytes)
-	uint addrs[NDIRECT + 1]; // Data block addresses
+	struct {
+		u16 bytes_per_sec;
+		u8 sec_per_clus;
+		u16 rsvd_sec_cnt;
+		u8 fat_cnt;   /* count of FAT regions */
+		u32 hidd_sec; /* count of hidden sectors */
+		u32 tot_sec;  /* total count of sectors including all regions */
+		u32 fat_sz;   /* count of sectors for a FAT region */
+		u32 root_clus;
+	} bpb;
 };
 
-// Inodes per block.
-#define IPB (BSIZE / sizeof(struct dinode))
-
-// Block containing inode i
-#define IBLOCK(i, sb) ((i) / IPB + sb.inodestart)
-
-// Bitmap bits per block
-#define BPB (BSIZE * 8)
-
-// Block of free map containing bit for block b
-#define BBLOCK(b, sb) ((b) / BPB + sb.bmapstart)
-
-// Directory is a file containing a sequence of dirent structures.
-#define DIRSIZ 14
-
-struct dirent {
-	ushort inum;
-	char name[DIRSIZ];
+// FarmOS VFS
+struct FileSystem {
+	bool valid; // 是否有效
+	char name[MAX_NAME_LEN];
+	SuperBlock superBlock;					    // 超级块
+	Dirent root;						    // root项
+	struct File *image;					    // mount对应的文件
+	LIST_ENTRY(FileSystem) fsLink;				    // 串接项
+	int deviceNumber;					    // 对应真实设备的编号
+	struct Buffer *(*get)(struct FileSystem *fs, u64 blockNum); // 读取FS的一个Buffer
+	// 强制规定：传入的fs即为本身的fs
+	// 稍后用read返回的这个Buffer指针进行写入和释放动作
+	// 我们默认所有文件系统（不管是挂载的，还是从virtio读取的），都需要经过缓存层
 };
+
 #endif

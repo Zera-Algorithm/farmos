@@ -61,6 +61,7 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 #define LEVEL_MODULE 1
 #define MM_GLOBAL 2
 #define BUF_MODULE 3
+#define FAT_MODULE 4
 // 全局级日志
 #define LEVEL_GLOBAL 10
 

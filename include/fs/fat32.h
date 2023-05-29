@@ -86,7 +86,7 @@ typedef struct FAT32LongDirectory {
 // Returns: Sum An 8-bit unsigned checksum of the array pointed
 // to by pFcbName.
 //------------------------------------------------------------------------------
-unsigned char ChkSum(unsigned char *pFcbName) {
+unsigned char checkSum(unsigned char *pFcbName) {
 	short FcbNameLen;
 	unsigned char Sum;
 	Sum = 0;
