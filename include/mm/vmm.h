@@ -14,6 +14,9 @@
 #define PTE_A (1 << 6) // 访问位（Accessed）
 #define PTE_D (1 << 7) // 脏位（Dirty）
 
+// 用户定义标识
+#define PTE_COW (1 << 8) // 写时复制位
+
 // 基于 Sv39 的页表结构
 #define PTE_PPNSHIFT (10ull)		      // 页表项中物理页号的偏移量
 #define PTE_PPNMASK ((~0ull) << PTE_PPNSHIFT) // 页表项中物理页号的掩码
@@ -22,6 +25,9 @@
 #define PTX(va, level)                                                                             \
 	(((u64)(va) >> (PAGE_SHIFT + (PAGE_LEVELS - (level)) * PAGE_INDEX_LEN)) &                  \
 	 0x1ff) // 获取虚拟地址 va 在第 level 级页表中的索引
+
+// 获取PTE中的PERM部分
+#define PTE_PERM(pte) ((pte) & ((1 << PTE_PPNSHIFT) - 1))
 
 // 页表相关声明
 typedef const u64 Pte;

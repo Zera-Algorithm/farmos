@@ -192,7 +192,7 @@ static int alloc3_desc(int *idx) {
  * @param write 是否读。设为0表示读取，1表示写入
  */
 void virtio_disk_rw(Buffer *b, int write) {
-	uint64 sector = b->blockno * (BSIZE / 512);
+	uint64 sector = b->blockno * (BUF_SIZE / 512);
 
 	// the spec's Section 5.2 says that legacy block operations use
 	// three descriptors: one for type/reserved/sector, one for the
@@ -225,7 +225,7 @@ void virtio_disk_rw(Buffer *b, int write) {
 	disk.desc[idx[0]].next = idx[1];
 
 	disk.desc[idx[1]].addr = (uint64)b->data;
-	disk.desc[idx[1]].len = BSIZE;
+	disk.desc[idx[1]].len = BUF_SIZE;
 	if (write)
 		disk.desc[idx[1]].flags = 0; // device reads b->data
 	else
@@ -309,20 +309,20 @@ void virtioTest() {
 
 	// 测试写入0号扇区（块）
 	bufW.blockno = 0;
-	for (int i = 0; i < BSIZE; i++) {
+	for (int i = 0; i < BUF_SIZE; i++) {
 		bufW.data->data[i] = '0' + i % 10;
 	}
-	bufW.data->data[BSIZE - 1] = 0;
+	bufW.data->data[BUF_SIZE - 1] = 0;
 	virtio_disk_rw(&bufW, 1); // write
 
 	// 测试读出0号扇区
 	bufR.blockno = 0;
 	virtio_disk_rw(&bufR, 0); // read
-	assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BSIZE) == 0);
+	assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BUF_SIZE) == 0);
 
 	// 测试写入1号扇区
 	bufW.blockno = 1;
-	for (int i = 0; i < BSIZE; i++) {
+	for (int i = 0; i < BUF_SIZE; i++) {
 		bufW.data->data[i] = '2' + i % 6;
 	}
 	virtio_disk_rw(&bufW, 1); // write
@@ -330,7 +330,7 @@ void virtioTest() {
 	// 测试读出1号扇区
 	bufR.blockno = 1;
 	virtio_disk_rw(&bufR, 0); // read
-	assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BSIZE) == 0);
+	assert(strncmp((const char *)bufR.data, (const char *)bufW.data, BUF_SIZE) == 0);
 
 	log(LEVEL_MODULE, "buf:\n%s", bufR.data);
 

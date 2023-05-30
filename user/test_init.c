@@ -6,14 +6,10 @@
 #include <unistd.h>
 
 int main() {
-	int cnt = 0;
+	int wstatus = 0;
 	while (1) {
-		// sleep(1);
-		++cnt;
-		printf("time: %ds\n", cnt);
-		if (cnt == 3)
-			break;
+		wait(&wstatus);
+		sched_yield();
 	}
-	// *(int *)TRAMPOLINE = 0;
 	return 0;
 }

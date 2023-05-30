@@ -1,14 +1,20 @@
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <proc/proc.h>
+#include <proc/schedule.h>
 #include <proc/sleep.h>
 #include <proc/wait.h>
 
+void copyOutOnPageTable(Pte *pgDir, u64 uPtr, void *kPtr, int len);
 void copyOut(u64 uPtr, void *kPtr, int len);
 
 // TODO: 需要实现WUNTRACED（被信号停止）、WCONTINUED（因信号恢复执行）
 // 依赖：实现信号
 
+/**
+ * @brief 等待自己的子进程结束。
+ * @param proc 等待进程
+ */
 inline static u64 __waitChild(struct Proc *proc, u64 pid, u64 pStatus, int options) {
 	if (options & WNOHANG) {
 		return 0;
@@ -16,8 +22,12 @@ inline static u64 __waitChild(struct Proc *proc, u64 pid, u64 pStatus, int optio
 		proc->wait.pid = pid;
 		proc->wait.uPtr_status = pStatus;
 		proc->wait.options = options;
-		naiveSleep(proc, "wait"); // 永不返回
-		return 0;		  // 欺骗编译器
+		naiveSleep(proc, "wait");
+
+		mycpu()->proc = NULL;
+		log(LEVEL_MODULE, "fall in sleep!\n");
+		schedule(1);
+		return 0; // 欺骗编译器
 	}
 }
 
@@ -36,22 +46,22 @@ u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options) {
 
 	if (pid != -1) {
 		// 1. 寻找对应的子进程
-		struct Proc *proc = pidToProcess(pid);
-		if (proc == NULL) {
+		struct Proc *child = pidToProcess(pid);
+		if (child == NULL) {
 			return -1;
 		}
 
 		// 2. 判断是否是自己的子进程
-		if (proc->parentId != pid) {
+		if (child->parentId != proc->pid) {
 			return -1;
 		}
 
 		// 进程要么已结束（但未被等待，处于ZOMBIE状态），要么可运行，要么在睡眠
-		assert(proc->state == ZOMBIE || procCanRun(proc) || proc->state == SLEEPING);
+		assert(child->state == ZOMBIE || procCanRun(child) || child->state == SLEEPING);
 
 		// 3. 如果进程已终止(Zombie)，就回收其进程控制块
-		if (proc->state == ZOMBIE) {
-			procFree(proc);
+		if (child->state == ZOMBIE) {
+			procFree(child);
 
 			// 返回status数据
 			status.bits.high8 = pid;
@@ -59,7 +69,8 @@ u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options) {
 			return pid;
 		} else {
 			// 等待子进程结束
-			__waitChild(proc, pid, pStatus, options);
+			log(LEVEL_GLOBAL, "wait for child!\n");
+			return __waitChild(proc, pid, pStatus, options);
 		}
 	} else {
 		// 1. 查找是否有可等待的子进程
@@ -71,7 +82,7 @@ u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options) {
 		LIST_FOREACH (tmp, &proc->childList, procChildLink) {
 			if (tmp->state == ZOMBIE) {
 				u64 childPid = proc->pid;
-				procFree(proc);
+				procFree(tmp);
 
 				// 返回status数据
 				status.bits.high8 = childPid;
@@ -81,7 +92,7 @@ u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options) {
 		}
 
 		// 2. 子进程尚在运行中，等待
-		__waitChild(proc, pid, pStatus, options);
+		return __waitChild(proc, pid, pStatus, options);
 	}
 	return -1;
 }
@@ -106,13 +117,20 @@ void tryWakeupParentProc(struct Proc *child) {
 			return;
 		}
 	} else {
-		// 任意等待，必然成功
+		// 父进程等待任意的子进程，此时必然成功
+		naiveWakeup(parent);
 	}
 
 	union WaitStatus status;
 	status.val = 0;
 
+	// 释放本进程描述符
+	procFree(child);
+
 	// 返回status数据
 	status.bits.high8 = child->wait.exitCode;
-	copyOut(parent->wait.uPtr_status, &status, sizeof(int));
+	copyOutOnPageTable(parent->pageTable, parent->wait.uPtr_status, &status, sizeof(int));
+
+	// 返回值为子进程pid
+	parent->trapframe->a0 = child->pid;
 }

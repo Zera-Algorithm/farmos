@@ -150,6 +150,8 @@ struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 p
 void procRun(struct Proc *prev, struct Proc *next);
 void procDestroy(struct Proc *proc);
 void procFree(struct Proc *proc);
+int procFork(u64 stackTop);
+void procExecve(u64 path, u64 argv, u64 envp);
 
 inline int procCanRun(struct Proc *proc) {
 	return (proc->state == RUNNABLE || proc->state == RUNNING);

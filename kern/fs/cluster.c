@@ -1,11 +1,11 @@
 #include <fs/buf.h>
 #include <fs/cluster.h>
 #include <fs/fat32.h>
+#include <lib/error.h>
 #include <lib/printf.h>
 #include <lib/string.h>
-#include <lib/error.h>
 
-#define min(a,b) ((a) < (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
 // 初始化
 err_t fatInit(FileSystem *fs) {
@@ -19,7 +19,7 @@ err_t fatInit(FileSystem *fs) {
 	// 从 BPB 中读取信息
 	FAT32BootParamBlock *bpb = (FAT32BootParamBlock *)(buf->data->data);
 
-	if (bpb == NULL || strcmp((char *)bpb->BS_FilSysType, "FAT32")) {
+	if (bpb == NULL || strncmp((char *)bpb->BS_FilSysType, "FAT32", 8)) {
 		log(FAT_MODULE, "Not FAT32 File System\n");
 		return -E_UNKNOWN_FS;
 	}
@@ -44,6 +44,7 @@ err_t fatInit(FileSystem *fs) {
 
 	// 释放缓冲区
 	bufRelease(buf);
+	return 0;
 }
 
 // 簇的扇区号计算
@@ -58,7 +59,7 @@ static u64 clusterSec(FileSystem *fs, u64 cluster) {
 }
 
 /**
- * @return 返回簇号 cluster 所在的 FAT 表的扇区号 
+ * @return 返回簇号 cluster 所在的 FAT 表的扇区号
  */
 static u64 clusterFatSec(FileSystem *fs, u64 cluster, u8 fatno) {
 	const int fat32_entry_sz = 4;
@@ -73,7 +74,6 @@ static u64 clusterFatSecIndex(FileSystem *fs, u64 cluster) {
 	const int fat32_entry_sz = 4;
 	return ((cluster * fat32_entry_sz) % fs->superBlock.bpb.bytes_per_sec) / fat32_entry_sz;
 }
-
 
 void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n, bool isUser) {
 	panic_on(offset + n < fs->superBlock.bytes_per_clus);
@@ -130,11 +130,10 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 	}
 }
 
-
 static void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 	panic_on(cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1);
 
-	u64 fatSec = clusterFatSec(fs, cluster, 1);// TODO: SYNCRONIZE OTHER FAT
+	u64 fatSec = clusterFatSec(fs, cluster, 1); // TODO: SYNCRONIZE OTHER FAT
 	Buffer *buf = fs->get(fs, fatSec);
 	u32 *fat = (u32 *)buf->data->data;
 	// 写入 FAT 表中的内容
@@ -147,7 +146,7 @@ u32 fatRead(FileSystem *fs, u64 cluster) {
 	if (cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1) {
 		return 0;
 	}
-	u64 fatSec = clusterFatSec(fs, cluster, 1);// TODO: SYNCRONIZE OTHER FAT
+	u64 fatSec = clusterFatSec(fs, cluster, 1); // TODO: SYNCRONIZE OTHER FAT
 	Buffer *buf = fs->get(fs, fatSec);
 	u32 *fat = (u32 *)buf->data->data;
 	// 读取 FAT 表中的内容
@@ -156,11 +155,11 @@ u32 fatRead(FileSystem *fs, u64 cluster) {
 	return content;
 }
 
-
 #define FAT32_EOF 0xffffffff
 
 u64 clusterAlloc(FileSystem *fs, u64 prev) {
-	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2; cluster++) {
+	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2;
+	     cluster++) {
 		if (fatRead(fs, cluster) == 0) {
 			if (prev != 0) {
 				fatWrite(fs, prev, cluster);
@@ -180,6 +179,3 @@ void clusterFree(FileSystem *fs, u64 cluster, u64 prev) {
 		fatWrite(fs, cluster, 0);
 	}
 }
-
-
-

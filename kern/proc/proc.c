@@ -3,6 +3,7 @@
 #include <lib/error.h>
 #include <lib/printf.h>
 #include <lib/string.h>
+#include <lib/transfer.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
 #include <param.h>
@@ -112,13 +113,14 @@ struct Proc *pidToProcess(u64 pid) {
  * @param proc 进程指针
  * @return int <0表示出错
  */
-static int initProcPageTable(struct Proc *proc) {
+static int initProcPageTable(struct Proc *proc, u64 stackTop) {
 	// 分配页表
 	u64 pa = kvmAlloc();
 	proc->pageTable = (Pte *)pa;
 
 	// TRAMPOLINE
-	TRY(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X));
+	// 由于TRAMPOLINE是用户与内核共享的空间，因此需要赋以 PTE_G 全局位
+	TRY(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
 
 	// 该进程的trapframe
 	proc->trapframe = (struct trapframe *)vmAlloc();
@@ -126,8 +128,21 @@ static int initProcPageTable(struct Proc *proc) {
 
 	// 该进程的栈
 	u64 stack = vmAlloc();
-	TRY(ptMap(proc->pageTable, USTACKTOP - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
-	proc->trapframe->sp = USTACKTOP;
+
+	// 如果指定了stackTop，反而不需要分配
+	// 因为只有fork时才会提供stackTop，这时用户态肯定已经准备好了
+	if (stackTop == 0) {
+		stackTop = USTACKTOP;
+		log(LEVEL_GLOBAL, "alloc stack address = 0x%08lx\n", stackTop - PAGE_SIZE);
+		TRY(ptMap(proc->pageTable, stackTop - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
+	}
+
+	u64 *top = (void *)stack;
+	*(top - 1) = 0; // argv
+	*(top - 1) = 0; // argc
+
+	// 为argc和argv留出位置
+	proc->trapframe->sp = stackTop - sizeof(long) - sizeof(long);
 
 	// TODO：页表自映射
 
@@ -138,9 +153,10 @@ static int initProcPageTable(struct Proc *proc) {
  * @brief 分配一个进程，将其从空闲进程结构体中删除
  * @param pproc 所需要写入的进程proc指针的指针
  * @param parentId 父进程pid
+ * @param stack 栈顶的位置（为0表示默认）
  * @return int 错误类型
  */
-static int procAlloc(struct Proc **pproc, u64 parentId) {
+static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 	// 1. 寻找可分配的进程控制块
 	struct Proc *proc = LIST_FIRST(&procFreeList);
 	if (proc == NULL) {
@@ -154,14 +170,21 @@ static int procAlloc(struct Proc **pproc, u64 parentId) {
 	LIST_REMOVE(proc, procFreeLink);
 
 	// 3. 初始化进程proc的页表
-	TRY(initProcPageTable(proc));
+	TRY(initProcPageTable(proc, stackTop));
 
 	// 4. 设置进程的pid和父亲id，初始化子进程列表
 	proc->pid = makeProcId(proc);
 	proc->parentId = parentId;
 	LIST_INIT(&proc->childList);
 
-	// 5. 返回分配的进程控制块
+	// 5. 如果parentId不为0，那么就将该进程加入到parentId进程的子进程列表中
+	if (parentId != 0) {
+		struct Proc *parent = pidToProcess(parentId);
+		assert(parent != NULL);
+		LIST_INSERT_HEAD(&(parent->childList), proc, procChildLink);
+	}
+
+	// 6. 返回分配的进程控制块
 	*pproc = proc;
 	return 0;
 }
@@ -215,6 +238,164 @@ static int loadCode(struct Proc *proc, const void *binary, size_t size, u64 *max
 	return 0;
 }
 
+static void dupPage(Pte *childTable, Pte *procTable, u64 va) {
+	Pte pte = ptLookup(procTable, va);
+	assert(pte != 0);
+	u64 perm = PTE_PERM(pte);
+
+	log(LEVEL_GLOBAL, "dupPage va = 0x%08lx\n", va);
+	// 1. 如果该页不可写，或是PTE_COW的，那么就原样映射
+	if ((pte & PTE_W) == 0 || (pte & PTE_COW)) {
+		panic_on(ptMap(childTable, va, pteToPa(pte), perm));
+	}
+	// 2. 否则，两者都加上PTE_COW位再映射
+	else {
+		panic_on(ptMap(childTable, va, pteToPa(pte), (perm ^ PTE_W) | PTE_COW));
+		panic_on(ptMap(procTable, va, pteToPa(pte), (perm ^ PTE_W) | PTE_COW));
+	}
+}
+
+int procFork(u64 stackTop) {
+	struct Proc *proc = myProc();
+	struct Proc *child;
+
+	log(LEVEL_GLOBAL, "begin fork!\n");
+
+	// 1. 申请一个proc
+	panic_on(procAlloc(&child, proc->pid, stackTop));
+
+	log(LEVEL_GLOBAL, "alloc a proc!\n");
+
+	// 2. 设置进程信息
+	child->priority = proc->priority;
+	child->state = RUNNABLE; // 等待下一步执行
+	strncpy(child->name, proc->name, MAX_PROC_NAME_LEN);
+	proc->name[MAX_PROC_NAME_LEN - 1] = 0;
+
+	log(LEVEL_GLOBAL, "begin scan page tables!\n");
+
+	// 3. COW 进程的未写入的页
+	// 遍历 proc 的三级页表
+	for (u64 i = 0; i <= PTX(~0, 1); i++) {
+		if (!(proc->pageTable[i] & PTE_V)) {
+			continue;
+		}
+		Pte *pt1 = (Pte *)pteToPa(proc->pageTable[i]);
+
+		for (u64 j = 0; j <= PTX(~0, 2); j++) {
+			if (!(pt1[j] & PTE_V)) {
+				continue;
+			}
+			Pte *pt2 = (Pte *)pteToPa(pt1[j]);
+
+			for (u64 k = 0; k <= PTX(~0, 3); k++) {
+				if (!(pt2[k] & PTE_V)) {
+					continue;
+				}
+
+				u64 va = (i << 30) | (j << 21) | (k << 12);
+
+				log(LEVEL_GLOBAL, "try to dup va = 0x%016lx\n", va);
+				// 查询child是否在此页有map，如果有，就跳过该页
+				Pte pte = ptLookup(child->pageTable, va);
+				if (pte != 0 && (pte & PTE_U) == 0) {
+					log(LEVEL_GLOBAL, "skip va = 0x%016lx, pte = 0x%016lx\n",
+					    va, pte);
+					continue;
+				}
+
+				dupPage(child->pageTable, proc->pageTable, va);
+			}
+		}
+	}
+
+	log(LEVEL_GLOBAL, "end scan page Table!\n");
+
+	// 4. 复制寄存器的值（除了sp）
+	*(child->trapframe) = *(proc->trapframe);
+	child->trapframe->sp = stackTop;
+	child->trapframe->a0 = 0; // 为子进程准备返回值
+
+	// TODO: 复制父进程已打开的文件
+
+	// 5. 寻找一个合适的CPU插入进程
+	int cpu = cpuid(); // TODO: 考虑随机分配的方法
+	loga("insert child proc %08lx\n", child->pid);
+	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], child, procSchedLink[cpu]);
+	assert(!TAILQ_EMPTY(&procSchedQueue[cpu]));
+
+	// 父进程返回子进程的pid，实现一个函数，两个返回值
+	return child->pid;
+}
+
+static char strBuf[1024];
+/**
+ * @param argv char *[]类型
+ */
+static inline u64 initStack(void *stackTop, u64 argv) {
+	u64 argUPtr[20]; // TODO: 可以允许更多的参数
+	u64 argc = 0;
+	void *stackNow = stackTop;
+
+	// 1. 存储 argv 数组里面的字符串
+	do {
+		u64 pStr, len;
+		copyIn(argv, &pStr, sizeof(void *));
+
+		// 空指针，表示结束
+		if (pStr == 0) {
+			break;
+		}
+
+		copyInStr(pStr, strBuf, 1024);
+		len = strlen(strBuf);
+
+		printf("str: %s\n", strBuf);
+
+		stackNow -= (len + 1);
+		safestrcpy(stackNow, strBuf, 1024);
+
+		argUPtr[argc++] = USTACKTOP - (stackTop - stackNow);
+
+		argv += sizeof(char *); // 读取下一个字符串
+	} while (1);
+	argUPtr[argc++] = 0;
+
+	// 2. 存储 char * 数组 argv
+	stackNow -= argc * sizeof(char *);
+	memcpy(stackNow, argUPtr, argc * sizeof(char *));
+
+	argc -= 1;
+
+	// 3. 存储argc（argv由用户本地计算）
+	stackNow -= sizeof(long);
+	*(u64 *)stackNow = argc;
+
+	return USTACKTOP - (stackTop - stackNow);
+}
+
+// TODO: envp
+void procExecve(u64 path, u64 argv, u64 envp) {
+	extern char binary_test_echo[];
+	extern int binary_test_echo_size;
+	void *binary = binary_test_echo;
+	int size = binary_test_echo_size;
+	struct Proc *proc = myProc();
+
+	// 1. 初始化trapframe
+	memset(proc->trapframe, 0, sizeof(struct trapframe));
+
+	// 2. 重新分配栈
+	// 之所以放在加载进程的代码段和数据段之前，是为了避免进程之前输入的字符串数据被覆盖
+	u64 stack = vmAlloc();
+	proc->trapframe->sp = initStack((void *)(stack + PAGE_SIZE), argv);
+	panic_on(ptMap(proc->pageTable, USTACKTOP - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
+	log(LEVEL_MODULE, "end init stack!\n");
+
+	// 3. 加载进程的代码段和数据段
+	panic_on(loadCode(proc, binary, size, &proc->programBreak));
+}
+
 /**
  * @brief 创建一个进程，并加载一些必要的段(.text，.data)。该函数决定进程被加载到哪个CPU上
  * @param binary 要加载的进程的二进制数据指针
@@ -223,15 +404,15 @@ static int loadCode(struct Proc *proc, const void *binary, size_t size, u64 *max
  * @param name 进程名称
  */
 struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 priority) {
+	static int creations = 0;
+
+	creations += 1;
 	struct Proc *proc;
 
 	// 1. 申请一个Proc
-	panic_on(procAlloc(&proc, 0));
-
 	// 设置父进程
-	if (proc->pid != PROCESS_INIT) {
-		proc->parentId = PROCESS_INIT;
-	}
+	u64 parentId = (creations == 1) ? 0 : PROCESS_INIT;
+	panic_on(procAlloc(&proc, parentId, 0));
 
 	// 2. 设置进程信息
 	proc->priority = priority;
@@ -278,7 +459,7 @@ void procRun(struct Proc *prev, struct Proc *next) {
 
 	// static int order = 0;
 	// // 打印当前调度的进程的信息
-	// loga("%03d:  %8s(0x%08lx)\n", ++order, next->name, next->pid);
+	// log(LEVEL_GLOBAL, "%03d:  %8s(0x%08lx)\n", ++order, next->name, next->pid);
 
 	mycpu()->proc = next;
 	next->state = RUNNING;
@@ -294,19 +475,19 @@ static void killProc(struct Proc *proc) {
 	loga("kill proc %s(0x%08lx)\n", proc->name, proc->pid);
 
 	// 1. 回收页表
-	for (u32 i = 0; i < PTX(~0, 1); i++) {
+	for (u64 i = 0; i <= PTX(~0, 1); i++) {
 		if (!(proc->pageTable[i] & PTE_V)) {
 			continue;
 		}
 		Pte *pt1 = (Pte *)pteToPa(proc->pageTable[i]);
 
-		for (u32 j = 0; j < PTX(~0, 2); j++) {
+		for (u64 j = 0; j <= PTX(~0, 2); j++) {
 			if (!(pt1[j] & PTE_V)) {
 				continue;
 			}
 			Pte *pt2 = (Pte *)pteToPa(pt1[j]);
 
-			for (u32 k = 0; k < PTX(~0, 3); k++) {
+			for (u64 k = 0; k <= PTX(~0, 3); k++) {
 				if (!(pt2[k] & PTE_V)) {
 					continue;
 				}
@@ -360,7 +541,8 @@ static void killProc(struct Proc *proc) {
  * @brief 回收僵尸进程的进程控制块
  */
 void procFree(struct Proc *proc) {
-	assert(proc->state == ZOMBIE);
+	log(LEVEL_GLOBAL, "trigger procFree!\n");
+	assertMsg(proc->state == ZOMBIE, "%s (0x%08lx)\n", proc->name, proc->pid);
 
 	// 1. 插入到空闲链表
 	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);

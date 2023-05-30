@@ -2,6 +2,7 @@
 // 管理进程睡眠事务
 //
 #include <dev/timer.h>
+#include <lib/printf.h>
 #include <lib/queue.h>
 #include <lib/string.h>
 #include <proc/proc.h>
@@ -31,6 +32,7 @@ void naiveSleep(struct Proc *proc, const char *reason) {
 void naiveWakeup(struct Proc *proc) {
 	int cpu = cpuid();
 	proc->state = RUNNABLE;
+	proc->sleepReason[0] = 0;
 	// 将此进程从睡眠队列中移除，加入到调度队列
 	LIST_REMOVE(proc, procSleepLink);
 	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
@@ -47,25 +49,27 @@ void sleepProc(struct Proc *proc, u64 clocks) {
 }
 
 /**
- * @brief 在每次时钟中断时调用。检查当前是否有可唤醒的进程
+ * @brief 在每次时钟中断时调用。检查当前是否有处于NanoSleep状态且可唤醒的进程
  */
 void wakeupProc() {
 	struct Proc *proc;
 	u64 curTime = getTime();
-	u64 cpu = cpuid();
 	int pick = 0;
 
 	do {
 		pick = 0;
 		LIST_FOREACH (proc, &procSleepList, procSleepLink) {
-			// loga("proc's pid = 0x%08lx\n", proc->pid);
+			if (strncmp(proc->sleepReason, "nanosleep", 16) != 0) {
+				continue;
+			}
+
 			// 该进程睡眠时间已超过设定时间
 			if (proc->procTime.procSleepBegin + proc->procTime.procSleepClocks <=
 			    curTime) {
 				pick = 1;
+
 				// 将此进程从睡眠队列中移除，加入到调度队列
-				LIST_REMOVE(proc, procSleepLink);
-				TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
+				naiveWakeup(proc);
 				break;
 			}
 		}

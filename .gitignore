@@ -24,3 +24,5 @@ todo.txt
 dtb.txt
 kernel-qemu
 syscall_test
+official_tests
+

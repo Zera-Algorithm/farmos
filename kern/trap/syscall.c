@@ -2,6 +2,7 @@
 #include <dev/timer.h>
 #include <lib/printf.h>
 #include <lib/string.h>
+#include <lib/transfer.h>
 #include <proc/proc.h>
 #include <proc/schedule.h>
 #include <proc/sleep.h>
@@ -10,49 +11,6 @@
 #include <trap/syscall_ids.h>
 
 i64 sysMunmap(u64 start, u64 len);
-void sysSchedYield();
-
-/**
- * @brief 将内核的数据拷贝到用户态地址
- */
-void copyOut(u64 uPtr, void *kPtr, int len) {
-	Pte *pgDir = myProc()->pageTable;
-
-	void *p = (void *)pteToPa(ptLookup(pgDir, uPtr));
-	u64 offset = uPtr & (PAGE_SIZE - 1);
-
-	if (offset != 0) {
-		memcpy(p + offset, kPtr, MIN(len, PAGE_SIZE - offset));
-	}
-
-	u64 i = uPtr + MIN(len, PAGE_SIZE - offset);
-	u64 dstVa = uPtr + len;
-	for (; i < dstVa; i += PAGE_SIZE) {
-		p = (void *)pteToPa(ptLookup(pgDir, i));
-		memcpy(p, kPtr + i - uPtr, MIN(dstVa - i, PAGE_SIZE));
-	}
-}
-
-/**
- * @brief 将用户的数据拷贝入内核
- */
-void copyIn(u64 uPtr, void *kPtr, int len) {
-	Pte *pgDir = myProc()->pageTable;
-
-	void *p = (void *)pteToPa(ptLookup(pgDir, uPtr));
-	u64 offset = uPtr & (PAGE_SIZE - 1);
-
-	if (offset != 0) {
-		memcpy(kPtr, p + offset, MIN(len, PAGE_SIZE - offset));
-	}
-
-	u64 i = uPtr + MIN(len, PAGE_SIZE - offset);
-	u64 dstVa = uPtr + len;
-	for (; i < dstVa; i += PAGE_SIZE) {
-		p = (void *)pteToPa(ptLookup(pgDir, i));
-		memcpy(kPtr + i - uPtr, p, MIN(dstVa - i, PAGE_SIZE));
-	}
-}
 
 i64 sysBrk(u64 addr) {
 	struct Proc *proc = myProc();
@@ -136,13 +94,22 @@ void sysSchedYield() {
 }
 
 // --------------------- 进程管理部分系统调用 --------------
-u64 sysClone() {
-	panic("unimplemented");
-	return 0;
+/**
+ * @brief 克隆一个子进程（或者子线程）
+ * @param flags 克隆选项。SIGCHLD：克隆子进程；
+ * @param stack 进程的栈顶
+ * @param ptid 父线程id，ignored
+ * @param tls TLS线程本地存储描述符，ignored
+ * @param ctid 子线程id，ignored
+ * @return 成功返回子进程的id，失败返回-1
+ */
+u64 sysClone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
+	log(LEVEL_GLOBAL, "clone a process.\n");
+	return procFork(stack);
 }
 
-u64 sysExecve() {
-	panic("unimplemented");
+u64 sysExecve(u64 path, u64 argv, u64 envp) {
+	procExecve(path, argv, envp);
 	return 0;
 }
 

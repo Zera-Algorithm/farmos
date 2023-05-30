@@ -6,6 +6,6 @@
 	.globl _userStart
 
 _userStart:
-	// 保证初始时，a0 = argc, a1 = argv
+	mv a0, sp
 	j libMain
 

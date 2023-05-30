@@ -3,6 +3,7 @@
 #include <dev/timer.h>
 #include <dev/virtio.h>
 #include <lib/printf.h>
+#include <lib/string.h>
 #include <lock/spinlock.h>
 #include <mm/memlayout.h>
 #include <param.h>
@@ -88,6 +89,43 @@ void kerneltrap() {
 }
 
 /**
+ * @brief 当写入一个不可写的页时，会触发Store page fault，excCode=15;
+ * @param stval 当发生页错误时，指代发生页错误的地址
+ */
+void pageFaultHandler(int excCode, u64 epc, u64 stval) {
+	log(LEVEL_GLOBAL, "A page fault occurred on: EPC = 0x%08lx, STVAL = 0x%016lx\n", epc,
+	    stval);
+	u64 badAddr = stval & ~(PAGE_SIZE - 1);
+	struct Proc *proc = myProc();
+
+	Pte pte = ptLookup(proc->pageTable, badAddr);
+	if (pte == 0) {
+		panic("Can\'t find page addr 0x%016lx.\n", badAddr);
+	}
+
+	if ((pte & PTE_U) == 0) {
+		panic("Write to kernel page! Panic!\n");
+	}
+
+	if (pte & PTE_W) {
+		panic("It is a PTE_W page! No way to handle!\n");
+	}
+
+	log(LEVEL_GLOBAL, "write to a not PTE_W page.\n");
+
+	if (pte & PTE_COW) {
+		u64 newPage = vmAlloc();
+		u64 oldPage = pteToPa(pte);
+		u64 perm = PTE_PERM(pte);
+		memcpy((void *)newPage, (void *)oldPage, PAGE_SIZE);
+		panic_on(ptMap(proc->pageTable, badAddr, newPage, (perm ^ PTE_COW) | PTE_W));
+		log(LEVEL_GLOBAL, "successfully filled COW page!\n");
+	} else {
+		panic("Not a PTE_COW Page!\n");
+	}
+}
+
+/**
  * @brief 处理来自用户的中断、异常或系统调用
  * @note 中断：时钟中断（交给调度器）、硬盘中断、键盘中断（Optional）
  * @note 异常：页写入异常，可以实现COW
@@ -115,7 +153,12 @@ void userTrap() {
 		if (excCode == EXCCODE_SYSCALL) {
 			// 处理系统调用
 			syscallEntry(myProc()->trapframe);
+		} else if (excCode == EXCCODE_PAGE_FAULT) {
+			pageFaultHandler(excCode, r_sepc(), r_stval());
 		} else {
+			printReg(myProc()->trapframe);
+			log(LEVEL_GLOBAL, "Curenv: pid = 0x%08lx, name = %s\n", myProc()->pid,
+			    myProc()->name);
 			panic("uncaught exception.\n"
 			      "\tcpu: %d\n"
 			      "\tExcCode: %d\n"

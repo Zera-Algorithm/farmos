@@ -88,7 +88,9 @@ char *safestrcpy(char *s, const char *t, int n) {
 	while (--n > 0 && (*s++ = *t++) != 0) {
 		;
 	}
-	*s = 0;
+	if (*(s - 1) != 0) {
+		*(s - 1) = 0;
+	}
 	return os;
 }
 

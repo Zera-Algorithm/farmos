@@ -1,6 +1,7 @@
 #ifndef _printk_h_
 #define _printk_h_
 
+#include <proc/proc.h>
 #include <stdarg.h>
 
 // 初始化锁
@@ -66,7 +67,7 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 #define LEVEL_GLOBAL 10
 
 // 定义的日志等级：越大，打印的信息越重要
-#define LOG_LEVEL MM_GLOBAL
+#define LOG_LEVEL 10
 #define log(level, ...)                                                                            \
 	if ((level) >= LOG_LEVEL)                                                                  \
 	_log(__FILE__, __LINE__, __func__, __VA_ARGS__)
@@ -87,5 +88,7 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 #define logIf(isLog, ...)                                                                          \
 	if ((isLog))                                                                               \
 	_log(__FILE__, __LINE__, __func__, __VA_ARGS__)
+
+void printReg(struct trapframe *tf);
 
 #endif /* _printk_h_ */
