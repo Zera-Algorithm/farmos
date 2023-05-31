@@ -33,8 +33,9 @@ $(modules):
 
 # TODO: 需要实现。现在仅仅是使用了一个使用mkfs创建的默认镜像
 fs.img:
-	dd if=/dev/zero of=fs.img bs=16k count=1024
-	mkfs.vfat -F 12 fs.img
+	cp backup_fs.img fs.img
+	# dd if=/dev/zero of=fs.img bs=16k count=1024
+	# mkfs.vfat -F 12 fs.img
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)

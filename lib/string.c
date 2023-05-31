@@ -1,5 +1,7 @@
 #include "types.h"
 
+int strlen(const char *s);
+
 void *memset(void *dst, int c, uint n) {
 	char *cdst = (char *)dst;
 	int i;
@@ -58,10 +60,51 @@ int strncmp(const char *p, const char *q, uint n) {
 	while (n > 0 && *p && *p == *q) {
 		n--, p++, q++;
 	}
-	if (n == 0) {
+	if (n == 0 || (*p == 0 && *q == 0)) {
 		return 0;
 	}
 	return (uchar)*p - (uchar)*q;
+}
+
+/**
+ * @brief 在字符串buf前面插入字符串s。保证buf数组有足够的空间
+ */
+void strins(char *buf, const char *str) {
+	int lbuf = strlen(buf);
+	int i;
+	int len = strlen(str);
+	for (i = lbuf; i >= 0; i--) {
+		buf[i+len] = buf[i];
+	}
+	for (i = 0; i < len; i++) {
+		buf[i] = str[i];
+	}
+}
+
+/**
+ * @brief 在字符串buf前面插入字符串str。保证buf数组有足够的空间
+ */
+void strnins(char *buf, const char *str, int len) {
+	int lbuf = strlen(buf);
+	int i;
+	for (i = lbuf; i >= 0; i--) {
+		buf[i + len] = buf[i];
+	}
+	for (i = 0; i < len; i++) {
+		buf[i] = str[i];
+	}
+}
+
+/**
+ * @brief 在字符串buf后面插入字符串s。保证buf数组有足够的空间
+ */
+void strcat(char *buf, const char *str) {
+	int lbuf = strlen(buf);
+	int i;
+	int len = strlen(str);
+	for (i = 0; i <= len; i++) {
+		buf[lbuf + i] = str[i];
+	}
 }
 
 char *strncpy(char *s, const char *t, int n) {

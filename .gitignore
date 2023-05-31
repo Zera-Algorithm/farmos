@@ -25,4 +25,5 @@ dtb.txt
 kernel-qemu
 syscall_test
 official_tests
+test_fat
 

@@ -1,4 +1,6 @@
-        # qemu -kernel loads the kernel at 0x80000000
+#include <mm/memlayout.h>
+
+	# qemu -kernel loads the kernel at 0x80000000
         # and causes each hart (i.e. CPU) to jump there.
         # kernel.ld causes the following code to
         # be placed at 0x80000000.
@@ -13,7 +15,7 @@ _entry:
         # status = Supervisor, a0 = hartid, a1 = dtb
         la sp, stack0
 
-        li t0, 1024*4
+        li t0, KSTACKSIZE
         mv t1, a0
         addi t1, t1, 1
         mul t0, t0, t1

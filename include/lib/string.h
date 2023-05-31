@@ -16,4 +16,8 @@ char *safestrcpy(char *, const char *, int);
 int strncmp(const char *, const char *, uint);
 char *strncpy(char *, const char *, int);
 
+void strnins(char *buf, const char *str, int len);
+void strcat(char *buf, const char *str);
+void strins(char *buf, const char *str);
+
 #endif // _STRING_H_

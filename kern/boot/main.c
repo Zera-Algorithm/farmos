@@ -5,6 +5,7 @@
 #include <dev/timer.h>
 #include <dev/virtio.h>
 #include <fs/buf.h>
+#include <fs/fat32.h>
 #include <lib/printf.h>
 #include <mm/memlayout.h>
 #include <mm/memory.h>
@@ -92,17 +93,21 @@ void main() {
 		}
 
 		// virtio驱动读写测试
-		virtioTest();
-		bufTest(0);
-		bufTest(1);
-		bufTest(2);
-		bufTest(0);
-		bufTest(3);
-		bufTest(4);
-		bufTest(0);
-		bufTest(5);
-		bufTest(6);
-		bufTest(7);
+		virtio_disk_init();
+		// virtioTest();
+		// bufTest(0);
+		// bufTest(1);
+		// bufTest(2);
+		// bufTest(0);
+		// bufTest(3);
+		// bufTest(4);
+		// bufTest(0);
+		// bufTest(5);
+		// bufTest(6);
+		// bufTest(7);
+
+		fat32Init();
+		fat32Test();
 
 		// testProcRun();
 		procInit();

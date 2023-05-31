@@ -8,7 +8,7 @@ void main();
 
 // entry.S needs one stack per CPU.
 // Note：内核栈只占一页的大小，所以不要放太大的数据结构
-__attribute__((aligned(16))) char stack0[4096 * NCPU];
+__attribute__((aligned(16))) char stack0[KSTACKSIZE * NCPU];
 
 // // 测试SBI中的内联汇编是否能正常工作
 // void test() {

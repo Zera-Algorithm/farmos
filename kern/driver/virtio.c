@@ -1,6 +1,5 @@
 #include <dev/virtio.h>
 #include <fs/buf.h>
-#include <fs/fs.h>
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <mm/memlayout.h>
@@ -301,7 +300,6 @@ void virtio_disk_intr() {
  */
 void virtioTest() {
 	log(LEVEL_GLOBAL, "begin virtio test!\n");
-	virtio_disk_init();
 	Buffer bufR, bufW;
 	BufferData bufDataR, bufDataW;
 	bufR.data = &bufDataR;

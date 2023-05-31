@@ -60,6 +60,8 @@
 #define PGROUNDUP(a) (((a) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
 #define PGROUNDDOWN(a) (((a)) & ~(PAGE_SIZE - 1))
 
+#define KSTACKSIZE (4096 * 4)
+
 // 内核的起始位置
 #define KERNBASE 0x80200000ul
 

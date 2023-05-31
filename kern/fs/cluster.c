@@ -7,8 +7,10 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-// 初始化
-err_t fatInit(FileSystem *fs) {
+/**
+ * @brief 簇层初始化，填写文件系统结构体里面的超级块
+ */
+err_t clusterInit(FileSystem *fs) {
 	log(FAT_MODULE, "Fat32 FileSystem Init Start\n");
 	// 读取 BPB
 	Buffer *buf = fs->get(fs, 0);
@@ -19,7 +21,7 @@ err_t fatInit(FileSystem *fs) {
 	// 从 BPB 中读取信息
 	FAT32BootParamBlock *bpb = (FAT32BootParamBlock *)(buf->data->data);
 
-	if (bpb == NULL || strncmp((char *)bpb->BS_FilSysType, "FAT32", 8)) {
+	if (bpb == NULL || strncmp((char *)bpb->BS_FilSysType, "FAT32", 5)) {
 		log(FAT_MODULE, "Not FAT32 File System\n");
 		return -E_UNKNOWN_FS;
 	}
@@ -76,7 +78,8 @@ static u64 clusterFatSecIndex(FileSystem *fs, u64 cluster) {
 }
 
 void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n, bool isUser) {
-	panic_on(offset + n < fs->superBlock.bytes_per_clus);
+	// 读的偏移不能超出该扇区
+	panic_on(offset + n > fs->superBlock.bytes_per_clus);
 
 	// 计算簇号 cluster 所在的扇区号
 	u64 secno = clusterSec(fs, cluster) + offset / fs->superBlock.bpb.bytes_per_sec;
@@ -103,7 +106,7 @@ void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n,
 }
 
 void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n, bool isUser) {
-	panic_on(offset + n < fs->superBlock.bytes_per_clus);
+	panic_on(offset + n > fs->superBlock.bytes_per_clus);
 
 	// 计算簇号 cluster 所在的扇区号
 	u64 secno = clusterSec(fs, cluster) + offset / fs->superBlock.bpb.bytes_per_sec;
@@ -154,8 +157,6 @@ u32 fatRead(FileSystem *fs, u64 cluster) {
 	bufRelease(buf);
 	return content;
 }
-
-#define FAT32_EOF 0xffffffff
 
 u64 clusterAlloc(FileSystem *fs, u64 prev) {
 	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2;

@@ -4,8 +4,11 @@
 #include <fs/fs.h>
 #include <types.h>
 
+// 7个f，最高4位保留
+#define FAT32_EOF 0xffffffful
+
 // FarmOS 定义的函数
-err_t fatInit(FileSystem *fs);
+err_t clusterInit(FileSystem *fs);
 void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n, bool isUser);
 void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n, bool isUser);
 

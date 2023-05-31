@@ -3,41 +3,34 @@
 
 #include <lib/queue.h>
 #include <types.h>
+#include <fs/fat32.h>
 
-#define MAX_NAME_LEN 100
+#define MAX_NAME_LEN 256
 
 typedef struct FileSystem FileSystem;
 typedef struct Dirent Dirent;
 typedef struct SuperBlock SuperBlock;
 
+LIST_HEAD(DirentList, Dirent);
+
 // FarmOS Dirent
 struct Dirent {
-	// char filename[FAT32_MAX_FILENAME + 1];
-	u8 attribute; // 是文件还是目录
-	// u8   create_time_tenth;
-	// u16  create_time;
-	// u16  create_date;
-	// u16  last_access_date;
-	u32 first_clus;
-	// u16  last_write_time;
-	// u16  last_write_date;
-	u32 file_size;
+	FAT32Directory rawDirEnt; // 原生的dirent项
+	char name[MAX_NAME_LEN];
 
-	u32 cur_clus;
-	u32 inodeMaxCluster;
-	u32 clus_cnt;
-	// Inode inode;
-
-	u8 _nt_res;
+	// 所在的文件系统
 	FileSystem *fileSystem;
+	u32 firstClus; // 第一个簇的簇号
+	u64 fileSize; // 文件大小
 	/* for OS */
 	// 操作系统相关的数据结构
 	enum { ZERO = 10, OSRELEASE = 12, NONE = 15 } dev;
-	FileSystem *head;
-	u32 off;	// offset in the parent dir entry, for writing convenience
-	Dirent *parent; // because FAT32 doesn't have such thing like inum,
-	Dirent *nextBrother;
-	Dirent *firstChild;
+	// FileSystem *head;
+	u32 off;	// 在上一个目录项中的内容偏移，用于写回
+
+	LIST_ENTRY(Dirent) direntLink; // 自己的链接
+	struct DirentList childList; // 子Dirent列表
+	struct Dirent *parentDirent; // 父亲Dirent列表
 };
 
 // FarmOS SuperBlock
@@ -62,16 +55,63 @@ struct SuperBlock {
 // FarmOS VFS
 struct FileSystem {
 	bool valid; // 是否有效
-	char name[MAX_NAME_LEN];
+	char name[8];
 	SuperBlock superBlock;					    // 超级块
 	Dirent root;						    // root项
-	struct File *image;					    // mount对应的文件
-	LIST_ENTRY(FileSystem) fsLink;				    // 串接项
-	int deviceNumber;					    // 对应真实设备的编号
+	struct Fd *image;					    // mount对应的文件描述符
+	int deviceNumber;					    // 对应真实设备的编号，暂不使用
 	struct Buffer *(*get)(struct FileSystem *fs, u64 blockNum); // 读取FS的一个Buffer
 	// 强制规定：传入的fs即为本身的fs
 	// 稍后用read返回的这个Buffer指针进行写入和释放动作
 	// 我们默认所有文件系统（不管是挂载的，还是从virtio读取的），都需要经过缓存层
 };
+
+union st_mode {
+	u32 val;
+	// 从低地址到高地址
+	struct {
+		unsigned other_x : 1;
+		unsigned other_w : 1;
+		unsigned other_r : 1;
+		unsigned group_x : 1;
+		unsigned group_w : 1;
+		unsigned group_r : 1;
+		unsigned user_x : 1;
+		unsigned user_w : 1;
+		unsigned user_r : 1;
+		unsigned t: 1;
+		unsigned g: 1;
+		unsigned u: 1;
+		unsigned file_type: 4;
+	} __attribute__((packed)) bits; // 取消优化对齐
+};
+
+
+typedef unsigned int mode_t;
+
+struct kstat {
+	uint64 st_dev;
+	uint64 st_ino;
+	mode_t st_mode;
+	uint32 st_nlink;
+	uint32 st_uid;
+	uint32 st_gid;
+	uint64 st_rdev;
+	unsigned long __pad;
+	off_t st_size;
+	uint32 st_blksize;
+	int __pad2;
+	uint64 st_blocks;
+	long st_atime_sec;
+	long st_atime_nsec;
+	long st_mtime_sec;
+	long st_mtime_nsec;
+	long st_ctime_sec;
+	long st_ctime_nsec;
+	unsigned __unused[2];
+};
+
+void allocFs(struct FileSystem **pFs);
+void deAllocFs(struct FileSystem *fs);
 
 #endif

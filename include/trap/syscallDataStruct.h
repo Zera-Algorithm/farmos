@@ -22,4 +22,9 @@ struct timespec {
 	long usec;
 };
 
+struct DirentUser {
+	// TODO
+};
+
 #endif
+

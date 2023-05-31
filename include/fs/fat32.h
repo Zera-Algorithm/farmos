@@ -52,15 +52,16 @@ typedef struct FAT32Directory {
 	u32 DIR_FileSize;
 } __attribute__((packed)) FAT32Directory;
 
+// 长文件名项存储文件名的wchar版本，所以读取文件名只能通过长文件名项
 typedef struct FAT32LongDirectory {
 	u8 LDIR_Ord;
-	u16 LDIR_Name1[5];
+	wchar LDIR_Name1[5];
 	u8 LDIR_Attr;
 	u8 LDIR_Type;
 	u8 LDIR_Chksum;
-	u16 LDIR_Name2[6];
+	wchar LDIR_Name2[6];
 	u16 LDIR_FstClusLO;
-	u16 LDIR_Name3[2];
+	wchar LDIR_Name3[2];
 } __attribute__((packed)) FAT32LongDirectory;
 
 #define BPB_SIZE sizeof(FAT32BootParamBlock)
@@ -73,28 +74,31 @@ typedef struct FAT32LongDirectory {
 #define ATTR_VOLUME_ID 0x08
 #define ATTR_DIRECTORY 0x10
 #define ATTR_ARCHIVE 0x20
+#define ATTR_LONG_NAME_MASK (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
+#define CHAR2LONGENT    26
+#define LAST_LONG_ENTRY     0x40
 
-// FAT32 官方文档中的函数
 
-//-----------------------------------------------------------------------------
-// ChkSum()
-// Returns an unsigned byte checksum computed on an unsigned byte
-// array. The array must be 11 bytes long and is assumed to contain
-// a name stored in the format of a MS-DOS directory entry.
-// Passed: pFcbName Pointer to an unsigned byte array assumed to be
-// 11 bytes long.
-// Returns: Sum An 8-bit unsigned checksum of the array pointed
-// to by pFcbName.
-//------------------------------------------------------------------------------
-unsigned char checkSum(unsigned char *pFcbName) {
-	short FcbNameLen;
-	unsigned char Sum;
-	Sum = 0;
-	for (FcbNameLen = 11; FcbNameLen != 0; FcbNameLen--) {
-		// NOTE: The operation is an unsigned char rotate right
-		Sum = ((Sum & 1) ? 0x80 : 0) + (Sum >> 1) + *pFcbName++;
-	}
-	return (Sum);
-}
+// FarmOS自定义属性，用来表示链接文件
+#define ATTR_LINK 0x40
+
+// FAT32 结构体大小定义
+#define DIRENT_SIZE 32
+
+unsigned char checkSum(unsigned char *pFcbName);
+void fat32Init();
+void fat32Test();
+
+// 文件系统层接口函数
+struct Dirent *getFile(struct Dirent *baseDir, char *path);
+int createFile(struct Dirent *baseDir, char *path, Dirent **file);
+int fileRead(struct Dirent *file, int user, u64 dst, uint off, uint n);
+int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n);
+int getDents(struct Dirent *dir, struct DirentUser *buf, int len);
+int linkAt(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *newPath);
+int unLinkAt(struct Dirent *dir, char *path);
+int makeDirAt(struct Dirent *baseDir, char *path);
+void fileStat(struct Dirent *file, struct kstat *pKStat);
+
 
 #endif
