@@ -1,11 +1,9 @@
 #include <dev/timer.h>
 #include <lib/elf.h>
-#include <lib/error.h>
+#include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
-#include <mm/memlayout.h>
-#include <mm/memory.h>
 #include <param.h>
 #include <proc/proc.h>
 #include <proc/schedule.h>
@@ -45,7 +43,7 @@ struct Proc testProc;
 u8 initcode[] = {0x01, 0xa0, 0x01, 0x00};
 // deprecated
 void testProcRun() {
-	loga("start init...\n");
+	log(DEFAULT, "start init...\n");
 	struct cpu *c = mycpu();
 
 	// 1. 设置proc
@@ -60,7 +58,7 @@ void testProcRun() {
 	// 3. 内存映射
 	panic_on(ptMap(pgDir, TRAMPOLINE, PGROUNDDOWN((u64)trampoline), PTE_R | PTE_X));
 
-	loga("to Alloc a page\n");
+	log(DEFAULT, "to Alloc a page\n");
 	void *trapframe = (void *)vmAlloc();
 	panic_on(ptMap(pgDir, TRAPFRAME, (u64)trapframe, PTE_R | PTE_W));
 	assert(pteToPa(ptLookup(pgDir, TRAPFRAME)) == (u64)trapframe);
@@ -120,11 +118,13 @@ static int initProcPageTable(struct Proc *proc, u64 stackTop) {
 
 	// TRAMPOLINE
 	// 由于TRAMPOLINE是用户与内核共享的空间，因此需要赋以 PTE_G 全局位
-	TRY(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
+	try
+		(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
 
 	// 该进程的trapframe
 	proc->trapframe = (struct trapframe *)vmAlloc();
-	TRY(ptMap(proc->pageTable, TRAPFRAME, (u64)proc->trapframe, PTE_R | PTE_W));
+	try
+		(ptMap(proc->pageTable, TRAPFRAME, (u64)proc->trapframe, PTE_R | PTE_W));
 
 	// 该进程的栈
 	u64 stack = vmAlloc();
@@ -134,7 +134,9 @@ static int initProcPageTable(struct Proc *proc, u64 stackTop) {
 	if (stackTop == 0) {
 		stackTop = USTACKTOP;
 		log(LEVEL_GLOBAL, "alloc stack address = 0x%08lx\n", stackTop - PAGE_SIZE);
-		TRY(ptMap(proc->pageTable, stackTop - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
+		try
+			(ptMap(proc->pageTable, stackTop - PAGE_SIZE, stack,
+			       PTE_R | PTE_W | PTE_U));
 	}
 
 	u64 *top = (void *)stack;
@@ -170,7 +172,8 @@ static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 	LIST_REMOVE(proc, procFreeLink);
 
 	// 3. 初始化进程proc的页表
-	TRY(initProcPageTable(proc, stackTop));
+	try
+		(initProcPageTable(proc, stackTop));
 
 	// 4. 设置进程的pid和父亲id，初始化子进程列表
 	proc->pid = makeProcId(proc);
@@ -320,7 +323,7 @@ int procFork(u64 stackTop) {
 
 	// 5. 寻找一个合适的CPU插入进程
 	int cpu = cpuid(); // TODO: 考虑随机分配的方法
-	loga("insert child proc %08lx\n", child->pid);
+	log(DEFAULT, "insert child proc %08lx\n", child->pid);
 	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], child, procSchedLink[cpu]);
 	assert(!TAILQ_EMPTY(&procSchedQueue[cpu]));
 
@@ -425,7 +428,7 @@ struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 p
 
 	// 4. 寻找一个合适的CPU插入进程
 	int cpu = cpuid(); // TODO: 考虑随机分配的方法
-	loga("insert proc %08lx\n", proc->pid);
+	log(DEFAULT, "insert proc %08lx\n", proc->pid);
 	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
 	assert(!TAILQ_EMPTY(&procSchedQueue[cpu]));
 
@@ -472,7 +475,7 @@ void procRun(struct Proc *prev, struct Proc *next) {
  *
  */
 static void killProc(struct Proc *proc) {
-	loga("kill proc %s(0x%08lx)\n", proc->name, proc->pid);
+	log(DEFAULT, "kill proc %s(0x%08lx)\n", proc->name, proc->pid);
 
 	// 1. 回收页表
 	for (u64 i = 0; i <= PTX(~0, 1); i++) {
@@ -542,7 +545,7 @@ static void killProc(struct Proc *proc) {
  */
 void procFree(struct Proc *proc) {
 	log(LEVEL_GLOBAL, "trigger procFree!\n");
-	assertMsg(proc->state == ZOMBIE, "%s (0x%08lx)\n", proc->name, proc->pid);
+	assert(proc->state == ZOMBIE);
 
 	// 1. 插入到空闲链表
 	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
@@ -595,7 +598,7 @@ void procDestroy(struct Proc *proc) {
 
 	if (myProc() == proc) {
 		mycpu()->proc = NULL;
-		loga("cpu %d's running process has been killed.\n", cpuid());
+		log(DEFAULT, "cpu %d's running process has been killed.\n", cpuid());
 		schedule(1);
 	}
 }

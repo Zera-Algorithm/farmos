@@ -1,5 +1,5 @@
 #include "lock/spinlock.h"
-#include "lib/printf.h"
+#include "lib/error.h"
 #include "mm/memlayout.h"
 #include "param.h"
 #include "proc/proc.h"

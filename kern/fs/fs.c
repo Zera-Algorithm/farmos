@@ -15,20 +15,20 @@ static struct FileSystem fs[MAX_FS_COUNT];
  * @brief 分配一个文件系统结构体
  */
 void allocFs(struct FileSystem **pFs) {
-    for (int i = 0; i < MAX_FS_COUNT; i++) {
-        if (fs[i].valid == 0) {
-            *pFs = &fs[i];
-            fs[i].valid = 1;
-            return;
-        }
-    }
-    panic("No more fs to alloc!");
+	for (int i = 0; i < MAX_FS_COUNT; i++) {
+		if (fs[i].valid == 0) {
+			*pFs = &fs[i];
+			fs[i].valid = 1;
+			return;
+		}
+	}
+	panic("No more fs to alloc!");
 }
 
 /**
  * @brief 释放一个文件系统结构体
  */
 void deAllocFs(struct FileSystem *fs) {
-    fs->valid = 0;
-    memset(fs, 0, sizeof(struct FileSystem));
+	fs->valid = 0;
+	memset(fs, 0, sizeof(struct FileSystem));
 }

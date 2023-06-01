@@ -2,7 +2,7 @@
 #include <fs/cluster.h>
 #include <fs/fat32.h>
 #include <lib/error.h>
-#include <lib/printf.h>
+#include <lib/log.h>
 #include <lib/string.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))

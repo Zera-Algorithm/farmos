@@ -29,9 +29,6 @@
 // 获取PTE中的PERM部分
 #define PTE_PERM(pte) ((pte) & ((1 << PTE_PPNSHIFT) - 1))
 
-// 页表相关声明
-typedef const u64 Pte;
-
 void vmmInit();
 
 u64 vmAlloc() __attribute__((warn_unused_result));

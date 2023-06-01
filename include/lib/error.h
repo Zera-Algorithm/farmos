@@ -13,17 +13,30 @@
 #define E_FILE_EXISTS 8
 #define E_EXCEED_FILE 9
 
+void _error(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
 
 /**
- * @brief 如果传入的expr小于0，则返回该值；否则无动作。适用于函数内错误的快速返回
- * @param expr：要判断的表达式
+ * @brief 错误日志输出
  */
-#define TRY(expr)                                                                                  \
+#define error(...)                                                                                 \
+	do {                                                                                       \
+		_error(__FILE__, __LINE__, __func__, __VA_ARGS__);                                 \
+	} while (0)
+
+#define panic(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
+
+#define panic_on(expr)                                                                             \
 	do {                                                                                       \
 		int r = (expr);                                                                    \
-		if (r < 0) {                                                                       \
-			loga("TRY error\n");                                                       \
-			return r;                                                                  \
+		if (r != 0) {                                                                      \
+			panic("'" #expr "' returned %d\n", r);                                     \
+		}                                                                                  \
+	} while (0)
+
+#define assert(expr)                                                                               \
+	do {                                                                                       \
+		if (!(expr)) {                                                                     \
+			panic("'" #expr "'");                                                      \
 		}                                                                                  \
 	} while (0)
 

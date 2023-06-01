@@ -7,8 +7,7 @@
 #include <fs/buf.h>
 #include <fs/fat32.h>
 #include <lib/printf.h>
-#include <mm/memlayout.h>
-#include <mm/memory.h>
+#include <mm/mmu.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <param.h>
@@ -61,8 +60,7 @@ void main() {
 		bufInit();
 
 		// initKernelMemory(); // 初始化内核页表
-		enablePagingHart(); // 开启分页
-		loga("Finish Paging!\n");
+		vmEnable(); // 开启分页
 		// procinit();      // process table
 		// trapinit();      // trap vectors
 		trapInitHart(); // install kernel trap vector
@@ -124,7 +122,7 @@ void main() {
 		}
 		__sync_synchronize();
 
-		enablePagingHart(); // turn on paging
+		vmEnable(); // turn on paging
 		printf("hart %d is starting\n", cpuid());
 		trapInitHart(); // install kernel trap vector
 		timerInit();

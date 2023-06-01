@@ -183,10 +183,6 @@ static inline uint64 r_satp() {
 	return x;
 }
 
-// 获取当前页目录物理地址
-// 注意：satp的低44位为物理页号PPN
-#define CUR_PGDIR ((r_satp() & ((1ul << 44) - 1)) << 12)
-
 static inline void w_mscratch(uint64 x) {
 	asm volatile("csrw mscratch, %0" : : "r"(x));
 }

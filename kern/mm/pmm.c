@@ -5,7 +5,8 @@
 
 #include <dev/dtb.h>
 #include <fs/buf.h>
-#include <lib/printf.h>
+#include <lib/error.h>
+#include <lib/log.h>
 #include <lib/string.h>
 #include <mm/pmm.h>
 

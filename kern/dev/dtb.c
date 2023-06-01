@@ -1,4 +1,6 @@
 #include "dev/dtb.h"
+#include "lib/error.h"
+#include "lib/log.h"
 #include "lib/printf.h"
 #include "lib/string.h"
 #include "mm/memlayout.h"

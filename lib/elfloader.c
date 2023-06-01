@@ -2,7 +2,7 @@
  * 此文件用于解析ELF文件
  */
 #include <lib/elf.h>
-#include <lib/printf.h>
+#include <lib/log.h>
 #include <mm/memlayout.h>
 #include <mm/vmm.h>
 #include <riscv.h>
@@ -48,7 +48,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 		perm |= PTE_X;
 	}
 
-	loga("load segment to va 0x%016lx, size = 0x%x, perm = 0x%x\n", va, memSize, perm);
+	log(DEFAULT, "load segment to va 0x%016lx, size = 0x%x, perm = 0x%x\n", va, memSize, perm);
 
 	// 1. 映射第一个页
 	int r;

@@ -4,7 +4,7 @@
 #include <fs/fs.h>
 
 void direntInit();
-Dirent* direntAlloc();
+Dirent *direntAlloc();
 void direntDeAlloc(Dirent *dirent);
 
 #endif

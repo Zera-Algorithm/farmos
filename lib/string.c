@@ -74,7 +74,7 @@ void strins(char *buf, const char *str) {
 	int i;
 	int len = strlen(str);
 	for (i = lbuf; i >= 0; i--) {
-		buf[i+len] = buf[i];
+		buf[i + len] = buf[i];
 	}
 	for (i = 0; i < len; i++) {
 		buf[i] = str[i];

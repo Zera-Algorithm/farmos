@@ -1,6 +1,6 @@
 // 处理 wchar 相关事务
-#include <types.h>
 #include <lib/string.h>
+#include <types.h>
 
 int wstrlen(const wchar *s) {
 	int n;
@@ -37,4 +37,3 @@ int wstr2str(char *dst, const wchar *src) {
 	dst[i] = 0;
 	return i;
 }
-

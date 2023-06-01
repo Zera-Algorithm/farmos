@@ -1,5 +1,4 @@
-#include "mm/memlayout.h"
-#include "mm/memory.h"
+
 #include "param.h"
 #include "proc/proc.h"
 #include "riscv.h"

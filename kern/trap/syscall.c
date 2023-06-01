@@ -1,5 +1,6 @@
 #include <dev/rtc.h>
 #include <dev/timer.h>
+#include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
@@ -80,6 +81,7 @@ u64 sysWrite(int fd, const void *buf, size_t count) {
 		copyIn((u64)buf, strBuf, count);
 		strBuf[count] = 0;
 		printf("%s", strBuf);
+		warn("BUG PRINTF");
 	} else {
 		panic("unimplement fd");
 	}

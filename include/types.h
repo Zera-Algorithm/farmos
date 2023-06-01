@@ -23,6 +23,10 @@ typedef enum { false = 0, true = 1 } bool;
 typedef u64 size_t;
 typedef i32 err_t; // err_t允许返回负数，不能用u开头的类型
 typedef i64 off_t;
+typedef u64 pte_t;
+
+// FarmOS 页表项
+typedef pte_t Pte;
 
 // Old Defination
 typedef unsigned int uint;

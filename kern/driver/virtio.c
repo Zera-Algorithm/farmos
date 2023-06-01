@@ -1,9 +1,9 @@
 #include <dev/virtio.h>
 #include <fs/buf.h>
-#include <lib/printf.h>
+#include <lib/error.h>
+#include <lib/log.h>
 #include <lib/string.h>
 #include <mm/memlayout.h>
-#include <mm/memory.h>
 #include <param.h>
 #include <riscv.h>
 #include <types.h>

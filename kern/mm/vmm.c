@@ -1,13 +1,9 @@
-
-
 #include <lib/error.h>
-#include <lib/printf.h>
+#include <lib/log.h>
 #include <lib/string.h>
+#include <mm/mmu.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
-
-extern Pte *curPgdir();
-extern void flushTlb();
 
 Pte *kernPd;
 
@@ -77,8 +73,8 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) { // TODO:STATIC!!!!!!!!!!
 				pmPageIncRef(newPage);
 				// 将新页表的物理地址写入当前页表项
 				ptModify(curPte, pageToPte(newPage) | PTE_V);
-				if (curPgdir() == pageDir) {
-					flushTlb(va);
+				if (ptFetch() == pageDir) {
+					tlbFlush(va);
 				}
 				// 将新页表的虚拟地址赋值给 curPageTable
 				curPageTable = (Pte *)pageToPa(newPage);
@@ -102,8 +98,7 @@ static void memoryTest() {
 	u64 pte;
 	for (uint64 va = KERNBASE; va < pmTop(); va += PAGE_SIZE) {
 		pte = ptLookup(kernPd, va);
-		assertMsg(pteToPa(pte) == va, "map error! va(0x%016lx) mapped to pa(0x%016lx)!\n",
-			  va, pteToPa(pte));
+		assert(pteToPa(pte) == va);
 	}
 	log(LEVEL_GLOBAL, "Passed Kernel MemMap Test!\n");
 }
@@ -170,8 +165,8 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 
 	// 建立新的映射
 	ptModify(pte, paToPte(pa) | perm | PTE_V);
-	if (curPgdir() == pgdir) {
-		flushTlb();
+	if (ptFetch() == pgdir) {
+		tlbFlush();
 	}
 
 	log(LEVEL_MODULE, "end insert of va 0x%016lx, pa 0x%016lx\n", va, pa);
@@ -185,8 +180,8 @@ err_t ptUnmap(Pte *pgdir, u64 va) {
 	}
 	// 维护引用计数并清除页表项内容
 	ptClear(pte);
-	if (curPgdir() == pgdir) {
-		flushTlb(va);
+	if (ptFetch() == pgdir) {
+		tlbFlush(va);
 	}
 	return 0;
 }

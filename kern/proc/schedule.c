@@ -1,4 +1,4 @@
-#include <lib/printf.h>
+#include <lib/log.h>
 #include <lib/string.h>
 #include <mm/vmm.h>
 #include <param.h>
@@ -19,7 +19,7 @@
 void schedule(u64 yield) {
 	static int count = 1;
 	struct Proc *proc = myProc();
-	// loga("schedule: count = %d\n", count);
+	// log(DEFAULT, "schedule: count = %d\n", count);
 	int cpu = cpuid();
 
 	if (yield || count == 0 || proc == NULL || !procCanRun(proc)) {

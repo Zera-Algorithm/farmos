@@ -1,4 +1,4 @@
-#include <lib/print.h>
+#include <lib/vprint.h>
 
 /* forward declaration */
 static void print_char(fmt_callback_t, void *, char, int, int);

@@ -1,7 +1,7 @@
 #include <dev/sbi.h>
-#include <lib/print.h>
 #include <lib/printf.h>
 #include <lib/terminal.h>
+#include <lib/vprint.h>
 #include <lock/spinlock.h>
 #include <proc/proc.h>
 #include <riscv.h>
