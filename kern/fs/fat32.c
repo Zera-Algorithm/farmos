@@ -341,8 +341,7 @@ static int dirAllocFile(Dirent *dir, Dirent **file, char *name) {
 	assert(strlen(name) < 10);
 
 	Dirent *dirent = direntAlloc();
-	try
-		(dirAllocEntry(dir, &dirent));
+	unwrap(dirAllocEntry(dir, &dirent));
 	strncpy((char *)dirent->rawDirEnt.DIR_Name, name, 11);
 	strncpy(dirent->name, name, 11);
 
@@ -380,8 +379,7 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 		return r;
 	}
 
-	try
-		(dirAllocFile(dir, &f, lastElem));
+	unwrap(dirAllocFile(dir, &f, lastElem));
 
 	// 无论如何，创建了的文件至少应当分配一个块
 	f->fileSize = 0;
@@ -546,8 +544,7 @@ int linkAt(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 	char path[MAX_NAME_LEN];
 	fileGetPath(oldFile, path);
 
-	try
-		(createFile(newDir, newPath, &newFile));
+	unwrap(createFile(newDir, newPath, &newFile));
 	newFile->rawDirEnt.DIR_Attr |= ATTR_LINK;
 	writeBackDirent(newFile);
 
@@ -588,8 +585,7 @@ int makeDirAt(struct Dirent *baseDir, char *path) {
 		return r;
 	}
 
-	try
-		(dirAllocFile(dir, &f, lastElem));
+	unwrap(dirAllocFile(dir, &f, lastElem));
 
 	f->fileSize = 0;
 	f->firstClus = clusterAlloc(dir->fileSystem, 0);

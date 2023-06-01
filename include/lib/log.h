@@ -37,15 +37,14 @@ void _warn(const char *, int, const char *, const char *, ...);
 		_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                                  \
 	} while (0)
 
-#define try                                                                                        \
-	(expr) do {                                                                                \
+#define unwrap(expr)                                                                               \
+	do {                                                                                       \
 		typeof(expr) __r = (expr);                                                         \
 		if (__r != 0) {                                                                    \
 			warn("'" #expr "' returned %d\n", __r);                                    \
 			return __r;                                                                \
 		}                                                                                  \
-	}                                                                                          \
-	while (0)
+	} while (0)
 
 #include <lib/error.h>
 

@@ -118,13 +118,11 @@ static int initProcPageTable(struct Proc *proc, u64 stackTop) {
 
 	// TRAMPOLINE
 	// 由于TRAMPOLINE是用户与内核共享的空间，因此需要赋以 PTE_G 全局位
-	try
-		(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
+	unwrap(ptMap(proc->pageTable, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
 
 	// 该进程的trapframe
 	proc->trapframe = (struct trapframe *)vmAlloc();
-	try
-		(ptMap(proc->pageTable, TRAPFRAME, (u64)proc->trapframe, PTE_R | PTE_W));
+	unwrap(ptMap(proc->pageTable, TRAPFRAME, (u64)proc->trapframe, PTE_R | PTE_W));
 
 	// 该进程的栈
 	u64 stack = vmAlloc();
@@ -134,9 +132,7 @@ static int initProcPageTable(struct Proc *proc, u64 stackTop) {
 	if (stackTop == 0) {
 		stackTop = USTACKTOP;
 		log(LEVEL_GLOBAL, "alloc stack address = 0x%08lx\n", stackTop - PAGE_SIZE);
-		try
-			(ptMap(proc->pageTable, stackTop - PAGE_SIZE, stack,
-			       PTE_R | PTE_W | PTE_U));
+		unwrap(ptMap(proc->pageTable, stackTop - PAGE_SIZE, stack, PTE_R | PTE_W | PTE_U));
 	}
 
 	u64 *top = (void *)stack;
@@ -172,8 +168,7 @@ static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 	LIST_REMOVE(proc, procFreeLink);
 
 	// 3. 初始化进程proc的页表
-	try
-		(initProcPageTable(proc, stackTop));
+	unwrap(initProcPageTable(proc, stackTop));
 
 	// 4. 设置进程的pid和父亲id，初始化子进程列表
 	proc->pid = makeProcId(proc);
