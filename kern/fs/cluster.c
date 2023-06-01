@@ -136,20 +136,22 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 static void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 	panic_on(cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1);
 
-	u64 fatSec = clusterFatSec(fs, cluster, 1); // TODO: SYNCRONIZE OTHER FAT
-	Buffer *buf = fs->get(fs, fatSec);
-	u32 *fat = (u32 *)buf->data->data;
-	// 写入 FAT 表中的内容
-	fat[clusterFatSecIndex(fs, cluster)] = content;
-	bufWrite(buf);
-	bufRelease(buf);
+	for (u8 fatno = 1; fatno <= fs->superBlock.bpb.fat_cnt; fatno++) {
+		u64 fatSec = clusterFatSec(fs, cluster, fatno);
+		Buffer *buf = fs->get(fs, fatSec);
+		u32 *fat = (u32 *)buf->data->data;
+		// 写入 FAT 表中的内容
+		fat[clusterFatSecIndex(fs, cluster)] = content;
+		bufWrite(buf);
+		bufRelease(buf);
+	}
 }
 
 u32 fatRead(FileSystem *fs, u64 cluster) {
 	if (cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1) {
 		return 0;
 	}
-	u64 fatSec = clusterFatSec(fs, cluster, 1); // TODO: SYNCRONIZE OTHER FAT
+	u64 fatSec = clusterFatSec(fs, cluster, 1);
 	Buffer *buf = fs->get(fs, fatSec);
 	u32 *fat = (u32 *)buf->data->data;
 	// 读取 FAT 表中的内容
