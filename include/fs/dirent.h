@@ -1,7 +1,7 @@
 #ifndef _DIRENT_H
 #define _DIRENT_H
-#include <fs/fat32.h>
-#include <fs/fs.h>
+
+typedef struct Dirent Dirent;
 
 void direntInit();
 Dirent *direntAlloc();

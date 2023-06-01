@@ -1,6 +1,8 @@
 #ifndef _FAT32_H
 #define _FAT32_H
 
+#include <fs/dirent.h>
+#include <trap/syscallDataStruct.h>
 #include <types.h>
 
 typedef struct FAT32BootParamBlock {
@@ -84,19 +86,33 @@ typedef struct FAT32LongDirectory {
 // FAT32 结构体大小定义
 #define DIRENT_SIZE 32
 
-// unsigned char checkSum(unsigned char *pFcbName);
+unsigned char checkSum(unsigned char *pFcbName);
 void fat32Init();
 void fat32Test();
 
-// 文件系统层接口函数
-// struct Dirent *getFile(struct Dirent *baseDir, char *path);
-// int createFile(struct Dirent *baseDir, char *path, Dirent **file);
-// int fileRead(struct Dirent *file, int user, u64 dst, uint off, uint n);
-// int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n);
-// int getDents(struct Dirent *dir, struct DirentUser *buf, int len);
-// int linkAt(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *newPath);
-// int unLinkAt(struct Dirent *dir, char *path);
-// int makeDirAt(struct Dirent *baseDir, char *path);
-// void fileStat(struct Dirent *file, struct kstat *pKStat);
+typedef struct Dirent Dirent;
+
+typedef unsigned int mode_t;
+struct kstat {
+	uint64 st_dev;
+	uint64 st_ino;
+	mode_t st_mode;
+	uint32 st_nlink;
+	uint32 st_uid;
+	uint32 st_gid;
+	uint64 st_rdev;
+	unsigned long __pad;
+	off_t st_size;
+	uint32 st_blksize;
+	int __pad2;
+	uint64 st_blocks;
+	long st_atime_sec;
+	long st_atime_nsec;
+	long st_mtime_sec;
+	long st_mtime_nsec;
+	long st_ctime_sec;
+	long st_ctime_nsec;
+	unsigned __unused[2];
+};
 
 #endif

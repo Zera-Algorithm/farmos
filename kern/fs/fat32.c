@@ -16,6 +16,7 @@
 
 static struct FileSystem *fatFs;
 static void writeBackDirent(Dirent *dirent);
+static int countClusters(struct Dirent *file);
 
 // 用于在查询文件名时存放长文件名项
 typedef struct longEntSet {
@@ -51,7 +52,9 @@ void fat32Init() {
 	fs->root.rawDirEnt.DIR_Attr = ATTR_DIRECTORY;
 	fs->root.rawDirEnt.DIR_FileSize = 0; // 目录的Dirent的size都是0
 	fs->root.parentDirent = NULL;	     // 父节点为空，表示已经到达根节点
+	// 此句必须放在countCluster之前，用于设置fs
 	fs->root.fileSystem = fs;
+	fs->root.fileSize = countClusters(&fs->root) * CLUS_SIZE(fs);
 
 	assert(sizeof(FAT32Directory) == DIRENT_SIZE);
 	fatFs = fs;
@@ -100,9 +103,10 @@ static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **fi
 
 	longSet->cnt = 0; // 初始化longSet有0个元素
 	int clus = dir->firstClus;
+	int clusIndex = 0;
 
-	for (i = clus; i != FAT32_EOF; i = fatRead(fs, i)) {
-		printf("clus %d\n", i);
+	for (i = clus; i != FAT32_EOF; i = fatRead(fs, i), clusIndex += 1) {
+		log(LEVEL_MODULE, "Scaning Clus %d...\n", i);
 		// 1. 读取文件的第i个簇
 		clusterRead(fs, i, 0, clusBuf, clusSize, 0);
 
@@ -139,7 +143,7 @@ static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **fi
 					tmpName[11] = 0;
 				}
 
-				printf("find: \"%s\"\n", tmpName);
+				log(LEVEL_MODULE, "find: \"%s\"\n", tmpName);
 				// writef("size = %d\n", sizeof(FAT32LongDirectory));
 				if (strncmp(tmpName, name, MAX_NAME_LEN) == 0) {
 					// 找到了名称相同的文件
@@ -152,6 +156,7 @@ static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **fi
 					    f->DIR_FstClusHI * 65536 + f->DIR_FstClusLO;
 					dirent->fileSize = f->DIR_FileSize;
 					dirent->parentDirent = dir; // 设置父级目录项
+					dirent->off = clusIndex * clusSize + j * DIR_SIZE;
 					strncpy(dirent->name, tmpName, MAX_NAME_LEN);
 
 					LIST_INIT(&dirent->childList);
@@ -170,8 +175,7 @@ static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **fi
 			}
 		}
 	}
-	printf("Here!\n");
-
+	log(LEVEL_GLOBAL, "File \"%s\" Not found!\n", name);
 	return -E_NOT_FOUND;
 }
 
@@ -195,7 +199,6 @@ static char *skipSlash(char *p) {
 // TODO: 动态根据Dirent识别 fs，以及引入链接和虚拟文件的机制
 static int walkPath(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile,
 		    char *lastelem, longEntSet *longSet) {
-	printf("walk pathing...\n");
 	char *p;
 	char name[MAX_NAME_LEN];
 	Dirent *dir, *file;
@@ -385,6 +388,7 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 	f->fileSize = 0;
 	f->firstClus = clusterAlloc(dir->fileSystem, 0);
 	f->parentDirent = dir; // 设置父亲节点，以安排写回
+	f->fileSystem = dir->fileSystem;
 
 	syncDirentRawDataBack(f);
 
@@ -406,8 +410,10 @@ static u32 fileGetClusterNo(Dirent *file, int fileClusNo) {
 /**
  * @brief 将文件 entry 的 off 偏移往后长度为 n 的内容读到 dst 中。如果 user
  * 为真，则为用户地址，否则为内核地址。
+ * @return 返回写入文件的字节数
  */
 int fileRead(struct Dirent *file, int user, u64 dst, uint off, uint n) {
+	assert(n != 0);
 	if (off + n > file->fileSize) {
 		// 超出文件的最大范围
 		return E_EXCEED_FILE;
@@ -466,9 +472,11 @@ static void fileExtend(struct Dirent *file, int newSize) {
  * @brief 将 src 写入文件 entry 的 off 偏移往后长度为 n 的内容。如果 user
  * 为真，则为用户地址，否则为内核地址。
  * @note 允许写入的内容超出文件，此时将扩展文件
+ * @return 返回写入文件的字节数
  */
 int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n) {
-	if (off >= file->fileSize) {
+	assert(n != 0);
+	if (off > file->fileSize) {
 		return -E_EXCEED_FILE;
 	} else if (off + n > file->fileSize) {
 		// 超出文件的最大范围
@@ -624,58 +632,59 @@ void fileStat(struct Dirent *file, struct kstat *pKStat) {
 	pKStat->st_ctime_nsec = 0;
 }
 
-// // FAT32 官方文档中的函数
+// FAT32 官方文档中的函数
 
-// //-----------------------------------------------------------------------------
-// // ChkSum()
-// // Returns an unsigned byte checksum computed on an unsigned byte
-// // array. The array must be 11 bytes long and is assumed to contain
-// // a name stored in the format of a MS-DOS directory entry.
-// // Passed: pFcbName Pointer to an unsigned byte array assumed to be
-// // 11 bytes long.
-// // Returns: Sum An 8-bit unsigned checksum of the array pointed
-// // to by pFcbName.
-// //------------------------------------------------------------------------------
-// static unsigned char checkSum(unsigned char *pFcbName) {
-// 	short FcbNameLen;
-// 	unsigned char Sum;
-// 	Sum = 0;
-// 	for (FcbNameLen = 11; FcbNameLen != 0; FcbNameLen--) {
-// 		// NOTE: The operation is an unsigned char rotate right
-// 		Sum = ((Sum & 1) ? 0x80 : 0) + (Sum >> 1) + *pFcbName++;
-// 	}
-// 	return (Sum);
-// }
+//-----------------------------------------------------------------------------
+// ChkSum()
+// Returns an unsigned byte checksum computed on an unsigned byte
+// array. The array must be 11 bytes long and is assumed to contain
+// a name stored in the format of a MS-DOS directory entry.
+// Passed: pFcbName Pointer to an unsigned byte array assumed to be
+// 11 bytes long.
+// Returns: Sum An 8-bit unsigned checksum of the array pointed
+// to by pFcbName.
+//------------------------------------------------------------------------------
+unsigned char checkSum(unsigned char *pFcbName) {
+	short FcbNameLen;
+	unsigned char Sum;
+	Sum = 0;
+	for (FcbNameLen = 11; FcbNameLen != 0; FcbNameLen--) {
+		// NOTE: The operation is an unsigned char rotate right
+		Sum = ((Sum & 1) ? 0x80 : 0) + (Sum >> 1) + *pFcbName++;
+	}
+	return (Sum);
+}
 
 char buf[8192];
 void fat32Test() {
 	// 测试读取文件
 	Dirent *file = getFile(NULL, "/text.txt");
 	assert(file != NULL);
-	fileRead(file, 0, (u64)buf, 0, file->fileSize);
+	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("%s\n", buf);
 
 	// 测试写入文件
 	char *str = "Hello! I\'m "
 		    "zrp!"
-		    "\n3333333333333333333333333333333333333333333333333333333333333333333333333333"
-		    "33333333333333333333333333333333333333333333\n2222222222222222222222222\nend";
+		    "\n3233333333233333333233333333233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "23333333323333333322222222222222222222222222";
 	int len = strlen(str) + 1;
-	fileWrite(file, 0, (u64)str, 0, len);
+	panic_on(fileWrite(file, 0, (u64)str, 0, len) < 0);
 
 	// 读出文件
-	fileRead(file, 0, (u64)buf, 0, file->fileSize);
+	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("%s\n", buf);
 
 	// 测试创建文件
-	panic_on(createFile(NULL, "/zrp.txt", &file));
+	panic_on(createFile(NULL, "/zrp.txt", &file) < 0);
 	char *str2 = "Hello! I\'m zrp!\n";
-	fileWrite(file, 0, (u64)str2, 0, strlen(str2) + 1);
+	panic_on(fileWrite(file, 0, (u64)str2, 0, strlen(str2) + 1) < 0);
 
 	// 读取刚创建的文件
 	file = getFile(NULL, "/zrp.txt");
 	assert(file != NULL);
-	fileRead(file, 0, (u64)buf, 0, file->fileSize);
+	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("file zrp.txt: %s\n", buf);
 
 	panic("");
