@@ -96,9 +96,9 @@ void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n,
 		size_t len = min(fs->superBlock.bpb.bytes_per_sec - secoff, n - i);
 		if (isUser) {
 			extern void copyOut(u64 uPtr, void *kPtr, int len);
-			copyOut((u64)dst + i, buf->data->data, len);
+			copyOut((u64)dst + i, &buf->data->data[secoff], len);
 		} else {
-			memcpy(dst + i, buf->data->data, len);
+			memcpy(dst + i, &buf->data->data[secoff], len);
 		}
 		bufRelease(buf);
 		i += len;
@@ -123,9 +123,9 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 		size_t len = min(fs->superBlock.bpb.bytes_per_sec - secoff, n - i);
 		if (isUser) {
 			extern void copyIn(u64 uPtr, void *kPtr, int len);
-			copyIn((u64)src + i, buf->data->data, len);
+			copyIn((u64)src + i, &buf->data->data[secoff], len);
 		} else {
-			memcpy(buf->data->data, src + i, len);
+			memcpy(&buf->data->data[secoff], src + i, len);
 		}
 		bufWrite(buf);
 		bufRelease(buf);
