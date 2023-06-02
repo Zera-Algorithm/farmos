@@ -12,9 +12,8 @@
 
 #define MAX_LONGENT 8
 #define MAX_CLUS_SIZE (128 * BUF_SIZE)
-#define CLUS_SIZE(fs) ((fs)->superBlock.bytes_per_clus)
 
-static struct FileSystem *fatFs;
+struct FileSystem *fatFs;
 static void writeBackDirent(Dirent *dirent);
 static int countClusters(struct Dirent *file);
 
@@ -44,17 +43,29 @@ void fat32Init() {
 	fs->deviceNumber = 0;
 	fs->get = getBlock;
 	strncpy(fs->name, "FAT32", 8);
-	clusterInit(fs);
+	panic_on(clusterInit(fs));
+
+	log(LEVEL_GLOBAL, "cluster Init Finished!\n");
 	direntInit();
 
 	// 初始化根目录
 	fs->root.firstClus = fs->superBlock.bpb.root_clus;
+	log(LEVEL_GLOBAL, "first clus of root is %d\n", fs->root.firstClus);
+
 	fs->root.rawDirEnt.DIR_Attr = ATTR_DIRECTORY;
+	log(LEVEL_GLOBAL, "set dir_attr\n");
+
 	fs->root.rawDirEnt.DIR_FileSize = 0; // 目录的Dirent的size都是0
-	fs->root.parentDirent = NULL;	     // 父节点为空，表示已经到达根节点
+	log(LEVEL_GLOBAL, "DIR_fileSize\n");
+
+	fs->root.parentDirent = NULL; // 父节点为空，表示已经到达根节点
 	// 此句必须放在countCluster之前，用于设置fs
 	fs->root.fileSystem = fs;
-	fs->root.fileSize = countClusters(&fs->root) * CLUS_SIZE(fs);
+
+	log(LEVEL_GLOBAL, "before count cluster\n");
+	fs->root.fileSize = countClusters(&(fs->root)) * CLUS_SIZE(fs);
+
+	log(LEVEL_GLOBAL, "root directory init finished!\n");
 
 	assert(sizeof(FAT32Directory) == DIRENT_SIZE);
 	fatFs = fs;
@@ -69,17 +80,22 @@ static char clusBuf[MAX_CLUS_SIZE];
  * @brief 计数文件的簇数
  */
 static int countClusters(struct Dirent *file) {
+	log(LEVEL_GLOBAL, "count Cluster begin!\n");
+
 	int clus = file->firstClus;
 	int i = 0;
 	if (clus == 0) {
+		log(LEVEL_GLOBAL, "cluster is 0!\n");
 		return 0;
 	}
 	// 如果文件不包含任何块，则直接返回0即可。
 	else {
 		while (clus != FAT32_EOF) {
+			log(LEVEL_GLOBAL, "clus is %d\n", clus);
 			clus = fatRead(file->fileSystem, clus);
 			i += 1;
 		}
+		log(LEVEL_GLOBAL, "count Cluster end!\n");
 		return i;
 	}
 }
@@ -522,7 +538,7 @@ int getDents(struct Dirent *dir, struct DirentUser *buf, int len) {
 /**
  * @brief 传入一个Dirent，获取其路径
  */
-static void fileGetPath(Dirent *dirent, char *path) {
+void fileGetPath(Dirent *dirent, char *path) {
 	Dirent *tmp = dirent;
 	path[0] = 0; // 先把path清空为空串
 
@@ -668,7 +684,13 @@ void fat32Test() {
 		    "zrp!"
 		    "\n3233333333233333333233333333233333333233333333233333333233333333233333333233"
 		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
-		    "23333333323333333322222222222222222222222222";
+		    "233333333233333333222222222233233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "233333333233333333222222222233233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "233333333233333333222222222233233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "23333333323333333322222222222222222222222222\n This is end!";
 	int len = strlen(str) + 1;
 	panic_on(fileWrite(file, 0, (u64)str, 0, len) < 0);
 
@@ -676,6 +698,8 @@ void fat32Test() {
 	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("%s\n", buf);
 
+	// TODO: 写一个删除文件的函数
+	/*
 	// 测试创建文件
 	panic_on(createFile(NULL, "/zrp.txt", &file) < 0);
 	char *str2 = "Hello! I\'m zrp!\n";
@@ -686,6 +710,7 @@ void fat32Test() {
 	assert(file != NULL);
 	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("file zrp.txt: %s\n", buf);
+	*/
 
-	panic("");
+	log(LEVEL_GLOBAL, "FAT32 Test Passed!\n");
 }

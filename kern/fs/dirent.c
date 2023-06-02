@@ -17,6 +17,7 @@ void direntInit() {
 	for (int i = 0; i < MAX_DIRENT; i++) {
 		LIST_INSERT_HEAD(&direntFreeList, &dirents[i], direntLink);
 	}
+	log(LEVEL_GLOBAL, "dirent Init Finished!\n");
 }
 
 Dirent *direntAlloc() {

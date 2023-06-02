@@ -18,12 +18,12 @@ include include.mk
 OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x
 modules := $(KERN) $(LIB) $(USER)
 
-.PHONY: clean $(modules) fs.img
+.PHONY: clean $(modules)
 
 all: $(KERNEL_ELF)
 
 # 生成 kernel，并将其反汇编到kernel.asm
-$(KERNEL_ELF): $(modules) $(KERNEL_LD)
+$(KERNEL_ELF): clean $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
 	$(OBJDUMP) -S $(KERNEL_ELF) > $(KERN)/kernel.asm
 
@@ -44,7 +44,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef NCPU
-NCPU := 3
+NCPU := 2
 endif
 
 # 可以暂时不需要镜像文件

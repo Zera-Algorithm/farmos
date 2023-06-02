@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 int main() {
-	char path[] = "test_echo";
+	char path[] = "/test_echo";
 	char *const argv[] = {"Hello!", "test_echo", NULL};
 	char *const envp[] = {NULL};
 	printf("before execve! %d\n", argv[0]);

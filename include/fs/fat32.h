@@ -86,6 +86,9 @@ typedef struct FAT32LongDirectory {
 // FAT32 结构体大小定义
 #define DIRENT_SIZE 32
 
+// 获取簇大小的宏
+#define CLUS_SIZE(fs) ((fs)->superBlock.bytes_per_clus)
+
 unsigned char checkSum(unsigned char *pFcbName);
 void fat32Init();
 void fat32Test();

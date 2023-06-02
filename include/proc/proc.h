@@ -111,6 +111,8 @@ TAILQ_HEAD(ProcSchedQueue, Proc);
 extern struct ProcList procFreeList;
 extern struct ProcSchedQueue procSchedQueue[NCPU];
 
+#define MAX_FD_COUNT 32
+
 /**
  * zrp注：当前没有实现内核线程，每个用户进程只有用户态一种状态，难以处理
  * 睡眠问题。目前的策略是由唤醒者帮助睡眠者完成其事务，但这需要在进程控制块中
@@ -138,6 +140,8 @@ struct Proc {
 	// wait_lock must be held when using this:
 	u64 parentId; // Parent process
 	u64 priority;
+
+	int fdList[MAX_FD_COUNT];
 
 	// these are private to the process, so p->lock need not be held.
 	uint64 sz;	  // Size of process memory (bytes)
@@ -185,7 +189,7 @@ void procRun(struct Proc *prev, struct Proc *next);
 void procDestroy(struct Proc *proc);
 void procFree(struct Proc *proc);
 int procFork(u64 stackTop);
-void procExecve(u64 path, u64 argv, u64 envp);
+void procExecve(char *path, u64 argv, u64 envp);
 
 inline int procCanRun(struct Proc *proc) {
 	return (proc->state == RUNNABLE || proc->state == RUNNING);
