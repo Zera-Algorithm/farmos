@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <syscall.h>
-#include <trap/syscallDataStruct.h>
+#include <syscallDataStruct.h>
 #include <unistd.h>
 
 __attribute__((aligned(4096))) char stack[4096];

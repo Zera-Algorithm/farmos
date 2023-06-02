@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <syscall.h>
-#include <trap/syscallDataStruct.h>
+#include <syscallDataStruct.h>
 #include <unistd.h>
 
 int main() {
@@ -10,16 +10,14 @@ int main() {
 
 	int wstatus = 0;
 
-	char *test_files[] = {
-		"/brk", "/chdir",  "/close",
-			      "/dup", "/dup2", "/exit",  "/fstat", "/getcwd",
-			      "/getdents", "/getpid", "/getppid", "/gettimeofday",
-			      "/mkdir_",
-			      "/mmap", "/mount", "/munmap", "/open", "/openat",
-			      "/pipe","/write",
-			      "/read", "/test_echo", "/times", "/umount", "/uname",
-			      "/unlink",
-			    "/execve","/yield", "/wait","/clone","/fork", "/waitpid", "/sleep", NULL};
+	char *test_files[] = {"/chdir", "/fstat", "/mkdir_", "/mmap", "/mount", "/munmap", "/pipe",
+			      "/test_echo", "/umount", "/unlink",
+
+			      // 以下测试均能通过
+			      "/brk", "/close", "/dup", "/dup2", "/exit", "/open", "/openat",
+			      "/getcwd", "/getdents", "/getpid", "/getppid", "/gettimeofday",
+			      "/write", "/read", "/times", "/uname", "/execve", "/yield", "/wait",
+			      "/clone", "/fork", "/waitpid", "/sleep", NULL};
 
 	int child = fork();
 	if (child) {

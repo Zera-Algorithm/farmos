@@ -1,6 +1,8 @@
 #include <dev/rtc.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
+#include <fs/fd.h>
+#include <fs/file.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
@@ -10,12 +12,72 @@
 #include <proc/schedule.h>
 #include <proc/sleep.h>
 #include <proc/wait.h>
-#include <trap/syscallDataStruct.h>
 #include <trap/syscall_ids.h>
 
 #define SYSCALL_ERROR -1
 
+struct utsname {
+	char sysname[65];
+	char nodename[65];
+	char release[65];
+	char version[65];
+	char machine[65];
+	char domainname[65];
+};
+
+struct tms {
+	uint64 tms_utime;
+	uint64 tms_stime;
+	uint64 tms_cutime;
+	uint64 tms_cstime;
+};
+
+struct timespec {
+	uint64 second;
+	long usec;
+};
+
 i64 sysMunmap(u64 start, u64 len);
+
+int sysOpenat(int fd, u64 filename, int flags, mode_t mode) {
+	return openat(fd, filename, flags, mode);
+}
+
+int sysClose(int fd) {
+	return closeFd(fd);
+}
+
+int sysRead(int fd, u64 buf, size_t count) {
+	return read(fd, buf, count);
+}
+
+#define STDIN 0
+#define STDOUT 1
+#define STDERR 2
+
+// TODO: 注意：往stdout输出不能简单地理解为往控制台输出。实际上
+// 有可能进程使用dup转移到另一个fd，向那个fd输出。
+// static char strBuf[4096];
+int sysWrite(int fd, u64 buf, size_t count) {
+	// if (fd == STDOUT) {
+	// 	assert(count < 4096);
+	// 	copyIn((u64)buf, strBuf, count);
+	// 	strBuf[count] = 0;
+	// 	printf("%s", strBuf);
+	// 	// warn("BUG PRINTF\n");
+	// 	return count;
+	// } else {
+	return write(fd, buf, count);
+	// }
+}
+
+int sysDup(int fd) {
+	return dup(fd);
+}
+
+int sysDup3(int old, int new) {
+	return dup3(old, new);
+}
 
 void sysShutdown() {
 	SBI_SYSTEM_RESET(0, 0);
@@ -33,18 +95,6 @@ int sysGetCwd(u64 buf, int size) {
  * @param pfd 指向int fd[2]的指针，存储返回的管道文件描述符。其中，fd[0]为读取，fd[1]为写入
  */
 int sysPipe2(u64 pfd) {
-	return SYSCALL_ERROR;
-	panic("unimplemented");
-	return 0;
-}
-
-int sysDup(int fd) {
-	return SYSCALL_ERROR;
-	panic("unimplemented");
-	return 0;
-}
-
-int sysDup3(int oldFd, int newFd) {
 	return SYSCALL_ERROR;
 	panic("unimplemented");
 	return 0;
@@ -133,26 +183,30 @@ i64 sysUname(u64 utsName) {
 
 // TODO: 注意：往stdout输出不能简单地理解为往控制台输出。实际上
 // 有可能进程使用dup转移到另一个fd，向那个fd输出。
-static char strBuf[4096];
-u64 sysWrite(int fd, const void *buf, size_t count) {
-	if (fd == STDOUT) {
-		assert(count < 4096);
-		copyIn((u64)buf, strBuf, count);
-		strBuf[count] = 0;
-		printf("%s", strBuf);
-		// warn("BUG PRINTF\n");
-	} else {
-		return SYSCALL_ERROR;
-		panic("unimplement fd");
-	}
-	return count;
-}
+// static char strBuf[4096];
+// u64 sysWrite(int fd, const void *buf, size_t count) {
+// 	if (fd == STDOUT) {
+// 		assert(count < 4096);
+// 		copyIn((u64)buf, strBuf, count);
+// 		strBuf[count] = 0;
+// 		printf("%s", strBuf);
+// 		// warn("BUG PRINTF\n");
+// 	} else {
+// 		return SYSCALL_ERROR;
+// 		panic("unimplement fd");
+// 	}
+// 	return count;
+// }
 
 void sysSchedYield() {
 	// 设置返回值为0
 	struct Proc *proc = myProc();
 	proc->trapframe->a0 = 0;
 	schedule(1);
+}
+
+int sysGetDents64(int fd, u64 buf, int len) {
+	return getdents64(fd, buf, len);
 }
 
 // --------------------- 进程管理部分系统调用 --------------
@@ -236,18 +290,17 @@ void sysNanoSleep(u64 pTimeSpec) {
 }
 
 static void *syscallTable[] = {
-    [SYS_shutdown] = sysShutdown,
-    [SYS_getcwd] = sysGetCwd,
-    [SYS_pipe2] = sysPipe2,
-    [SYS_dup] = sysDup,
-    [SYS_dup3] = sysDup3,
-    [SYS_chdir] = sysChdir,
     [SYS_brk] = sysBrk,
     [SYS_mmap] = sysMmap,
     [SYS_munmap] = sysMunmap,
     [SYS_times] = sysTimes,
     [SYS_uname] = sysUname,
+    [SYS_read] = sysRead,
+    [SYS_openat] = sysOpenat,
+    [SYS_close] = sysClose,
     [SYS_write] = sysWrite,
+    [SYS_dup] = sysDup,
+    [SYS_dup3] = sysDup3,
     [SYS_sched_yield] = sysSchedYield,
     [SYS_clone] = sysClone,
     [SYS_execve] = sysExecve,
@@ -257,6 +310,10 @@ static void *syscallTable[] = {
     [SYS_getpid] = sysGetPid,
     [SYS_gettimeofday] = sysGetTimeOfDay,
     [SYS_nanosleep] = sysNanoSleep,
+    [SYS_getcwd] = sysGetCwd,
+    [SYS_chdir] = sysChdir,
+    [SYS_getdents64] = sysGetDents64,
+    [SYS_shutdown] = sysShutdown,
 };
 
 /**
@@ -278,9 +335,8 @@ void syscallEntry(Trapframe *tf) {
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))syscallTable[sysno];
 	if (func == 0) {
 		tf->a0 = SYSCALL_ERROR;
+		warn("unimplemented or unknown syscall: %d\n", sysno);
 		return;
-		// TODO: 这是为了快速测试而去掉的
-		// panic("no such syscall: %d\n", sysno);
 	}
 
 	// 将系统调用返回值放入a0寄存器

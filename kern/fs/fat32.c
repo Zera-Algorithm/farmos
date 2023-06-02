@@ -3,25 +3,18 @@
 #include <fs/dirent.h>
 #include <fs/fat32.h>
 #include <fs/fs.h>
+#include <fs/vfs.h>
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/wchar.h>
-#include <trap/syscallDataStruct.h>
 
-#define MAX_LONGENT 8
 #define MAX_CLUS_SIZE (128 * BUF_SIZE)
 
 struct FileSystem *fatFs;
 static void writeBackDirent(Dirent *dirent);
 static int countClusters(struct Dirent *file);
-
-// 用于在查询文件名时存放长文件名项
-typedef struct longEntSet {
-	FAT32LongDirectory *longEnt[MAX_LONGENT];
-	int cnt;
-} longEntSet;
 
 static Buffer *getBlock(FileSystem *fs, u64 blockNum) {
 	if (fs->image == NULL) {
@@ -53,6 +46,7 @@ void fat32Init() {
 	log(LEVEL_GLOBAL, "first clus of root is %d\n", fs->root.firstClus);
 
 	fs->root.rawDirEnt.DIR_Attr = ATTR_DIRECTORY;
+	strncpy(fs->root.name, "/", 2);
 	log(LEVEL_GLOBAL, "set dir_attr\n");
 
 	fs->root.rawDirEnt.DIR_FileSize = 0; // 目录的Dirent的size都是0
@@ -101,13 +95,102 @@ static int countClusters(struct Dirent *file) {
 }
 
 /**
+ * @param offset 开始查询的位置偏移
+ * @param next_offset 下一个dirent的开始位置
+ * @return 读取的内容长度。若为0，表示读到末尾
+ */
+int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset,
+		   longEntSet *longSet) {
+	assert(offset % DIR_SIZE == 0);
+
+	FileSystem *fs = dir->fileSystem;
+	u32 j;
+	FAT32Directory *f;
+	FAT32LongDirectory *longEnt;
+	int clusSize = CLUS_SIZE(fs);
+
+	char tmpName[MAX_NAME_LEN];
+	char tmpBuf[32] __attribute__((aligned(2)));
+	wchar fullName[MAX_NAME_LEN]; // 以wchar形式储存的文件名
+	fullName[0] = 0;	      // 初始化为空字符串
+
+	if (longSet)
+		longSet->cnt = 0; // 初始化longSet有0个元素
+
+	// 遍历所有dir中的项目
+	for (j = offset; j < dir->fileSize; j += DIR_SIZE) {
+		fileRead(dir, 0, (u64)clusBuf, j, DIR_SIZE);
+		f = ((FAT32Directory *)clusBuf);
+
+		// 跳过空项（0xE5表示已删除）
+		if (f->DIR_Name[0] == 0 || f->DIR_Name[0] == 0xE5)
+			continue;
+
+		// 是长文件名项（可能属于文件也可能属于目录）
+		if (f->DIR_Attr & ATTR_LONG_NAME_MASK) {
+
+			longEnt = (FAT32LongDirectory *)f;
+			// 是第一项
+			if (longEnt->LDIR_Ord & LAST_LONG_ENTRY) {
+				tmpName[0] = 0;
+				if (longSet)
+					longSet->cnt = 0;
+			}
+
+			// 向longSet里面存放长文件名项的指针
+			if (longSet)
+				longSet->longEnt[longSet->cnt++] = longEnt;
+			memcpy(tmpBuf, (char *)longEnt->LDIR_Name1, 10);
+			memcpy(tmpBuf + 10, (char *)longEnt->LDIR_Name2, 12);
+			memcpy(tmpBuf + 22, (char *)longEnt->LDIR_Name3, 4);
+			wstrnins(fullName, (const wchar *)tmpBuf, 13);
+		} else {
+			if (wstrlen(fullName) != 0) {
+				wstr2str(tmpName, fullName);
+			} else {
+				strncpy(tmpName, (const char *)f->DIR_Name, 11);
+				tmpName[11] = 0;
+			}
+
+			log(DEBUG, "find: \"%s\"\n", tmpName);
+			// writef("size = %d\n", sizeof(FAT32LongDirectory));
+
+			// TODO: 此为权益之计
+			Dirent *dirent = direntAlloc();
+			dirent->rawDirEnt = *f;
+			dirent->fileSystem = fs;
+			dirent->firstClus = f->DIR_FstClusHI * 65536 + f->DIR_FstClusLO;
+			dirent->fileSize = f->DIR_FileSize;
+			dirent->parentDirent = dir; // 设置父级目录项
+			dirent->off = j;	    // 父亲目录内偏移
+			strncpy(dirent->name, tmpName, MAX_NAME_LEN);
+
+			LIST_INIT(&dirent->childList);
+			// 对于目录文件的大小，我们将其重置为其簇数乘以簇大小，不再是0
+			if (dirent->rawDirEnt.DIR_Attr & ATTR_DIRECTORY) {
+				dirent->fileSize = countClusters(dirent) * clusSize;
+			}
+
+			*file = dirent;
+			*next_offset = j + DIR_SIZE;
+			return DIR_SIZE;
+		}
+	}
+
+	warn("no more dents in dir: %s\n", dir->name);
+	*next_offset = dir->fileSize;
+	return 0; // 读到结尾
+}
+
+/**
  * @brief 在dir中找一个名字为name的文件，支持长文件名
  * @note 少数几个能扫描目录项获得 Dirent 的函数
  * @param longEntSet 返回的长文件名信息
  */
 static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **file,
 		     longEntSet *longSet) {
-	u32 i, j;
+	// TODO: 使用dirGetDentFrom函数重写此函数
+	u32 j;
 	FAT32Directory *f;
 	FAT32LongDirectory *longEnt;
 	int clusSize = CLUS_SIZE(fs);
@@ -118,79 +201,71 @@ static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **fi
 	fullName[0] = 0;	      // 初始化为空字符串
 
 	longSet->cnt = 0; // 初始化longSet有0个元素
-	int clus = dir->firstClus;
-	int clusIndex = 0;
 
-	for (i = clus; FAT32_NOT_END_CLUSTER(i); i = fatRead(fs, i), clusIndex += 1) {
-		log(LEVEL_MODULE, "Scaning Clus %d...\n", i);
-		// 1. 读取文件的第i个簇
-		clusterRead(fs, i, 0, clusBuf, clusSize, 0);
+	// 遍历所有dir中的项目
+	for (j = 0; j < dir->fileSize; j += DIR_SIZE) {
+		fileRead(dir, 0, (u64)clusBuf, j, DIR_SIZE);
+		f = ((FAT32Directory *)clusBuf);
 
-		// Step 3: Find target file by file name in all files on this block.
-		// If we find the target file, set the result to *file and set f_dir field.
-		for (j = 0; j < clusSize / DIR_SIZE; j++) {
-			f = ((FAT32Directory *)clusBuf) + j;
+		// 跳过空项（0xE5表示已删除）
+		if (f->DIR_Name[0] == 0 || f->DIR_Name[0] == 0xE5)
+			continue;
 
-			// 跳过空项（0xE5表示已删除）
-			if (f->DIR_Name[0] == 0 || f->DIR_Name[0] == 0xE5)
-				continue;
+		// 是长文件名项（可能属于文件也可能属于目录）
+		if (f->DIR_Attr & ATTR_LONG_NAME_MASK) {
 
-			// 是长文件名项（可能属于文件也可能属于目录）
-			if (f->DIR_Attr & ATTR_LONG_NAME_MASK) {
+			longEnt = (FAT32LongDirectory *)f;
+			// 是第一项
+			if (longEnt->LDIR_Ord & LAST_LONG_ENTRY) {
+				tmpName[0] = 0;
+				longSet->cnt = 0;
+			}
 
-				longEnt = (FAT32LongDirectory *)f;
-				// 是第一项
-				if (longEnt->LDIR_Ord & LAST_LONG_ENTRY) {
-					tmpName[0] = 0;
-					longSet->cnt = 0;
-				}
-
-				// 向longSet里面存放长文件名项的指针
-				longSet->longEnt[longSet->cnt++] = longEnt;
-				memcpy(tmpBuf, (char *)longEnt->LDIR_Name1, 10);
-				memcpy(tmpBuf + 10, (char *)longEnt->LDIR_Name2, 12);
-				memcpy(tmpBuf + 22, (char *)longEnt->LDIR_Name3, 4);
-				wstrnins(fullName, (const wchar *)tmpBuf, 13);
+			// 向longSet里面存放长文件名项的指针
+			longSet->longEnt[longSet->cnt++] = longEnt;
+			memcpy(tmpBuf, (char *)longEnt->LDIR_Name1, 10);
+			memcpy(tmpBuf + 10, (char *)longEnt->LDIR_Name2, 12);
+			memcpy(tmpBuf + 22, (char *)longEnt->LDIR_Name3, 4);
+			wstrnins(fullName, (const wchar *)tmpBuf, 13);
+		} else {
+			if (wstrlen(fullName) != 0) {
+				wstr2str(tmpName, fullName);
 			} else {
-				if (wstrlen(fullName) != 0) {
-					wstr2str(tmpName, fullName);
-				} else {
-					strncpy(tmpName, (const char *)f->DIR_Name, 11);
-					tmpName[11] = 0;
+				strncpy(tmpName, (const char *)f->DIR_Name, 11);
+				tmpName[11] = 0;
+			}
+
+			log(DEBUG, "find: \"%s\"\n", tmpName);
+			// writef("size = %d\n", sizeof(FAT32LongDirectory));
+			if (strncmp(tmpName, name, MAX_NAME_LEN) == 0) {
+				// 找到了名称相同的文件
+
+				// TODO: 此为权益之计
+				Dirent *dirent = direntAlloc();
+				dirent->rawDirEnt = *f;
+				dirent->fileSystem = fs;
+				dirent->firstClus = f->DIR_FstClusHI * 65536 + f->DIR_FstClusLO;
+				dirent->fileSize = f->DIR_FileSize;
+				dirent->parentDirent = dir; // 设置父级目录项
+				dirent->off = j;	    // 父亲目录内偏移
+				strncpy(dirent->name, tmpName, MAX_NAME_LEN);
+
+				LIST_INIT(&dirent->childList);
+				// 对于目录文件的大小，我们将其重置为其簇数乘以簇大小，不再是0
+				if (dirent->rawDirEnt.DIR_Attr & ATTR_DIRECTORY) {
+					dirent->fileSize = countClusters(dirent) * clusSize;
 				}
 
-				log(LEVEL_MODULE, "find: \"%s\"\n", tmpName);
-				// writef("size = %d\n", sizeof(FAT32LongDirectory));
-				if (strncmp(tmpName, name, MAX_NAME_LEN) == 0) {
-					// 找到了名称相同的文件
-
-					// TODO: 此为权益之计
-					Dirent *dirent = direntAlloc();
-					dirent->rawDirEnt = *f;
-					dirent->fileSystem = fs;
-					dirent->firstClus =
-					    f->DIR_FstClusHI * 65536 + f->DIR_FstClusLO;
-					dirent->fileSize = f->DIR_FileSize;
-					dirent->parentDirent = dir; // 设置父级目录项
-					dirent->off = clusIndex * clusSize + j * DIR_SIZE;
-					strncpy(dirent->name, tmpName, MAX_NAME_LEN);
-
-					LIST_INIT(&dirent->childList);
-					// 对于目录文件的大小，我们将其重置为其簇数乘以簇大小，不再是0
-					if (dirent->rawDirEnt.DIR_Attr & ATTR_DIRECTORY) {
-						dirent->fileSize = countClusters(dirent) * clusSize;
-					}
-
-					*file = dirent;
-					return 0;
-				} else {
-					// 清空长文件名缓冲区，以待下一次写入
-					fullName[0] = 0;
-					longSet->cnt = 0;
-				}
+				*file = dirent;
+				return 0;
+			} else {
+				// 清空长文件名缓冲区，以待下一次写入
+				fullName[0] = 0;
+				longSet->cnt = 0;
 			}
 		}
 	}
+
 	log(LEVEL_GLOBAL, "File \"%s\" Not found!\n", name);
 	return -E_NOT_FOUND;
 }
@@ -256,6 +331,14 @@ static int walkPath(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, 
 			return -E_NOT_FOUND;
 		}
 
+		if (strncmp(name, ".", 2) == 0) {
+			continue;
+		} else if (strncmp(name, "..", 3) == 0) {
+			dir = dir->parentDirent;
+			file = file->parentDirent;
+			continue;
+		}
+
 		// 3. 继续遍历目录
 		if ((r = dirLookup(fs, dir, name, &file, longSet)) < 0) {
 			// printf("r = %d\n", r);
@@ -309,29 +392,37 @@ struct Dirent *getFile(struct Dirent *baseDir, char *path) {
 
 /**
  * @brief 在某个目录中新建一个目录项Dirent
- * @param ent 分配了的目录项
+ * @param dir 要分配文件的目录
+ * @param ent 返回的分配了的目录项。如果要求多个，Dirent->off设为最后一项的偏移
+ * @param cnt 需要分配的连续目录项数
  */
-static int dirAllocEntry(Dirent *dir, Dirent **ent) {
+static int dirAllocEntry(Dirent *dir, Dirent **ent, int cnt) {
+	assert(cnt >= 1); // 要求分配的个数不能小于1
+
 	int i, j, lastClus = 0;
 	FileSystem *fs = dir->fileSystem;
 	u32 clusSize = CLUS_SIZE(fs);
 	u32 offset = 0;
 
-	// 首先寻找已有的块中的空闲项
+	// 1. 找到最后一个簇的簇号lastClus和偏移量offset
 	int clus = dir->firstClus;
 	for (i = clus; FAT32_NOT_END_CLUSTER(i); i = fatRead(fs, i)) {
-		clusterRead(fs, i, 0, clusBuf, clusSize, 0);
 
-		FAT32Directory *curList = (FAT32Directory *)clusBuf;
-		for (j = 0; j < clusSize / DIRENT_SIZE; j++) {
-			if (curList[j].DIR_Name[0] == 0) {
-				Dirent *dirent = direntAlloc();
-				curList[j].DIR_Name[0] = 1; // 染黑，防止后面的分配使用到该块
-				// 回写
-				clusterWrite(fs, i, 0, clusBuf, clusSize, 0);
-				dirent->off = offset + j * DIRENT_SIZE;
-				*ent = dirent;
-				return 0;
+		// 如果cnt = 1，就首先寻找已有的块中的空闲项
+		if (cnt == 1) {
+			clusterRead(fs, i, 0, clusBuf, clusSize, 0);
+			FAT32Directory *curList = (FAT32Directory *)clusBuf;
+			for (j = 0; j < clusSize / DIRENT_SIZE; j++) {
+				if (curList[j].DIR_Name[0] == 0) {
+					Dirent *dirent = direntAlloc();
+					curList[j].DIR_Name[0] =
+					    1; // 染黑，防止后面的分配使用到该块
+					// 回写
+					clusterWrite(fs, i, 0, clusBuf, clusSize, 0);
+					dirent->off = offset + j * DIRENT_SIZE;
+					*ent = dirent;
+					return 0;
+				}
 			}
 		}
 
@@ -339,30 +430,101 @@ static int dirAllocEntry(Dirent *dir, Dirent **ent) {
 		offset += clusSize;
 	}
 
-	// 如果没有，就重新分配一个
+	// 2. 如果没有找到空余空间，或者需分配的目录项数超过1，
+	//    就重新分配一个，然后分配若干个连续的目录项
 	u32 newClus = clusterAlloc(fs, lastClus);
-
+	dir->fileSize += clusSize;
 	Dirent *dirent = direntAlloc();
+
+	// 3. 将需要用到的目录项染黑，防止后面的分配使用到该块
+	assert(cnt <= clusSize / DIR_SIZE);
 	clusterRead(fs, newClus, 0, clusBuf, clusSize, 0);
-	((FAT32Directory *)clusBuf)->DIR_Name[0] = 1; // 染黑，防止后面的分配使用到该块
+	for (int i = 0; i < cnt; i++) {
+		((FAT32Directory *)clusBuf)[i].DIR_Name[0] = 1;
+	}
 	clusterWrite(fs, newClus, 0, clusBuf, clusSize, 0); // 写回
 
-	dirent->off = offset;
+	// 3. 记录尾部目录项（即记录文件元信息的目录项）的偏移
+	dirent->off = offset + DIR_SIZE * (cnt - 1);
 	*ent = dirent;
 	return 0;
+}
+
+/**
+ * @brief 填写长文件名项，返回应该继续填的位置。如果已经填完，返回NULL
+ */
+static char *fillLongEntry(FAT32LongDirectory *longDir, char *raw_name) {
+	wchar _name[MAX_NAME_LEN];
+	wchar *name = _name;
+	str2wstr(name, raw_name);
+	int len = strlen(raw_name) + 1;
+
+	longDir->LDIR_Attr = ATTR_LONG_NAME_MASK;
+	memcpy((char *)longDir->LDIR_Name1, (char *)name, 10);
+	len -= 5, name += 5;
+	if (len <= 0) {
+		return NULL;
+	}
+
+	memcpy((char *)longDir->LDIR_Name2, (char *)name, 12);
+	len -= 6, name += 6;
+	if (len <= 0) {
+		return NULL;
+	}
+
+	memcpy((char *)longDir->LDIR_Name3, (char *)name, 4);
+	len -= 2, name += 2;
+	if (len <= 0) {
+		return NULL;
+	} else {
+		return raw_name + (name - _name);
+	}
 }
 
 /**
  * @brief 分配一个目录项，其中填入文件名（未来可能支持长文件名）
  */
 static int dirAllocFile(Dirent *dir, Dirent **file, char *name) {
-	// TODO: 创建文件目前暂时不支持长文件名
-	assert(strlen(name) < 10);
-
 	Dirent *dirent = direntAlloc();
-	unwrap(dirAllocEntry(dir, &dirent));
-	strncpy((char *)dirent->rawDirEnt.DIR_Name, name, 11);
-	strncpy(dirent->name, name, 11);
+
+	if (strlen(name) > 10) {
+		// 需要长文件名
+		log(LEVEL_GLOBAL, "create a file using long Name! name is %s\n", name);
+		int len = (strlen(name) + 1);
+		int cnt = 1; // 包括短文件名项
+		if (len % BYTES_LONGENT == 0) {
+			cnt += len / BYTES_LONGENT;
+		} else {
+			cnt += len / BYTES_LONGENT + 1;
+		}
+
+		unwrap(dirAllocEntry(dir, &dirent, cnt));
+		strncpy(dirent->name, name, MAX_NAME_LEN);
+		strncpy((char *)dirent->rawDirEnt.DIR_Name, name, 10);
+		dirent->rawDirEnt.DIR_Name[10] = 0;
+
+		// 倒序填写长文件名
+		for (int i = 1; i <= cnt - 1; i++) {
+			FAT32LongDirectory longDir;
+
+			memset(&longDir, 0, sizeof(FAT32LongDirectory));
+			name = fillLongEntry(&longDir, name);
+			longDir.LDIR_Ord = i;
+			if (i == 1)
+				longDir.LDIR_Ord = LAST_LONG_ENTRY;
+
+			// 写入到目录中
+			fileWrite(dir, 0, (u64)&longDir, dirent->off - i * DIR_SIZE, DIR_SIZE);
+
+			if (name == NULL) {
+				break;
+			}
+		}
+	} else { // 短文件名
+		unwrap(dirAllocEntry(dir, &dirent, 1));
+		strncpy((char *)dirent->rawDirEnt.DIR_Name, name, 11);
+		strncpy(dirent->name, name, 11);
+	}
 
 	*file = dirent;
 	return 0;
@@ -390,6 +552,7 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 	longEntSet longSet;
 
 	if ((r = walkPath(fatFs, path, baseDir, &dir, &f, lastElem, &longSet)) == 0) {
+		warn("file exists: %s\n", path);
 		return -E_FILE_EXISTS;
 	}
 
@@ -429,11 +592,16 @@ static u32 fileGetClusterNo(Dirent *file, int fileClusNo) {
  * @return 返回写入文件的字节数
  */
 int fileRead(struct Dirent *file, int user, u64 dst, uint off, uint n) {
-	assert(n != 0);
-	if (off + n > file->fileSize) {
-		// 超出文件的最大范围
-		return E_EXCEED_FILE;
+	log(LEVEL_MODULE, "read from file %s: off = %d, n = %d\n", file->name, off, n);
+	if (off >= file->fileSize) {
+		// 起始地址超出文件的最大范围
+		return -E_EXCEED_FILE;
+	} else if (off + n > file->fileSize) {
+		warn("read too much. shorten read length from %d to %d!\n", n,
+		     file->fileSize - off);
+		n = file->fileSize - off;
 	}
+	assert(n != 0);
 
 	u64 start = off, end = off + n - 1;
 	u32 clusSize = file->fileSystem->superBlock.bytes_per_clus;
@@ -491,6 +659,7 @@ static void fileExtend(struct Dirent *file, int newSize) {
  * @return 返回写入文件的字节数
  */
 int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n) {
+	log(LEVEL_GLOBAL, "write file: %s\n", file->name);
 	assert(n != 0);
 	if (off > file->fileSize) {
 		return -E_EXCEED_FILE;
@@ -526,14 +695,14 @@ int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	return n;
 }
 
-/**
- * @brief 获取目录的条目
- * @return 成功执行，返回读取的字节数，失败返回-1
- */
-int getDents(struct Dirent *dir, struct DirentUser *buf, int len) {
-	panic("unimplemented");
-	return 0;
-}
+// /**
+//  * @brief 获取目录的条目
+//  * @return 成功执行，返回读取的字节数，失败返回-1
+//  */
+// int getDents(struct Dirent *dir, struct DirentUser *buf, int len) {
+// 	panic("unimplemented");
+// 	return 0;
+// }
 
 /**
  * @brief 传入一个Dirent，获取其路径
@@ -699,18 +868,16 @@ void fat32Test() {
 	printf("%s\n", buf);
 
 	// TODO: 写一个删除文件的函数
-	/*
 	// 测试创建文件
-	panic_on(createFile(NULL, "/zrp.txt", &file) < 0);
+	panic_on(createFile(NULL, "/zrp123456789zrp.txt", &file) < 0);
 	char *str2 = "Hello! I\'m zrp!\n";
 	panic_on(fileWrite(file, 0, (u64)str2, 0, strlen(str2) + 1) < 0);
 
 	// 读取刚创建的文件
-	file = getFile(NULL, "/zrp.txt");
+	file = getFile(NULL, "/zrp123456789zrp.txt");
 	assert(file != NULL);
 	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("file zrp.txt: %s\n", buf);
-	*/
 
 	log(LEVEL_GLOBAL, "FAT32 Test Passed!\n");
 }

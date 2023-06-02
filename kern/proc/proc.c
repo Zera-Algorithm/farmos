@@ -1,6 +1,7 @@
 #include <dev/timer.h>
 #include <fs/cluster.h>
 #include <fs/fat32.h>
+#include <fs/fd.h>
 #include <fs/fs.h>
 #include <fs/vfs.h>
 #include <lib/elf.h>
@@ -203,6 +204,9 @@ static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 	for (int i = 0; i < MAX_FD_COUNT; i++) {
 		proc->fdList[i] = -1;
 	}
+	proc->fdList[0] = readConsoleAlloc();
+	proc->fdList[1] = writeConsoleAlloc();
+	proc->fdList[2] = errorConsoleAlloc();
 
 	// 7. 设置工作目录
 	extern FileSystem *fatFs;
@@ -331,7 +335,11 @@ int procFork(u64 stackTop) {
 
 	// Note: 复制父进程已打开的文件
 	for (int i = 0; i < MAX_FD_COUNT; i++) {
-		child->fdList[i] = proc->fdList[i];
+		int kFd = proc->fdList[i];
+		if (kFd != -1) {
+			cloneAddCite(kFd);
+		}
+		child->fdList[i] = kFd;
 	}
 
 	// 5. 寻找一个合适的CPU插入进程
@@ -515,6 +523,14 @@ void procRun(struct Proc *prev, struct Proc *next) {
 	userTrapReturn();
 }
 
+static void freeProcFds(struct Proc *proc) {
+	for (int i = 0; i < MAX_FD_COUNT; i++) {
+		if (proc->fdList[i] != -1) {
+			freeFd(proc->fdList[i]);
+		}
+	}
+}
+
 /**
  * @brief 杀死进程，回收一个进程控制块的大部分资源。包括回收进程页表映射的物理内存、回收页表存储等
  * 		  将进程变为僵尸进程
@@ -523,13 +539,16 @@ void procRun(struct Proc *prev, struct Proc *next) {
 static void killProc(struct Proc *proc) {
 	log(DEFAULT, "kill proc %s(0x%08lx)\n", proc->name, proc->pid);
 
-	// 遍历进程页目录并回收
+	// 1. 遍历进程页目录并回收
 	pdWalk(proc->pageTable, vmUnmapper, kvmUnmapper, NULL);
 
-	// 清空进程控制块中的页表域
+	// 2. 回收进程的文件描述符
+	freeProcFds(proc);
+
+	// 3. 清空进程控制块中的页表域
 	proc->pageTable = 0;
 
-	// 2. 从调度队列中删除
+	// 4. 从调度队列中删除
 	assert(procCanRun(proc)); // 假定进程在运行队列中（如果不在的话，处理起来比较困难）
 	// LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
 	for (int i = 0; i < NCPU; i++) {
@@ -547,7 +566,7 @@ static void killProc(struct Proc *proc) {
 		}
 	}
 
-	// 3. 将进程变为僵尸进程
+	// 5. 将进程变为僵尸进程
 	proc->state = ZOMBIE;
 }
 

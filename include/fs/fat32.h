@@ -2,7 +2,6 @@
 #define _FAT32_H
 
 #include <fs/dirent.h>
-#include <trap/syscallDataStruct.h>
 #include <types.h>
 
 typedef struct FAT32BootParamBlock {
@@ -65,6 +64,9 @@ typedef struct FAT32LongDirectory {
 	u16 LDIR_FstClusLO;
 	wchar LDIR_Name3[2];
 } __attribute__((packed)) FAT32LongDirectory;
+
+// 长文件名项每项容纳的名称长度
+#define BYTES_LONGENT 13
 
 #define BPB_SIZE sizeof(FAT32BootParamBlock)
 #define DIR_SIZE sizeof(FAT32Directory)

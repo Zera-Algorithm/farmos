@@ -61,7 +61,7 @@ qemu-gdb: $(KERNEL_ELF) .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
-comp: all
+comp: all fs.img
 	qemu-system-riscv64 -machine virt -kernel $(KERNEL_ELF) -m 128M -nographic -smp 2 -bios default -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -no-reboot > $(OS_OUTPUT)
 
 judge: $(OS_OUTPUT)

@@ -111,7 +111,7 @@ TAILQ_HEAD(ProcSchedQueue, Proc);
 extern struct ProcList procFreeList;
 extern struct ProcSchedQueue procSchedQueue[NCPU];
 
-#define MAX_FD_COUNT 32
+#define MAX_FD_COUNT 256
 
 /**
  * zrp注：当前没有实现内核线程，每个用户进程只有用户态一种状态，难以处理

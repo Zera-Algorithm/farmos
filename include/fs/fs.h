@@ -33,6 +33,14 @@ struct Dirent {
 	struct Dirent *parentDirent;   // 父亲Dirent列表
 };
 
+#define MAX_LONGENT 8
+
+// 用于在查询文件名时存放长文件名项
+typedef struct longEntSet {
+	FAT32LongDirectory *longEnt[MAX_LONGENT];
+	int cnt;
+} longEntSet;
+
 // FarmOS SuperBlock
 struct SuperBlock {
 	u32 first_data_sec;
