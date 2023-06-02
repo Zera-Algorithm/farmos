@@ -12,7 +12,7 @@
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 10
+#define LOG_LEVEL 999
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);
@@ -33,8 +33,9 @@ void _warn(const char *, int, const char *, const char *, ...);
  * @brief 警告日志输出
  */
 #define warn(...)                                                                                  \
-	do {                                                                                       \
-		_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                                  \
+	if (0)                                                                                     \
+		do {                                                                               \
+			_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                          \
 	} while (0)
 
 #define unwrap(expr)                                                                               \

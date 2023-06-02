@@ -1,4 +1,8 @@
 #include <dev/timer.h>
+#include <fs/cluster.h>
+#include <fs/fat32.h>
+#include <fs/fs.h>
+#include <fs/vfs.h>
 #include <lib/elf.h>
 #include <lib/log.h>
 #include <lib/printf.h>
@@ -137,7 +141,8 @@ static int initProcPageTable(struct Proc *proc, u64 stackTop) {
 
 	u64 *top = (void *)stack;
 	*(top - 1) = 0; // argv
-	*(top - 1) = 0; // argc
+	*(top - 2) = 0; // argc
+	// TODO: 为什么这里写错了还能跑通？
 
 	// 为argc和argv留出位置
 	proc->trapframe->sp = stackTop - sizeof(long) - sizeof(long);
@@ -155,20 +160,32 @@ static int initProcPageTable(struct Proc *proc, u64 stackTop) {
  * @return int 错误类型
  */
 static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
+	log(LEVEL_GLOBAL, "begin procAlloc!\n");
 	// 1. 寻找可分配的进程控制块
 	struct Proc *proc = LIST_FIRST(&procFreeList);
+
+	log(LEVEL_GLOBAL, "we get proc %lx\n", proc);
+
 	if (proc == NULL) {
 		// 没有可分配的进程
 		return -E_NOPROC;
 	}
 
+	log(LEVEL_GLOBAL, "we get proc %lx(verified)\n", proc);
+
 	assert(proc->state == UNUSED);
+
+	log(LEVEL_GLOBAL, "before delete %lx(verified)\n", proc);
 
 	// 2. 从空闲链表中删除此进程控制块
 	LIST_REMOVE(proc, procFreeLink);
 
+	log(LEVEL_GLOBAL, "before init pageTable!\n");
+
 	// 3. 初始化进程proc的页表
 	unwrap(initProcPageTable(proc, stackTop));
+
+	log(LEVEL_GLOBAL, "after init pageTable!\n");
 
 	// 4. 设置进程的pid和父亲id，初始化子进程列表
 	proc->pid = makeProcId(proc);
@@ -182,11 +199,24 @@ static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 		LIST_INSERT_HEAD(&(parent->childList), proc, procChildLink);
 	}
 
-	// 6. 返回分配的进程控制块
+	// 6. 初始化进程的文件描述符表
+	// -1 表示未分配
+	for (int i = 0; i < MAX_FD_COUNT; i++) {
+		proc->fdList[i] = -1;
+	}
+
+	// 7. 设置工作目录
+	extern FileSystem *fatFs;
+	proc->cwd = &fatFs->root;
+
+	// 8. 返回分配的进程控制块
 	*pproc = proc;
 	return 0;
 }
 
+/**
+ * @brief 加载一页数据，并映射到进程的地址空间
+ */
 static int loadCodeMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
 			  size_t len) {
 	struct Proc *proc = (struct Proc *)data;
@@ -253,6 +283,9 @@ static void dupPage(Pte *childTable, Pte *procTable, u64 va) {
 	}
 }
 
+/**
+ * @brief 产生一个子进程。如果stackTop不为0，则设其为新进程的栈顶，否则沿用之前进程的栈
+ */
 int procFork(u64 stackTop) {
 	struct Proc *proc = myProc();
 	struct Proc *child;
@@ -311,10 +344,15 @@ int procFork(u64 stackTop) {
 
 	// 4. 复制寄存器的值（除了sp）
 	*(child->trapframe) = *(proc->trapframe);
-	child->trapframe->sp = stackTop;
+	if (stackTop) {
+		child->trapframe->sp = stackTop;
+	}
 	child->trapframe->a0 = 0; // 为子进程准备返回值
 
-	// TODO: 复制父进程已打开的文件
+	// Note: 复制父进程已打开的文件
+	for (int i = 0; i < MAX_FD_COUNT; i++) {
+		child->fdList[i] = proc->fdList[i];
+	}
 
 	// 5. 寻找一个合适的CPU插入进程
 	int cpu = cpuid(); // TODO: 考虑随机分配的方法
@@ -348,7 +386,7 @@ static inline u64 initStack(void *stackTop, u64 argv) {
 		copyInStr(pStr, strBuf, 1024);
 		len = strlen(strBuf);
 
-		printf("str: %s\n", strBuf);
+		log(LEVEL_GLOBAL, "passed argv str: %s\n", strBuf);
 
 		stackNow -= (len + 1);
 		safestrcpy(stackNow, strBuf, 1024);
@@ -372,13 +410,44 @@ static inline u64 initStack(void *stackTop, u64 argv) {
 	return USTACKTOP - (stackTop - stackNow);
 }
 
+/**
+ * @brief 读取一个文件到内核的虚拟内存
+ * @note 以簇为单位读取文件内容，存储到内核的虚拟地址空间
+ * @param binary 返回文件的虚拟地址
+ * @param size 返回文件的大小
+ */
+void loadFile(Dirent *file, void **binary, int *size) {
+	int _size;
+	void *_binary;
+
+	*size = _size = file->fileSize;
+	*binary = _binary = (void *)KERNEL_TEMP;
+	extern Pte *kernPd; // 内核页表
+
+	// 1. 分配足够的页
+	int npage = (_size) % PAGE_SIZE == 0 ? (_size / PAGE_SIZE) : (_size / PAGE_SIZE + 1);
+	for (int i = 0; i < npage; i++) {
+		u64 pa = vmAlloc();
+		u64 va = ((u64)_binary) + i * PAGE_SIZE;
+		panic_on(ptMap(kernPd, va, pa, PTE_R | PTE_W));
+	}
+
+	// 2. 读取文件
+	fileRead(file, 0, (u64)_binary, 0, _size);
+}
+
 // TODO: envp
-void procExecve(u64 path, u64 argv, u64 envp) {
-	extern char binary_test_echo[];
-	extern int binary_test_echo_size;
-	void *binary = binary_test_echo;
-	int size = binary_test_echo_size;
+void procExecve(char *path, u64 argv, u64 envp) {
+	void *binary;
+	int size;
+
+	// 要读取的文件
+	Dirent *file = getFile(myProc()->cwd, path);
+	loadFile(file, &binary, &size);
+
 	struct Proc *proc = myProc();
+
+	strncpy(proc->name, path, 16);
 
 	// 1. 初始化trapframe
 	memset(proc->trapframe, 0, sizeof(struct trapframe));
@@ -391,6 +460,7 @@ void procExecve(u64 path, u64 argv, u64 envp) {
 	log(LEVEL_MODULE, "end init stack!\n");
 
 	// 3. 加载进程的代码段和数据段
+	log(LEVEL_GLOBAL, "Execve file %s\n", path);
 	panic_on(loadCode(proc, binary, size, &proc->programBreak));
 }
 
@@ -593,7 +663,7 @@ void procDestroy(struct Proc *proc) {
 
 	if (myProc() == proc) {
 		mycpu()->proc = NULL;
-		log(DEFAULT, "cpu %d's running process has been killed.\n", cpuid());
+		log(LEVEL_GLOBAL, "cpu %d's running process has been killed.\n", cpuid());
 		schedule(1);
 	}
 }

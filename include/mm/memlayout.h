@@ -68,6 +68,9 @@
 // 可访问内存的起始位置
 #define MEMBASE 0x80000000ul
 
+// 内核的一个临时地址，可以用于动态内存分配
+#define KERNEL_TEMP 0x600000000ul
+
 // 以下是用户空间的内存布局图
 
 // map the trampoline page to the highest address,

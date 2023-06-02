@@ -18,7 +18,7 @@ include include.mk
 OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x
 modules := $(KERN) $(LIB) $(USER)
 
-.PHONY: clean $(modules) fs.img
+.PHONY: clean $(modules)
 
 all: $(KERNEL_ELF)
 

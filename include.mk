@@ -2,6 +2,7 @@
 
 QEMU		= qemu-system-riscv64
 TOOLPREFIX	= riscv64-unknown-elf-
+PYTHON		= python3
 
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas

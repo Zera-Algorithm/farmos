@@ -1,5 +1,7 @@
 #include <dev/rtc.h>
+#include <dev/sbi.h>
 #include <dev/timer.h>
+#include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/string.h>
@@ -11,7 +13,57 @@
 #include <trap/syscallDataStruct.h>
 #include <trap/syscall_ids.h>
 
+#define SYSCALL_ERROR -1
+
 i64 sysMunmap(u64 start, u64 len);
+
+void sysShutdown() {
+	SBI_SYSTEM_RESET(0, 0);
+}
+
+int sysGetCwd(u64 buf, int size) {
+	char kBuf[256];
+	fileGetPath(myProc()->cwd, kBuf);
+	copyOut(buf, kBuf, strlen(kBuf) + 1);
+	return 0;
+}
+
+/**
+ * @brief 创建管道
+ * @param pfd 指向int fd[2]的指针，存储返回的管道文件描述符。其中，fd[0]为读取，fd[1]为写入
+ */
+int sysPipe2(u64 pfd) {
+	return SYSCALL_ERROR;
+	panic("unimplemented");
+	return 0;
+}
+
+int sysDup(int fd) {
+	return SYSCALL_ERROR;
+	panic("unimplemented");
+	return 0;
+}
+
+int sysDup3(int oldFd, int newFd) {
+	return SYSCALL_ERROR;
+	panic("unimplemented");
+	return 0;
+}
+
+int sysChdir(u64 path) {
+	char kbuf[MAX_NAME_LEN];
+	Dirent *newCwd;
+	copyInStr(path, kbuf, MAX_NAME_LEN);
+
+	// 绝对路径
+	if (kbuf[0] == '/') {
+		newCwd = getFile(NULL, kbuf);
+	} else {
+		newCwd = getFile(myProc()->cwd, kbuf);
+	}
+	myProc()->cwd = newCwd;
+	return 0;
+}
 
 i64 sysBrk(u64 addr) {
 	struct Proc *proc = myProc();
@@ -27,10 +79,13 @@ i64 sysBrk(u64 addr) {
 
 // 需要实现文件系统
 i64 sysMmap(void *start, size_t len, int prot, int flags, int fd, off_t off) {
+	return SYSCALL_ERROR;
 	panic("unimplemented");
 }
 
 i64 sysMunmap(u64 start, u64 len) {
+	return SYSCALL_ERROR;
+
 	u64 from = PGROUNDUP(start);
 	u64 to = PGROUNDDOWN(start + len - 1);
 	for (u64 va = from; va <= to; va += PAGE_SIZE) {
@@ -81,8 +136,9 @@ u64 sysWrite(int fd, const void *buf, size_t count) {
 		copyIn((u64)buf, strBuf, count);
 		strBuf[count] = 0;
 		printf("%s", strBuf);
-		warn("BUG PRINTF");
+		// warn("BUG PRINTF\n");
 	} else {
+		return SYSCALL_ERROR;
 		panic("unimplement fd");
 	}
 	return count;
@@ -111,7 +167,9 @@ u64 sysClone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
 }
 
 u64 sysExecve(u64 path, u64 argv, u64 envp) {
-	procExecve(path, argv, envp);
+	char kbuf[MAX_NAME_LEN];
+	copyInStr(path, kbuf, MAX_NAME_LEN);
+	procExecve(kbuf, argv, envp);
 	return 0;
 }
 
@@ -123,7 +181,6 @@ u64 sysExecve(u64 path, u64 argv, u64 envp) {
  * 选项。包括WUNTRACED(因信号而停止)、WCONTINUED(因收到SIGCONT而恢复的)、WNOHANG(立即返回，无阻塞)
  */
 u64 sysWait4(u64 pid, u64 pStatus, int options) {
-	// panic("unimplemented");
 	return wait(myProc(), pid, pStatus, options);
 }
 
@@ -190,6 +247,7 @@ static void *syscallTable[] = {
     [SYS_clone] = sysClone,
     [SYS_gettimeofday] = sysGetTimeOfDay,
     [SYS_nanosleep] = sysNanoSleep,
+    [SYS_shutdown] = sysShutdown,
 };
 
 /**
@@ -210,7 +268,10 @@ void syscallEntry(Trapframe *tf) {
 	// 获取系统调用函数
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))syscallTable[sysno];
 	if (func == 0) {
-		panic("no such syscall: %d\n", sysno);
+		tf->a0 = SYSCALL_ERROR;
+		return;
+		// TODO: 这是为了快速测试而去掉的
+		// panic("no such syscall: %d\n", sysno);
 	}
 
 	// 将系统调用返回值放入a0寄存器

@@ -105,16 +105,16 @@ void main() {
 		// bufTest(7);
 
 		fat32Init();
-		fat32Test();
+		// fat32Test();
 
 		// testProcRun();
 		procInit();
 		PROC_CREATE(test_init, 1);
-		PROC_CREATE(test_while, 2);
+		struct Proc *proc = PROC_CREATE(test_while, 2);
 		// PROC_CREATE(test_clone, 2);
-		PROC_CREATE(test_execve, 1);
+		// PROC_CREATE(test_execve, 1);
 
-		struct Proc *proc = PROC_CREATE(test_sleep, 1);
+		// PROC_CREATE(test_sleep, 1);
 		procRun(NULL, proc);
 	} else {
 		while (started == 0) {

@@ -3,7 +3,7 @@ BINTOC			:= ../scripts/binToC.py
 USER_LIB		:= libMain.o syscallLib.o clone.o stdio.o stdlib.o string.o
 
 USER_TARGET		:= test_while.x test_sleep.x test_exit.x test_clone.x test_init.x \
-					test_echo.x test_execve.x
+					test_argv.x test_execve.x
 
 .PHONY: build clean
 
@@ -18,7 +18,7 @@ include ../include.mk
 
 # .b：链接好的用户二进制可执行文件
 %.b.c: %.b
-	python $(BINTOC) $< $@
+	$(PYTHON) $(BINTOC) $< $@
 
 # 链接用户程序的目标文件，得到.b文件，并反汇编到asm文件
 %.b: entry.o %.o $(USER_LIB)

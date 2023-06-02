@@ -15,4 +15,6 @@ int unLinkAt(struct Dirent *dir, char *path);
 int makeDirAt(struct Dirent *baseDir, char *path);
 void fileStat(struct Dirent *file, struct kstat *pKStat);
 
+void fileGetPath(Dirent *dirent, char *path);
+
 #endif

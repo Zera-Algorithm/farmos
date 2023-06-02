@@ -63,6 +63,10 @@ int execve(const char *name, char *const argv[], char *const argp[]) {
 	return syscall(SYS_execve, name, argv, argp);
 }
 
+int syscall_shutdown() {
+	return syscall(SYS_shutdown);
+}
+
 int times(void *mytimes) {
 	return syscall(SYS_times, mytimes);
 }

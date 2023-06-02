@@ -124,13 +124,17 @@ void tryWakeupParentProc(struct Proc *child) {
 	union WaitStatus status;
 	status.val = 0;
 
+	// 提前保存，以防free之后数据丢失
+	int exitCode = child->wait.exitCode;
+	u64 pid = child->pid;
+
 	// 释放本进程描述符
 	procFree(child);
 
 	// 返回status数据
-	status.bits.high8 = child->wait.exitCode;
+	status.bits.high8 = exitCode;
 	copyOutOnPageTable(parent->pageTable, parent->wait.uPtr_status, &status, sizeof(int));
 
 	// 返回值为子进程pid
-	parent->trapframe->a0 = child->pid;
+	parent->trapframe->a0 = pid;
 }

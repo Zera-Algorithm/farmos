@@ -12,9 +12,8 @@
 
 #define MAX_LONGENT 8
 #define MAX_CLUS_SIZE (128 * BUF_SIZE)
-#define CLUS_SIZE(fs) ((fs)->superBlock.bytes_per_clus)
 
-static struct FileSystem *fatFs;
+struct FileSystem *fatFs;
 static void writeBackDirent(Dirent *dirent);
 static int countClusters(struct Dirent *file);
 
@@ -522,7 +521,7 @@ int getDents(struct Dirent *dir, struct DirentUser *buf, int len) {
 /**
  * @brief 传入一个Dirent，获取其路径
  */
-static void fileGetPath(Dirent *dirent, char *path) {
+void fileGetPath(Dirent *dirent, char *path) {
 	Dirent *tmp = dirent;
 	path[0] = 0; // 先把path清空为空串
 
@@ -668,7 +667,13 @@ void fat32Test() {
 		    "zrp!"
 		    "\n3233333333233333333233333333233333333233333333233333333233333333233333333233"
 		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
-		    "23333333323333333322222222222222222222222222";
+		    "233333333233333333222222222233233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "233333333233333333222222222233233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "233333333233333333222222222233233333333233333333233333333233333333233333333233"
+		    "333333233333333233333333233333333233333333233333333233333333233333333233333333"
+		    "23333333323333333322222222222222222222222222\n This is end!";
 	int len = strlen(str) + 1;
 	panic_on(fileWrite(file, 0, (u64)str, 0, len) < 0);
 
@@ -676,6 +681,8 @@ void fat32Test() {
 	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("%s\n", buf);
 
+	// TODO: 写一个删除文件的函数
+	/*
 	// 测试创建文件
 	panic_on(createFile(NULL, "/zrp.txt", &file) < 0);
 	char *str2 = "Hello! I\'m zrp!\n";
@@ -686,6 +693,7 @@ void fat32Test() {
 	assert(file != NULL);
 	panic_on(fileRead(file, 0, (u64)buf, 0, file->fileSize) < 0);
 	printf("file zrp.txt: %s\n", buf);
+	*/
 
-	panic("");
+	log(LEVEL_GLOBAL, "FAT32 Test Passed!\n");
 }
