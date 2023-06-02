@@ -15,8 +15,11 @@ err_t clusterInit(FileSystem *fs) {
 	// 读取 BPB
 	Buffer *buf = fs->get(fs, 0);
 	if (buf == NULL) {
+		log(FAT_MODULE, "buf == NULL\n");
 		return -E_DEV_ERROR;
 	}
+
+	log(FAT_MODULE, "cluster DEV is ok!\n");
 
 	// 从 BPB 中读取信息
 	FAT32BootParamBlock *bpb = (FAT32BootParamBlock *)(buf->data->data);
@@ -34,6 +37,8 @@ err_t clusterInit(FileSystem *fs) {
 	fs->superBlock.bpb.fat_sz = bpb->BPB_FATSz32;
 	fs->superBlock.bpb.root_clus = bpb->BPB_RootClus;
 
+	log(FAT_MODULE, "cluster Get superblock!\n");
+
 	// 填写超级块
 	fs->superBlock.first_data_sec = bpb->BPB_RsvdSecCnt + bpb->BPB_NumFATs * bpb->BPB_FATSz32;
 	fs->superBlock.data_sec_cnt = bpb->BPB_TotSec32 - fs->superBlock.first_data_sec;
@@ -44,8 +49,12 @@ err_t clusterInit(FileSystem *fs) {
 		return -E_DEV_ERROR;
 	}
 
+	log(FAT_MODULE, "cluster ok!\n");
+
 	// 释放缓冲区
 	bufRelease(buf);
+
+	log(FAT_MODULE, "buf release!\n");
 	return 0;
 }
 

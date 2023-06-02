@@ -43,7 +43,9 @@ void fat32Init() {
 	fs->deviceNumber = 0;
 	fs->get = getBlock;
 	strncpy(fs->name, "FAT32", 8);
-	clusterInit(fs);
+	panic_on(clusterInit(fs));
+
+	log(LEVEL_GLOBAL, "cluster Init Finished!\n");
 	direntInit();
 
 	// 初始化根目录
@@ -54,6 +56,8 @@ void fat32Init() {
 	// 此句必须放在countCluster之前，用于设置fs
 	fs->root.fileSystem = fs;
 	fs->root.fileSize = countClusters(&fs->root) * CLUS_SIZE(fs);
+
+	log(LEVEL_GLOBAL, "root directory init finished!\n");
 
 	assert(sizeof(FAT32Directory) == DIRENT_SIZE);
 	fatFs = fs;
