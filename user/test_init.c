@@ -7,7 +7,6 @@
 
 int main() {
 	printf("test_init started!\n");
-
 	int wstatus = 0;
 
 	char *test_files[] = {"/chdir", "/fstat", "/mkdir_", "/mmap", "/mount", "/munmap", "/pipe",
