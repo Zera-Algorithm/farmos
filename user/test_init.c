@@ -19,17 +19,16 @@ int main() {
 	// 	NULL
 	// };
 
-	char *test_files[] = {"/brk", "/chdir", "/clone", "/close", "/dup", "/dup2", "/execve",
+	char *test_files[] = {"/wait", "/waitpid", "/sleep", "/brk", "/chdir", "/clone", "/close", "/dup", "/dup2", "/execve",
 			      "/exit", "/fork", "/fstat", "/getcwd", "/getdents", "/getpid",
 			      "/getppid", "/gettimeofday",
 			      // "/mkdir_",
 			      "/mmap",
-			      // "/mnt",
 			      "/mount", "/munmap", "/open", "/openat",
 			      // "/pipe",
-			      "/read", "/sleep", "/test_echo", "/times", "/umount", "/uname",
+			      "/read", "/test_echo", "/times", "/umount", "/uname",
 			      // "/UNLINK",
-			      "/wait", "/waitpid", "/write", "/yield", NULL};
+			       "/write", "/yield", NULL};
 
 	int child = fork();
 	if (child) {

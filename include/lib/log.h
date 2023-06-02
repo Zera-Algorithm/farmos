@@ -15,8 +15,8 @@
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 299
-#define DEBUG 0
+#define LOG_LEVEL 2
+#define DEBUG 2
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);
