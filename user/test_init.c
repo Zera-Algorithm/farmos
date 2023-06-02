@@ -32,7 +32,6 @@ int main() {
 			      "/mount", "/munmap", "/open", "/openat",
 			      // "/pipe",
 			      "/read", "/sleep", "/test_echo",
-			      // "/text.txt",
 			      "/times", "/umount", "/uname",
 			      // "/UNLINK",
 			      // "/wait",

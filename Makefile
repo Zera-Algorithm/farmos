@@ -44,7 +44,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef NCPU
-NCPU := 3
+NCPU := 2
 endif
 
 # 可以暂时不需要镜像文件

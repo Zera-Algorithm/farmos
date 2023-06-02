@@ -43,6 +43,7 @@ void main() {
 		isFirstHart = 0;
 
 		// 初始化 isStarted（原因是初始时.BSS段可能不会被赋值为0）
+		printf("NCPU = %d\n", NCPU);
 		for (int i = 0; i < NCPU; i++) {
 			isStarted[i] = 0;
 		}
