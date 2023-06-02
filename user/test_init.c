@@ -9,25 +9,17 @@ int main() {
 	printf("test_init started!\n");
 
 	int wstatus = 0;
-	// char *test_files[] = {
-	// 	"/sleep",
-	// 	"/times",
-	// 	// "/test_echo",
-	// 	// "/brk",
-	// 	// "/clone",
-	// 	// "/execve",
-	// 	NULL
-	// };
 
-	char *test_files[] = {"/wait", "/waitpid", "/sleep", "/brk", "/chdir", "/clone", "/close",
-			      "/dup", "/dup2", "/execve", "/exit", "/fork", "/fstat", "/getcwd",
+	char *test_files[] = {
+		"/brk", "/chdir",  "/close",
+			      "/dup", "/dup2", "/exit",  "/fstat", "/getcwd",
 			      "/getdents", "/getpid", "/getppid", "/gettimeofday",
-			      // "/mkdir_",
+			      "/mkdir_",
 			      "/mmap", "/mount", "/munmap", "/open", "/openat",
-			      // "/pipe",
+			      "/pipe","/write",
 			      "/read", "/test_echo", "/times", "/umount", "/uname",
-			      // "/UNLINK",
-			      "/write", "/yield", NULL};
+			      "/unlink",
+			    "/execve","/yield", "/wait","/clone","/fork", "/waitpid", "/sleep", NULL};
 
 	int child = fork();
 	if (child) {
