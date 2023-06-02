@@ -5,14 +5,14 @@
 #define DEFAULT 1
 #define LEVEL_MODULE 1
 #define MM_GLOBAL 2
-#define BUF_MODULE 3
+#define BUF_MODULE 1
 #define FAT_MODULE 4
 
 // 日志级别定义（全局）
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 999
+#define LOG_LEVEL 2
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);
