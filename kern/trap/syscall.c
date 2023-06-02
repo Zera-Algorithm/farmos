@@ -232,6 +232,12 @@ void sysNanoSleep(u64 pTimeSpec) {
 }
 
 static void *syscallTable[] = {
+	[SYS_shutdown] = sysShutdown,
+	[SYS_getcwd] = sysGetCwd,
+	[SYS_pipe2] = sysPipe2,
+	[SYS_dup] = sysDup,
+	[SYS_dup3] = sysDup3,
+	[SYS_chdir] = sysChdir,
     [SYS_brk] = sysBrk,
     [SYS_mmap] = sysMmap,
     [SYS_munmap] = sysMunmap,
@@ -239,15 +245,14 @@ static void *syscallTable[] = {
     [SYS_uname] = sysUname,
     [SYS_write] = sysWrite,
     [SYS_sched_yield] = sysSchedYield,
+	[SYS_clone] = sysClone,
+	[SYS_execve] = sysExecve,
+	[SYS_wait4] = sysWait4,
+	[SYS_exit] = sysExit,
+	[SYS_getppid] = sysGetPpid,
     [SYS_getpid] = sysGetPid,
-    [SYS_getppid] = sysGetPpid,
-    [SYS_exit] = sysExit,
-    [SYS_wait4] = sysWait4,
-    [SYS_execve] = sysExecve,
-    [SYS_clone] = sysClone,
     [SYS_gettimeofday] = sysGetTimeOfDay,
     [SYS_nanosleep] = sysNanoSleep,
-    [SYS_shutdown] = sysShutdown,
 };
 
 /**

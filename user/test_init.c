@@ -7,17 +7,7 @@
 
 int main() {
 	printf("test_init started!\n");
-
 	int wstatus = 0;
-	// char *test_files[] = {
-	// 	"/sleep",
-	// 	"/times",
-	// 	// "/test_echo",
-	// 	// "/brk",
-	// 	// "/clone",
-	// 	// "/execve",
-	// 	NULL
-	// };
 
 	char *test_files[] = {"/brk", "/chdir",
 			      // "/clone",

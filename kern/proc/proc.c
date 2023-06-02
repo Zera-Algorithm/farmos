@@ -612,14 +612,15 @@ void procFree(struct Proc *proc) {
 	log(LEVEL_GLOBAL, "trigger procFree!\n");
 	assert(proc->state == ZOMBIE);
 
-	// 1. 插入到空闲链表
-	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
-
-	// 2. 从父进程的子进程列表删除
+	// 1. 从父进程的子进程列表删除
 	LIST_REMOVE(proc, procChildLink);
 
-	// 3. 清空进程控制块
+	// 2. 清空进程控制块
+	// Note: Warning! 应该先删除，再清空再插入，因为memset也会删掉进程控制块中存储的链表连接数据
 	memset(proc, 0, sizeof(struct Proc));
+
+	// 3. 插入到空闲链表
+	LIST_INSERT_HEAD(&procFreeList, proc, procFreeLink);
 }
 
 /**

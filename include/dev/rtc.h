@@ -17,7 +17,7 @@
 #define TIMER_ALARM_STATUS 0x18
 #define TIMER_CLEAR_INTERRUPT 0x1c
 
-#define NSEC_PER_USEC 1000000ul
+#define NSEC_PER_USEC 1000ul
 
 u64 rtcReadTime();
 #endif
