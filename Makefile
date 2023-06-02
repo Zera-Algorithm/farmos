@@ -81,3 +81,5 @@ check-style: clean
 
 fix-style: clean
 	@bash scripts/check-style.sh -f
+
+real-test: clean all comp judge

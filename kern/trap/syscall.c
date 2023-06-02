@@ -25,7 +25,7 @@ int sysGetCwd(u64 buf, int size) {
 	char kBuf[256];
 	fileGetPath(myProc()->cwd, kBuf);
 	copyOut(buf, kBuf, strlen(kBuf) + 1);
-	return 0;
+	return buf;
 }
 
 /**

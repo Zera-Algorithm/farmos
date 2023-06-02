@@ -78,11 +78,11 @@ u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options) {
 			return -1;
 		}
 
-		struct Proc *tmp;
-		LIST_FOREACH (tmp, &proc->childList, procChildLink) {
-			if (tmp->state == ZOMBIE) {
-				u64 childPid = proc->pid;
-				procFree(tmp);
+		struct Proc *childProc;
+		LIST_FOREACH (childProc, &proc->childList, procChildLink) {
+			if (childProc->state == ZOMBIE) {
+				u64 childPid = childProc->pid;
+				procFree(childProc);
 
 				// 返回status数据
 				status.bits.high8 = childPid;
