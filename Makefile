@@ -23,7 +23,7 @@ modules := $(KERN) $(LIB) $(USER)
 all: $(KERNEL_ELF)
 
 # 生成 kernel，并将其反汇编到kernel.asm
-$(KERNEL_ELF): $(modules) $(KERNEL_LD)
+$(KERNEL_ELF): clean $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
 	$(OBJDUMP) -S $(KERNEL_ELF) > $(KERN)/kernel.asm
 
