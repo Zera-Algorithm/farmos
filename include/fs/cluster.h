@@ -6,6 +6,7 @@
 
 // 7个f，最高4位保留
 #define FAT32_EOF 0xffffffful
+#define FAT32_NOT_END_CLUSTER(cluster) ((cluster) < 0x0ffffff8ul)
 
 // FarmOS 定义的函数
 err_t clusterInit(FileSystem *fs);

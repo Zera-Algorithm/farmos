@@ -90,7 +90,7 @@ static int countClusters(struct Dirent *file) {
 	}
 	// 如果文件不包含任何块，则直接返回0即可。
 	else {
-		while (clus != FAT32_EOF) {
+		while (FAT32_NOT_END_CLUSTER(clus)) {
 			log(LEVEL_GLOBAL, "clus is %d\n", clus);
 			clus = fatRead(file->fileSystem, clus);
 			i += 1;
@@ -121,7 +121,7 @@ static int dirLookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **fi
 	int clus = dir->firstClus;
 	int clusIndex = 0;
 
-	for (i = clus; i != FAT32_EOF; i = fatRead(fs, i), clusIndex += 1) {
+	for (i = clus; FAT32_NOT_END_CLUSTER(i); i = fatRead(fs, i), clusIndex += 1) {
 		log(LEVEL_MODULE, "Scaning Clus %d...\n", i);
 		// 1. 读取文件的第i个簇
 		clusterRead(fs, i, 0, clusBuf, clusSize, 0);
@@ -319,7 +319,7 @@ static int dirAllocEntry(Dirent *dir, Dirent **ent) {
 
 	// 首先寻找已有的块中的空闲项
 	int clus = dir->firstClus;
-	for (i = clus; i != FAT32_EOF; i = fatRead(fs, i)) {
+	for (i = clus; FAT32_NOT_END_CLUSTER(i); i = fatRead(fs, i)) {
 		clusterRead(fs, i, 0, clusBuf, clusSize, 0);
 
 		FAT32Directory *curList = (FAT32Directory *)clusBuf;
@@ -472,7 +472,7 @@ static void fileExtend(struct Dirent *file, int newSize) {
 	u32 clusSize = CLUS_SIZE(file->fileSystem);
 	u32 clusIndex = 0;
 	u32 clus = file->firstClus;
-	for (; fatRead(fs, clus) != FAT32_EOF; clusIndex += 1) {
+	for (; FAT32_NOT_END_CLUSTER(fatRead(fs, clus)); clusIndex += 1) {
 		clus = fatRead(fs, clus);
 	}
 
