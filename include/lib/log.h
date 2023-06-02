@@ -15,7 +15,7 @@
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 2
+#define LOG_LEVEL 999
 #define DEBUG 2
 
 // 日志输出函数
