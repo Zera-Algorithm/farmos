@@ -58,7 +58,7 @@ void fat32Init() {
 	fs->root.rawDirEnt.DIR_FileSize = 0; // 目录的Dirent的size都是0
 	log(LEVEL_GLOBAL, "DIR_fileSize\n");
 
-	fs->root.parentDirent = NULL;	     // 父节点为空，表示已经到达根节点
+	fs->root.parentDirent = NULL; // 父节点为空，表示已经到达根节点
 	// 此句必须放在countCluster之前，用于设置fs
 	fs->root.fileSystem = fs;
 
