@@ -3,6 +3,9 @@
 QEMU		= qemu-system-riscv64
 TOOLPREFIX	= riscv64-unknown-elf-
 PYTHON		= python3
+TEST_RUNNER = ./official_tests/user/src/oscomp/test_runner.py
+OS_OUTPUT	= os_output.txt
+OUTPUT_JSON = output.json
 
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
