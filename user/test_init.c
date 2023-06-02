@@ -19,13 +19,9 @@ int main() {
 	// 	NULL
 	// };
 
-	char *test_files[] = {"/brk", "/chdir",
-			      // "/clone",
-			      "/close", "/dup", "/dup2", "/execve",
-			      // "/exit",
-			      // "/fork",
-			      "/fstat", "/getcwd", "/getdents", "/getpid", "/getppid",
-			      "/gettimeofday",
+	char *test_files[] = {"/brk", "/chdir", "/clone", "/close", "/dup", "/dup2", "/execve",
+			      "/exit", "/fork", "/fstat", "/getcwd", "/getdents", "/getpid",
+			      "/getppid", "/gettimeofday",
 			      // "/mkdir_",
 			      "/mmap",
 			      // "/mnt",
@@ -33,11 +29,7 @@ int main() {
 			      // "/pipe",
 			      "/read", "/sleep", "/test_echo", "/times", "/umount", "/uname",
 			      // "/UNLINK",
-			      // "/wait",
-			      // "/waitpid",
-			      "/write",
-			      // "/yield",
-			      NULL};
+			      "/wait", "/waitpid", "/write", "/yield", NULL};
 
 	int child = fork();
 	if (child) {
@@ -76,19 +68,18 @@ int main() {
 		// }
 
 		// 一个父亲连续fork多个儿子，等待上一个儿子执行完再fork下一个
-		// int p1 = fork();
-		// if (p1 != 0) {
-		// 	wait(&wstatus);
-		// 	printf("father is OK1!\n");
-		// 	int p2 = fork();
-		// 	if (p2 != 0) {
+		// for (int i = 0; test_files[i] != NULL; i++) {
+		// 	printf("start fork!\n\n");
+		// 	int pid = fork();
+		// 	if (pid == 0) { // child
+		// 		printf("I'm son, start test exec!\n\n");
+		// 		execve(test_files[i], argv, envp);
+		// 		continue;
+		// 	} else { // father
+		// 		printf("son %d started, wait!\n\n", pid);
 		// 		wait(&wstatus);
-		// 		printf("father is OK2!\n");
-		// 	} else {
-		// 		execve("/times", argv, envp);
+		// 		printf("son %d exited, run next test!\n\n", pid);
 		// 	}
-		// } else {
-		// 	execve("/sleep", argv, envp);
 		// }
 	}
 	return 0;

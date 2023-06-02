@@ -8,11 +8,15 @@
 #define BUF_MODULE 1
 #define FAT_MODULE 4
 
+#define PROC_MODULE 1
+#define PROC_GLOBAL 5
+
 // 日志级别定义（全局）
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 2
+#define LOG_LEVEL 299
+#define DEBUG 0
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);

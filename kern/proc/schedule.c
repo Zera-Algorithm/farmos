@@ -35,5 +35,7 @@ void schedule(u64 yield) {
 		count = proc->priority;
 	}
 	count -= 1;
+
+	log(PROC_MODULE, "schedule: proc = %x(%s), count = %d\n", proc, proc->name, count);
 	procRun(myProc(), proc);
 }

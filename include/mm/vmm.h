@@ -22,6 +22,7 @@
 #define PTE_PPNMASK ((~0ull) << PTE_PPNSHIFT) // 页表项中物理页号的掩码
 #define PAGE_LEVELS (3ull)		      // 页表级数
 #define PAGE_INDEX_LEN (9ull)		      // 页表项索引长度
+#define PAGE_INDEX_MAX (1ull << PAGE_INDEX_LEN)
 #define PTX(va, level)                                                                             \
 	(((u64)(va) >> (PAGE_SHIFT + (PAGE_LEVELS - (level)) * PAGE_INDEX_LEN)) &                  \
 	 0x1ff) // 获取虚拟地址 va 在第 level 级页表中的索引
@@ -33,6 +34,7 @@ void vmmInit();
 
 u64 vmAlloc() __attribute__((warn_unused_result));
 u64 kvmAlloc() __attribute__((warn_unused_result)); // Auto Inc Ref
+void kvmFree(u64 pa);				    // Auto Dec Ref
 Pte ptLookup(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
 err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) __attribute__((warn_unused_result));
 err_t ptUnmap(Pte *pgdir, u64 va) __attribute__((warn_unused_result));

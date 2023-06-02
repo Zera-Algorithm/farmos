@@ -53,7 +53,7 @@ static void ptClear(Pte *pte) {
 	*(u64 *)pte = 0;
 }
 
-static Pte *ptWalk(Pte *pageDir, u64 va, bool create) { // TODO:STATIC!!!!!!!!!!!!!!!!!
+static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 	Pte *curPageTable = pageDir;
 
 	// 从顶级页目录开始，依次获取每一级页表
@@ -140,6 +140,11 @@ u64 kvmAlloc() {
 	Page *pp = pmAlloc();
 	pmPageIncRef(pp);
 	return pageToPa(pp);
+}
+
+void kvmFree(u64 pa) {
+	Page *pp = paToPage(pa);
+	pmPageDecRef(pp);
 }
 
 u64 vmAlloc() {
