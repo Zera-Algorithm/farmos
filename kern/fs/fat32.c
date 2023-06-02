@@ -50,12 +50,20 @@ void fat32Init() {
 
 	// 初始化根目录
 	fs->root.firstClus = fs->superBlock.bpb.root_clus;
+	log(LEVEL_GLOBAL, "first clus of root is %d\n", fs->root.firstClus);
+
 	fs->root.rawDirEnt.DIR_Attr = ATTR_DIRECTORY;
+	log(LEVEL_GLOBAL, "set dir_attr\n");
+
 	fs->root.rawDirEnt.DIR_FileSize = 0; // 目录的Dirent的size都是0
+	log(LEVEL_GLOBAL, "DIR_fileSize\n");
+
 	fs->root.parentDirent = NULL;	     // 父节点为空，表示已经到达根节点
 	// 此句必须放在countCluster之前，用于设置fs
 	fs->root.fileSystem = fs;
-	fs->root.fileSize = countClusters(&fs->root) * CLUS_SIZE(fs);
+
+	log(LEVEL_GLOBAL, "before count cluster\n");
+	fs->root.fileSize = countClusters(&(fs->root)) * CLUS_SIZE(fs);
 
 	log(LEVEL_GLOBAL, "root directory init finished!\n");
 
@@ -72,17 +80,22 @@ static char clusBuf[MAX_CLUS_SIZE];
  * @brief 计数文件的簇数
  */
 static int countClusters(struct Dirent *file) {
+	log(LEVEL_GLOBAL, "count Cluster begin!\n");
+
 	int clus = file->firstClus;
 	int i = 0;
 	if (clus == 0) {
+		log(LEVEL_GLOBAL, "cluster is 0!\n");
 		return 0;
 	}
 	// 如果文件不包含任何块，则直接返回0即可。
 	else {
 		while (clus != FAT32_EOF) {
+			log(LEVEL_GLOBAL, "clus is %d\n", clus);
 			clus = fatRead(file->fileSystem, clus);
 			i += 1;
 		}
+		log(LEVEL_GLOBAL, "count Cluster end!\n");
 		return i;
 	}
 }

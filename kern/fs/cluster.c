@@ -158,10 +158,16 @@ static void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 
 u32 fatRead(FileSystem *fs, u64 cluster) {
 	if (cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1) {
+		error(LEVEL_GLOBAL, "fatRead is 0! (cluster = %d)\n", cluster);
 		return 0;
 	}
 	u64 fatSec = clusterFatSec(fs, cluster, 1);
 	Buffer *buf = fs->get(fs, fatSec);
+	
+	if (buf == NULL) {
+		error("buf is NULL! cluster = %d\n", cluster);
+	}
+
 	u32 *fat = (u32 *)buf->data->data;
 	// 读取 FAT 表中的内容
 	u32 content = fat[clusterFatSecIndex(fs, cluster)];
