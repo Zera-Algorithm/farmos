@@ -15,7 +15,7 @@ void copyOut(u64 uPtr, void *kPtr, int len);
  * @brief 等待自己的子进程结束。
  * @param proc 等待进程
  */
-inline static u64 __waitChild(struct Proc *proc, u64 pid, u64 pStatus, int options) {
+inline static u64 __waitChild(struct Proc *proc, i64 pid, u64 pStatus, int options) {
 	if (options & WNOHANG) {
 		return 0;
 	} else {
@@ -39,7 +39,7 @@ inline static u64 __waitChild(struct Proc *proc, u64 pid, u64 pStatus, int optio
  * @param options
  * 选项。包括WUNTRACED(因信号而停止)、WCONTINUED(因收到SIGCONT而恢复的)、WNOHANG(立即返回，无阻塞)
  */
-u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options) {
+u64 wait(struct Proc *proc, i64 pid, u64 pStatus, int options) {
 	// pStatus要返回的数据
 	union WaitStatus status;
 	status.val = 0;

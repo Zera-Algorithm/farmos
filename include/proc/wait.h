@@ -28,6 +28,6 @@ union WaitStatus {
 #define WUNTRACED 2  /* Report status of stopped children.  */
 #define WCONTINUED 8 /* Report continued child.  */
 
-u64 wait(struct Proc *proc, u64 pid, u64 pStatus, int options);
+u64 wait(struct Proc *proc, i64 pid, u64 pStatus, int options);
 void tryWakeupParentProc(struct Proc *child);
 #endif
