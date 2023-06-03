@@ -253,12 +253,18 @@ int dup3(int old, int new) {
 }
 
 static int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
+	if (fd == AT_FDCWD) {
+		if (dirent)
+			*dirent = myProc()->cwd;
+		return 0;
+	}
+
 	if (fd < 0 || fd >= MAX_FD_COUNT) {
-		warn("write param fd is wrong, please check\n");
+		warn("write param fd(%d) is wrong, please check\n", fd);
 		return -1;
 	} else {
 		if (myProc()->fdList[fd] < 0 || myProc()->fdList[fd] >= FDNUM) {
-			warn("kern fd is wrong, please check\n");
+			warn("kern fd(%d) is wrong, please check\n", myProc()->fdList[fd]);
 			return -1;
 		} else {
 			int kFd = myProc()->fdList[fd];
@@ -294,4 +300,15 @@ int getdents64(int fd, u64 buf, int len) {
 	copyOut(buf, &direntUser, DIRENT_USER_SIZE);
 
 	return ret;
+}
+
+int makeDirAtFd(int dirFd, u64 path, int mode) {
+	Dirent *dir;
+	char name[MAX_NAME_LEN];
+
+	unwrap(getDirentByFd(dirFd, &dir, NULL));
+	copyInStr(path, name, MAX_NAME_LEN);
+
+	log(LEVEL_GLOBAL, "make dir %s at %s\n", name, dir->name);
+	return makeDirAt(dir, name, mode);
 }

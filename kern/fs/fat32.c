@@ -481,6 +481,22 @@ static char *fillLongEntry(FAT32LongDirectory *longDir, char *raw_name) {
 	}
 }
 
+static int getEntryCountByName(char *name) {
+	int len = (strlen(name) + 1);
+
+	if (len > 11) {
+		int cnt = 1; // 包括短文件名项
+		if (len % BYTES_LONGENT == 0) {
+			cnt += len / BYTES_LONGENT;
+		} else {
+			cnt += len / BYTES_LONGENT + 1;
+		}
+		return cnt;
+	} else {
+		return 1;
+	}
+}
+
 /**
  * @brief 分配一个目录项，其中填入文件名（未来可能支持长文件名）
  */
@@ -490,13 +506,7 @@ static int dirAllocFile(Dirent *dir, Dirent **file, char *name) {
 	if (strlen(name) > 10) {
 		// 需要长文件名
 		log(LEVEL_GLOBAL, "create a file using long Name! name is %s\n", name);
-		int len = (strlen(name) + 1);
-		int cnt = 1; // 包括短文件名项
-		if (len % BYTES_LONGENT == 0) {
-			cnt += len / BYTES_LONGENT;
-		} else {
-			cnt += len / BYTES_LONGENT + 1;
-		}
+		int cnt = getEntryCountByName(name);
 
 		unwrap(dirAllocEntry(dir, &dirent, cnt));
 		strncpy(dirent->name, name, MAX_NAME_LEN);
@@ -542,17 +552,14 @@ static void syncDirentRawDataBack(Dirent *dirent) {
 	writeBackDirent(dirent);
 }
 
-/**
- * @brief 创建一个文件
- */
-int r;
-int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
+static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int isDir) {
 	char lastElem[MAX_NAME_LEN];
 	Dirent *dir, *f;
+	int r;
 	longEntSet longSet;
 
 	if ((r = walkPath(fatFs, path, baseDir, &dir, &f, lastElem, &longSet)) == 0) {
-		warn("file exists: %s\n", path);
+		warn("file or directory exists: %s\n", path);
 		return -E_FILE_EXISTS;
 	}
 
@@ -563,16 +570,46 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 
 	unwrap(dirAllocFile(dir, &f, lastElem));
 
-	// 无论如何，创建了的文件至少应当分配一个块
-	f->fileSize = 0;
+	// 无论如何，创建了的文件或目录至少应当分配一个块
 	f->firstClus = clusterAlloc(dir->fileSystem, 0);
 	f->parentDirent = dir; // 设置父亲节点，以安排写回
 	f->fileSystem = dir->fileSystem;
 
+	// 目录应当以其分配了的大小为其文件大小
+	if (isDir) {
+		int clusSize = CLUS_SIZE(dir->fileSystem);
+		f->fileSize = clusSize;
+		f->rawDirEnt.DIR_Attr = ATTR_DIRECTORY;
+
+		// 清空第一个簇
+		memset(clusBuf, 0, clusSize);
+		clusterWrite(dir->fileSystem, f->firstClus, 0, clusBuf, clusSize, 0);
+	} else {
+		f->fileSize = 0;
+	}
+
 	syncDirentRawDataBack(f);
 
-	*file = f;
+	if (file) {
+		*file = f;
+	}
 	return 0;
+}
+
+/**
+ * @brief 在dir目录下新建一个名为path的目录。忽略mode参数
+ * @return 0成功，-1失败
+ */
+int makeDirAt(Dirent *baseDir, char *path, int mode) {
+	return createItemAt(baseDir, path, NULL, 1);
+}
+
+/**
+ * @brief 创建一个文件
+ */
+int r;
+int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
+	return createItemAt(baseDir, path, file, 0);
 }
 
 /**
@@ -731,6 +768,7 @@ void fileGetPath(Dirent *dirent, char *path) {
 int linkAt(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *newPath) {
 	Dirent *oldFile, *newFile;
 	if ((oldFile = getFile(oldDir, oldPath)) == NULL) {
+		warn("oldFile %d not found!\n", oldPath);
 		return -1;
 	}
 
@@ -744,11 +782,27 @@ int linkAt(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 	return fileWrite(newFile, 0, (u64)path, 0, strlen(path) + 1);
 }
 
+static int removeFile(struct Dirent *file) {
+	int cnt = getEntryCountByName(file->name);
+	char data = 0xE5;
+
+	// 仅清空目录项dirent
+	for (int i = 0; i < cnt; i++) {
+		panic_on(fileWrite(file, 0, (u64)&data, file->off - cnt * DIR_SIZE, 1));
+	}
+	return 0;
+}
+
 /**
- * @brief 撤销链接。即删除链接文件
+ * @brief 撤销链接。即删除(链接)文件
  */
 int unLinkAt(struct Dirent *dir, char *path) {
-	panic("unimplemented");
+	Dirent *file;
+	if ((file = getFile(dir, path)) == NULL) {
+		warn("file %d not found!\n", path);
+		return -1;
+	}
+	removeFile(file);
 	return 0;
 }
 
@@ -758,33 +812,6 @@ int unLinkAt(struct Dirent *dir, char *path) {
 static void writeBackDirent(Dirent *dirent) {
 	Dirent *parentDir = dirent->parentDirent;
 	fileWrite(parentDir, 0, (u64)&dirent->rawDirEnt, dirent->off, DIRENT_SIZE);
-}
-
-/**
- * @brief 创建目录
- */
-int makeDirAt(struct Dirent *baseDir, char *path) {
-	int r;
-	char lastElem[MAX_NAME_LEN];
-	Dirent *dir, *f;
-	longEntSet longSet;
-
-	if ((r = walkPath(fatFs, path, baseDir, &dir, &f, lastElem, &longSet)) == 0) {
-		return -E_FILE_EXISTS;
-	}
-
-	// 出现其他错误，或者没有找到上一级的目录
-	if (r != E_NOT_FOUND || dir == 0) {
-		return r;
-	}
-
-	unwrap(dirAllocFile(dir, &f, lastElem));
-
-	f->fileSize = 0;
-	f->firstClus = clusterAlloc(dir->fileSystem, 0);
-
-	writeBackDirent(f); // 写回目录项
-	return 0;
 }
 
 // mount和umount系统调用由我实现，你无需实现

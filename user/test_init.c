@@ -9,14 +9,14 @@ int main() {
 	printf("test_init started!\n");
 	int wstatus = 0;
 
-	char *test_files[] = {"/chdir", "/fstat", "/mkdir_", "/mmap", "/mount", "/munmap", "/pipe",
-			      "/test_echo", "/umount", "/unlink",
+	char *test_files[] = {"/fstat", "/mmap", "/munmap", "/pipe", "/test_echo", "/unlink",
 
 			      // 以下测试均能通过
-			      "/close", "/dup", "/dup2", "/open", "/openat", "/getdents", "/fork",
-			      "/write", "/read", "/getcwd", "/brk", "/getpid", "/getppid",
-			      "/gettimeofday", "/exit", "/times", "/uname", "/execve", "/yield",
-			      "/wait", "/clone", "/waitpid", "/sleep", NULL};
+			      "/mount", "/umount", "/mkdir_", "/close", "/dup", "/dup2", "/open",
+			      "/chdir", "/openat", "/getdents", "/fork", "/write", "/read",
+			      "/getcwd", "/brk", "/getpid", "/getppid", "/gettimeofday", "/exit",
+			      "/times", "/uname", "/execve", "/yield", "/wait", "/clone",
+			      "/waitpid", "/sleep", NULL};
 
 	int child = fork();
 	if (child) {

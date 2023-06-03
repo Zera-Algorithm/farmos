@@ -119,6 +119,20 @@ int sysChdir(u64 path) {
 	return 0;
 }
 
+int sysMkDirAt(int dirFd, u64 path, int mode) {
+	return makeDirAtFd(dirFd, path, mode);
+}
+
+int sysMount(u64 special, u64 dir, u64 fstype, u64 flags, u64 data) {
+	// TODO
+	return 0;
+}
+
+int sysUnMount(u64 special, u64 flags) {
+	// TODO
+	return 0;
+}
+
 i64 sysBrk(u64 addr) {
 	struct Proc *proc = myProc();
 	u64 oldBreak = proc->programBreak;
@@ -314,6 +328,9 @@ static void *syscallTable[] = {
     [SYS_chdir] = sysChdir,
     [SYS_getdents64] = sysGetDents64,
     [SYS_shutdown] = sysShutdown,
+    [SYS_mkdirat] = sysMkDirAt,
+    [SYS_mount] = sysMount,
+    [SYS_umount2] = sysUnMount,
 };
 
 /**

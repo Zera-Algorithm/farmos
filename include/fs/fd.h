@@ -43,6 +43,8 @@ extern uint citesNum[FDNUM];
 // TODO CREATE标志位存疑
 #define O_TRUNC 0x400
 
+#define AT_FDCWD -100
+
 int fdAlloc();
 int closeFd(int fd);
 void cloneAddCite(uint i);
@@ -55,5 +57,6 @@ int dup(int fd);
 int dup3(int old, int new);
 void freeFd(uint i);
 int getdents64(int fd, u64 buf, int len);
+int makeDirAtFd(int dirFd, u64 path, int mode);
 
 #endif
