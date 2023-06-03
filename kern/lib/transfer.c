@@ -1,26 +1,36 @@
-#include <lib/printf.h>
+#include <lib/log.h>
 #include <lib/string.h>
 #include <proc/proc.h>
+
+typedef err_t (*user_kernel_callback_t)(void *uptr, void *kptr, size_t len, void *arg);
+
+/**
+ * @brief 用户态到内核态的数据操作
+ */
+static void userToKernel(Pte *upd, u64 uptr, void *kptr, size_t len,
+			 user_kernel_callback_t callback, void *arg) {
+	u64 uoff = uptr % PAGE_SIZE;
+
+	for (u64 i = 0; i < len; uoff = 0) {
+		u64 urealpa = pteToPa(ptLookup(upd, uptr + i));
+		size_t ulen = MIN(len - i, PAGE_SIZE - uoff);
+		if (callback((void *)(urealpa + uoff), kptr + i, ulen, arg)) {
+			break;
+		}
+		i += ulen;
+	}
+}
+
+err_t copyOutCallback(void *uptr, void *kptr, size_t len, void *arg) {
+	memcpy(uptr, kptr, len);
+	return 0;
+}
 
 /**
  * @brief 将内核的数据拷贝到用户态地址，使用传入的用户态页表
  */
 void copyOutOnPageTable(Pte *pgDir, u64 uPtr, void *kPtr, int len) {
-	Pte pte = ptLookup(pgDir, uPtr);
-
-	void *p = (void *)pteToPa(pte);
-	u64 offset = uPtr & (PAGE_SIZE - 1);
-
-	if (offset != 0) {
-		memcpy(p + offset, kPtr, MIN(len, PAGE_SIZE - offset));
-	}
-
-	u64 i = uPtr + MIN(len, PAGE_SIZE - offset);
-	u64 dstVa = uPtr + len;
-	for (; i < dstVa; i += PAGE_SIZE) {
-		p = (void *)pteToPa(ptLookup(pgDir, i));
-		memcpy(p, kPtr + i - uPtr, MIN(dstVa - i, PAGE_SIZE));
-	}
+	userToKernel(pgDir, uPtr, kPtr, len, copyOutCallback, NULL);
 }
 
 /**
@@ -28,42 +38,19 @@ void copyOutOnPageTable(Pte *pgDir, u64 uPtr, void *kPtr, int len) {
  */
 void copyOut(u64 uPtr, void *kPtr, int len) {
 	Pte *pgDir = myProc()->pageTable;
-	Pte pte = ptLookup(pgDir, uPtr);
+	copyOutOnPageTable(pgDir, uPtr, kPtr, len);
+}
 
-	void *p = (void *)pteToPa(pte);
-	u64 offset = uPtr & (PAGE_SIZE - 1);
-
-	if (offset != 0) {
-		memcpy(p + offset, kPtr, MIN(len, PAGE_SIZE - offset));
-	}
-
-	u64 i = uPtr + MIN(len, PAGE_SIZE - offset);
-	u64 dstVa = uPtr + len;
-	for (; i < dstVa; i += PAGE_SIZE) {
-		p = (void *)pteToPa(ptLookup(pgDir, i));
-		memcpy(p, kPtr + i - uPtr, MIN(dstVa - i, PAGE_SIZE));
-	}
+err_t copyInCallback(void *uptr, void *kptr, size_t len, void *arg) {
+	memcpy(kptr, uptr, len);
+	return 0;
 }
 
 /**
  * @brief 将用户的数据拷贝入内核
  */
 void copyIn(u64 uPtr, void *kPtr, int len) {
-	Pte *pgDir = myProc()->pageTable;
-
-	void *p = (void *)pteToPa(ptLookup(pgDir, uPtr));
-	u64 offset = uPtr & (PAGE_SIZE - 1);
-
-	if (offset != 0) {
-		memcpy(kPtr, p + offset, MIN(len, PAGE_SIZE - offset));
-	}
-
-	u64 i = uPtr + MIN(len, PAGE_SIZE - offset);
-	u64 dstVa = uPtr + len;
-	for (; i < dstVa; i += PAGE_SIZE) {
-		p = (void *)pteToPa(ptLookup(pgDir, i));
-		memcpy(kPtr + i - uPtr, p, MIN(dstVa - i, PAGE_SIZE));
-	}
+	userToKernel(myProc()->pageTable, uPtr, kPtr, len, copyInCallback, NULL);
 }
 
 /**
@@ -82,31 +69,15 @@ static int strncpyJudgeEnd(char *s, const char *t, int n) {
 	}
 }
 
+err_t copyInStrCallback(void *uptr, void *kptr, size_t len, void *arg) {
+	return strncpyJudgeEnd(kptr, uptr, len);
+}
+
 /**
  * @brief 将用户态的字符串拷贝进内核
  * @param n 表示传输的最大字符数
  */
 void copyInStr(u64 uPtr, void *kPtr, int n) {
 	Pte *pgDir = myProc()->pageTable;
-
-	// 1. 获取用户态数据的物理地址指针
-	void *p = (void *)pteToPa(ptLookup(pgDir, uPtr));
-	u64 offset = uPtr & (PAGE_SIZE - 1);
-
-	// 2. 拷贝从offset开始剩余的数据
-	if (offset != 0) {
-		if (strncpyJudgeEnd(kPtr, p + offset, MIN(n, PAGE_SIZE - offset)) == -1) {
-			return;
-		}
-	}
-
-	// 3. 整页整页地拷贝剩余的部分
-	u64 i = uPtr + MIN(n, PAGE_SIZE - offset);
-	u64 dstVa = uPtr + n;
-	for (; i < dstVa; i += PAGE_SIZE) {
-		p = (void *)pteToPa(ptLookup(pgDir, i));
-		if (strncpyJudgeEnd(kPtr + i - uPtr, p, MIN(dstVa - i, PAGE_SIZE)) == -1) {
-			return;
-		}
-	}
+	userToKernel(pgDir, uPtr, kPtr, n, copyInStrCallback, NULL);
 }

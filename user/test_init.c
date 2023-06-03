@@ -13,13 +13,10 @@ int main() {
 			      "/test_echo", "/umount", "/unlink",
 
 			      // 以下测试均能通过
-			      "/close", "/dup", "/dup2", "/open", "/openat",
-			      "/getdents", "/fork",
-			      "/write", "/read",
-				  "/getcwd", "/brk",
-				  "/getpid", "/getppid", "/gettimeofday",
-				  "/exit", "/times", "/uname", "/execve", "/yield", "/wait",
-			      "/clone", "/waitpid", "/sleep", NULL};
+			      "/close", "/dup", "/dup2", "/open", "/openat", "/getdents", "/fork",
+			      "/write", "/read", "/getcwd", "/brk", "/getpid", "/getppid",
+			      "/gettimeofday", "/exit", "/times", "/uname", "/execve", "/yield",
+			      "/wait", "/clone", "/waitpid", "/sleep", NULL};
 
 	int child = fork();
 	if (child) {
