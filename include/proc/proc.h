@@ -193,7 +193,7 @@ void procDestroy(struct Proc *proc);
 void procFree(struct Proc *proc);
 int procFork(u64 stackTop);
 void procExecve(char *path, u64 argv, u64 envp);
-void* mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset);
+void *mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset);
 
 inline int procCanRun(struct Proc *proc) {
 	return (proc->state == RUNNABLE || proc->state == RUNNING);

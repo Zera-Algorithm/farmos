@@ -402,7 +402,6 @@ static inline u64 initStack(void *stackTop, u64 argv) {
 	return USTACKTOP - (stackTop - stackNow);
 }
 
-
 /**
  * @brief 读取一个文件内容到内存，并映射其内容到某个页表
  * @param pgDir 要建立映射的页表
@@ -412,7 +411,7 @@ static inline u64 initStack(void *stackTop, u64 argv) {
  * @param offset 开始读取的文件偏移
  * @return 如果映射成功，返回映射位置的指针，否则返回-1
  */
-void* mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
+void *mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
 	int size;
 	void *binary;
 
@@ -435,7 +434,7 @@ void* mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int
 	u64 offset = va - PGROUNDDOWN(va);
 	if (offset != 0) {
 		if ((r = loadDataMapper(proc, va, offset, perm, binary,
-				 MIN(len, PAGE_SIZE - offset))) != 0) {
+					MIN(len, PAGE_SIZE - offset))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
 		}
@@ -445,7 +444,7 @@ void* mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int
 	// i = 已写入的长度
 	for (i = offset ? MIN(len, PAGE_SIZE - offset) : 0; i < len; i += PAGE_SIZE) {
 		if ((r = loadDataMapper(proc, va + i, 0, perm, binary + i,
-				 MIN(len - i, PAGE_SIZE))) != 0) {
+					MIN(len - i, PAGE_SIZE))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
 		}

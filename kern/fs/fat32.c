@@ -699,7 +699,8 @@ int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	log(LEVEL_GLOBAL, "write file: %s\n", file->name);
 	assert(n != 0);
 	if (off > file->fileSize) {
-		warn("exceed fileSize of file %s. fileSize = %d, off = %d\n", file->name, file->fileSize, off);
+		warn("exceed fileSize of file %s. fileSize = %d, off = %d\n", file->name,
+		     file->fileSize, off);
 		return -E_EXCEED_FILE;
 	} else if (off + n > file->fileSize) {
 		// 超出文件的最大范围
@@ -789,7 +790,8 @@ static int removeFile(struct Dirent *file) {
 
 	// 仅清空目录项dirent
 	for (int i = 0; i < cnt; i++) {
-		panic_on(fileWrite(file->parentDirent, 0, (u64)&data, file->off - i * DIR_SIZE, 1) < 0);
+		panic_on(fileWrite(file->parentDirent, 0, (u64)&data, file->off - i * DIR_SIZE, 1) <
+			 0);
 	}
 	return 0;
 }
@@ -828,7 +830,7 @@ void fileStat(struct Dirent *file, struct kstat *pKStat) {
 	pKStat->st_dev = file->fileSystem->deviceNumber;
 	pKStat->st_ino = 0;   // 并未实现inode
 	pKStat->st_mode = 0;  // 未实现
-	pKStat->st_nlink = 0; // 未实现
+	pKStat->st_nlink = 1; // 文件的链接数，无链接时为1
 	pKStat->st_uid = 0;
 	pKStat->st_gid = 0;
 	pKStat->st_rdev = 0;

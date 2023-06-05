@@ -176,7 +176,7 @@ i64 sysBrk(u64 addr) {
  * @brief 将文件映射到进程的虚拟内存空间
  * @note 如果start == 0，则由内核指定虚拟地址
  */
-void* sysMmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
+void *sysMmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	int r = 0, perm = 0;
 	Dirent *file;
 	r = getDirentByFd(fd, &file, NULL);
@@ -389,9 +389,9 @@ static void *syscallTable[] = {
     [SYS_mkdirat] = sysMkDirAt,
     [SYS_mount] = sysMount,
     [SYS_umount2] = sysUnMount,
-	[SYS_linkat] = sysLinkAt,
-	[SYS_unlinkat] = sysUnLinkAt,
-	[SYS_fstat] = sysFstat,
+    [SYS_linkat] = sysLinkAt,
+    [SYS_unlinkat] = sysUnLinkAt,
+    [SYS_fstat] = sysFstat,
 };
 
 /**

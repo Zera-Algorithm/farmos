@@ -1,7 +1,7 @@
 #include <dev/sbi.h>
+#include <fs/fat32.h>
 #include <fs/fd.h>
 #include <fs/vfs.h>
-#include <fs/fat32.h>
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
@@ -314,7 +314,6 @@ int makeDirAtFd(int dirFd, u64 path, int mode) {
 	return makeDirAt(dir, name, mode);
 }
 
-
 int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {
 	struct Dirent *oldDir, *newDir;
 	char oldPath[MAX_NAME_LEN];
@@ -325,7 +324,6 @@ int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {
 	copyInStr(pNewPath, newPath, MAX_NAME_LEN);
 	return linkAt(oldDir, oldPath, newDir, newPath);
 }
-
 
 int unLinkAtFd(int dirFd, u64 pPath) {
 	struct Dirent *dir;

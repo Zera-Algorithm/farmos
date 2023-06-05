@@ -61,10 +61,11 @@ u64 wait(struct Proc *proc, i64 pid, u64 pStatus, int options) {
 
 		// 3. 如果进程已终止(Zombie)，就回收其进程控制块
 		if (child->state == ZOMBIE) {
+			int exitCode = child->wait.exitCode;
 			procFree(child);
 
 			// 返回status数据
-			status.bits.high8 = pid;
+			status.bits.high8 = exitCode;
 			copyOut(pStatus, &status, sizeof(int));
 			return pid;
 		} else {
@@ -82,10 +83,11 @@ u64 wait(struct Proc *proc, i64 pid, u64 pStatus, int options) {
 		LIST_FOREACH (childProc, &proc->childList, procChildLink) {
 			if (childProc->state == ZOMBIE) {
 				u64 childPid = childProc->pid;
+				int exitCode = childProc->wait.exitCode;
 				procFree(childProc);
 
 				// 返回status数据
-				status.bits.high8 = childPid;
+				status.bits.high8 = exitCode;
 				copyOut(pStatus, &status, sizeof(int));
 				return childPid;
 			}
