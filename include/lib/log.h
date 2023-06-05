@@ -37,7 +37,7 @@ void _warn(const char *, int, const char *, const char *, ...);
  * @brief 警告日志输出
  */
 #define warn(...)                                                                                  \
-	if (1)                                                                                     \
+	if (0)                                                                                     \
 		do {                                                                               \
 			_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                          \
 	} while (0)

@@ -699,6 +699,7 @@ int fileWrite(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	log(LEVEL_GLOBAL, "write file: %s\n", file->name);
 	assert(n != 0);
 	if (off > file->fileSize) {
+		warn("exceed fileSize of file %s. fileSize = %d, off = %d\n", file->name, file->fileSize, off);
 		return -E_EXCEED_FILE;
 	} else if (off + n > file->fileSize) {
 		// 超出文件的最大范围
@@ -788,7 +789,7 @@ static int removeFile(struct Dirent *file) {
 
 	// 仅清空目录项dirent
 	for (int i = 0; i < cnt; i++) {
-		panic_on(fileWrite(file, 0, (u64)&data, file->off - cnt * DIR_SIZE, 1));
+		panic_on(fileWrite(file->parentDirent, 0, (u64)&data, file->off - i * DIR_SIZE, 1) < 0);
 	}
 	return 0;
 }
@@ -822,7 +823,7 @@ static void writeBackDirent(Dirent *dirent) {
  * @param kstat 内核态指针，指向文件信息结构体
  */
 void fileStat(struct Dirent *file, struct kstat *pKStat) {
-	memset(pKStat, 0, sizeof(pKStat));
+	memset(pKStat, 0, sizeof(struct kstat));
 	// P262 Linux-Unix系统编程手册
 	pKStat->st_dev = file->fileSystem->deviceNumber;
 	pKStat->st_ino = 0;   // 并未实现inode

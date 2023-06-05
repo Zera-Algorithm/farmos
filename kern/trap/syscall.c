@@ -133,27 +133,81 @@ int sysUnMount(u64 special, u64 flags) {
 	return 0;
 }
 
+int sysLinkAt(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {
+	return linkAtFd(oldFd, pOldPath, newFd, pNewPath, flags);
+}
+
+int sysUnLinkAt(int dirFd, u64 pPath) {
+	return unLinkAtFd(dirFd, pPath);
+}
+
+// brk如果输入0，则返回当前的program Break
 i64 sysBrk(u64 addr) {
 	struct Proc *proc = myProc();
 	u64 oldBreak = proc->programBreak;
-	proc->programBreak = addr;
+	if (addr == 0) {
+		return oldBreak;
+	} else {
+		proc->programBreak = addr;
 
-	// 如果要减小programBreak，就要unmap addr ~ oldBreak之间的内存
-	if (addr < oldBreak) {
-		return sysMunmap(addr + 1, oldBreak);
+		// 如果要减小programBreak，就要unmap addr ~ oldBreak之间的内存
+		if (addr < oldBreak) {
+			return sysMunmap(addr + 1, oldBreak);
+		}
+		// 如果大于等于的话，则不做任何事情
+		return 0;
 	}
-	return 0;
 }
 
-// 需要实现文件系统
-i64 sysMmap(void *start, size_t len, int prot, int flags, int fd, off_t off) {
-	return SYSCALL_ERROR;
-	panic("unimplemented");
+// Mmap 的一些宏定义
+#define PROT_NONE 0
+#define PROT_READ 1
+#define PROT_WRITE 2
+#define PROT_EXEC 4
+#define PROT_GROWSDOWN 0X01000000
+#define PROT_GROWSUP 0X02000000
+
+#define MAP_FILE 0
+#define MAP_SHARED 0x01
+#define MAP_PRIVATE 0X02
+#define MAP_FAILED ((void *)-1)
+
+/**
+ * @brief 将文件映射到进程的虚拟内存空间
+ * @note 如果start == 0，则由内核指定虚拟地址
+ */
+void* sysMmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
+	int r = 0, perm = 0;
+	Dirent *file;
+	r = getDirentByFd(fd, &file, NULL);
+	if (r < 0) {
+		warn("get fd(%d) error!\n", fd);
+		return MAP_FAILED;
+	}
+
+	if (start == 0) {
+		// 内核指定用户的虚拟地址
+		// TODO: 指定固定的地址有多次mmap被顶替的风险
+		start = 0x60000000;
+	}
+
+	perm = PTE_U;
+	if (prot & PROT_EXEC) {
+		perm |= PTE_X;
+	}
+	if (prot & PROT_READ) {
+		perm |= PTE_R;
+	}
+	if (prot & PROT_WRITE) {
+		perm |= PTE_W;
+	}
+
+	// TODO: 需要考虑flags字段，但暂未考虑
+
+	return mapFile(myProc(), file, start, len, perm, off);
 }
 
 i64 sysMunmap(u64 start, u64 len) {
-	return SYSCALL_ERROR;
-
 	u64 from = PGROUNDUP(start);
 	u64 to = PGROUNDDOWN(start + len - 1);
 	for (u64 va = from; va <= to; va += PAGE_SIZE) {
@@ -223,6 +277,10 @@ int sysGetDents64(int fd, u64 buf, int len) {
 	return getdents64(fd, buf, len);
 }
 
+int sysFstat(int fd, u64 pkstat) {
+	return fileStatFd(fd, pkstat);
+}
+
 // --------------------- 进程管理部分系统调用 --------------
 /**
  * @brief 克隆一个子进程（或者子线程）
@@ -256,10 +314,10 @@ u64 sysWait4(u64 pid, u64 pStatus, int options) {
 	return wait(myProc(), pid, pStatus, options);
 }
 
-void sysExit() {
+void sysExit(int exitCode) {
 	struct Proc *proc = myProc();
 	// 设置退出码
-	proc->wait.exitCode = proc->trapframe->a0;
+	proc->wait.exitCode = exitCode;
 	procDestroy(proc);
 }
 
@@ -331,6 +389,9 @@ static void *syscallTable[] = {
     [SYS_mkdirat] = sysMkDirAt,
     [SYS_mount] = sysMount,
     [SYS_umount2] = sysUnMount,
+	[SYS_linkat] = sysLinkAt,
+	[SYS_unlinkat] = sysUnLinkAt,
+	[SYS_fstat] = sysFstat,
 };
 
 /**

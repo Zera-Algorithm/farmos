@@ -58,5 +58,9 @@ int dup3(int old, int new);
 void freeFd(uint i);
 int getdents64(int fd, u64 buf, int len);
 int makeDirAtFd(int dirFd, u64 path, int mode);
+int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags);
+int unLinkAtFd(int dirFd, u64 pPath);
+int fileStatFd(int fd, u64 pkstat);
+int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
 
 #endif

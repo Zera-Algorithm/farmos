@@ -21,6 +21,8 @@
 struct cpu cpus[NCPU];
 extern char trampoline[];
 
+static void loadFileToKernel(Dirent *file, void **binary, int *size);
+
 int cpuid() {
 	int id = r_tp();
 	return id;
@@ -219,8 +221,9 @@ static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 
 /**
  * @brief 加载一页数据，并映射到进程的地址空间
+ * @param offset 相对内存va的偏移
  */
-static int loadCodeMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
+static int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
 			  size_t len) {
 	struct Proc *proc = (struct Proc *)data;
 
@@ -257,7 +260,7 @@ static int loadCode(struct Proc *proc, const void *binary, size_t size, u64 *max
 		ProgramHeader *ph = (ProgramHeader *)(binary + phOff);
 		// 只加载能加载的段
 		if (ph->p_type == ELF_PROG_LOAD) {
-			panic_on(loadElfSegment(ph, binary + ph->p_off, loadCodeMapper, proc));
+			panic_on(loadElfSegment(ph, binary + ph->p_off, loadDataMapper, proc));
 			*maxva = MAX(*maxva, ph->p_vaddr + ph->p_memsz - 1);
 		}
 	}
@@ -399,13 +402,64 @@ static inline u64 initStack(void *stackTop, u64 argv) {
 	return USTACKTOP - (stackTop - stackNow);
 }
 
+
+/**
+ * @brief 读取一个文件内容到内存，并映射其内容到某个页表
+ * @param pgDir 要建立映射的页表
+ * @param startVa 开始映射的虚拟地址位置
+ * @param len 要读取文件的长度
+ * @param perm 映射的权限位
+ * @param offset 开始读取的文件偏移
+ * @return 如果映射成功，返回映射位置的指针，否则返回-1
+ */
+void* mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
+	int size;
+	void *binary;
+
+	// 1. 将文件加载到内核中，位置位于binary，内容大小为size
+	loadFileToKernel(file, &binary, &size);
+
+	// 2. 判断fileOffset是否合法
+	if (fileOffset >= size) {
+		warn("fileOffset %d > fileSize %d!\n", fileOffset, size);
+		return (void *)-1;
+	}
+
+	// 3. 约束len
+	len = MIN(len, size - fileOffset);
+	binary += fileOffset; // 将binary移动到可以立即开始读取的位置
+
+	// 4.1 映射第一个页
+	int r;
+	size_t i;
+	u64 offset = va - PGROUNDDOWN(va);
+	if (offset != 0) {
+		if ((r = loadDataMapper(proc, va, offset, perm, binary,
+				 MIN(len, PAGE_SIZE - offset))) != 0) {
+			warn("map error! r = %d\n", r);
+			return (void *)-1;
+		}
+	}
+
+	// 4.2 把剩余的binary内容（文件内的）加载进内存
+	// i = 已写入的长度
+	for (i = offset ? MIN(len, PAGE_SIZE - offset) : 0; i < len; i += PAGE_SIZE) {
+		if ((r = loadDataMapper(proc, va + i, 0, perm, binary + i,
+				 MIN(len - i, PAGE_SIZE))) != 0) {
+			warn("map error! r = %d\n", r);
+			return (void *)-1;
+		}
+	}
+
+	return (void *)va;
+}
+
 /**
  * @brief 读取一个文件到内核的虚拟内存
- * @note 以簇为单位读取文件内容，存储到内核的虚拟地址空间
  * @param binary 返回文件的虚拟地址
  * @param size 返回文件的大小
  */
-void loadFile(Dirent *file, void **binary, int *size) {
+static void loadFileToKernel(Dirent *file, void **binary, int *size) {
 	int _size;
 	void *_binary;
 
@@ -432,7 +486,7 @@ void procExecve(char *path, u64 argv, u64 envp) {
 
 	// 要读取的文件
 	Dirent *file = getFile(myProc()->cwd, path);
-	loadFile(file, &binary, &size);
+	loadFileToKernel(file, &binary, &size);
 
 	struct Proc *proc = myProc();
 

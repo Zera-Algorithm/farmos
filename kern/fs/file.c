@@ -56,18 +56,19 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 		return -1;
 	}
 
-	if ((flags & O_CREATE) == O_CREATE) {
-		// 创建
-		r = createFile(dirent, nameBuf, &fileDirent);
-		if (r < 0) {
-			freeFd(kernFd);
-			warn("create file fail: r = %d\n", r);
-			return -1;
-		}
-	} else {
-		// 打开，不含创建
-		fileDirent = getFile(dirent, nameBuf);
-		if (fileDirent == NULL) {
+	// fix: O_CREATE表示若文件不存在，则创建一个
+	// 打开，不含创建
+	fileDirent = getFile(dirent, nameBuf);
+	if (fileDirent == NULL) {
+		if ((flags & O_CREATE) == O_CREATE) {
+			// 创建
+			r = createFile(dirent, nameBuf, &fileDirent);
+			if (r < 0) {
+				freeFd(kernFd);
+				warn("create file fail: r = %d\n", r);
+				return -1;
+			}
+		} else {
 			freeFd(kernFd);
 			warn("get file fail\n");
 			return -1;

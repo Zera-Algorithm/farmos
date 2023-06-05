@@ -1,6 +1,7 @@
 #include <dev/sbi.h>
 #include <fs/fd.h>
 #include <fs/vfs.h>
+#include <fs/fat32.h>
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
@@ -252,7 +253,7 @@ int dup3(int old, int new) {
 	return new;
 }
 
-static int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
+int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 	if (fd == AT_FDCWD) {
 		if (dirent)
 			*dirent = myProc()->cwd;
@@ -311,4 +312,34 @@ int makeDirAtFd(int dirFd, u64 path, int mode) {
 
 	log(LEVEL_GLOBAL, "make dir %s at %s\n", name, dir->name);
 	return makeDirAt(dir, name, mode);
+}
+
+
+int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {
+	struct Dirent *oldDir, *newDir;
+	char oldPath[MAX_NAME_LEN];
+	char newPath[MAX_NAME_LEN];
+	unwrap(getDirentByFd(oldFd, &oldDir, NULL));
+	unwrap(getDirentByFd(newFd, &newDir, NULL));
+	copyInStr(pOldPath, oldPath, MAX_NAME_LEN);
+	copyInStr(pNewPath, newPath, MAX_NAME_LEN);
+	return linkAt(oldDir, oldPath, newDir, newPath);
+}
+
+
+int unLinkAtFd(int dirFd, u64 pPath) {
+	struct Dirent *dir;
+	char path[MAX_NAME_LEN];
+	unwrap(getDirentByFd(dirFd, &dir, NULL));
+	copyInStr(pPath, path, MAX_NAME_LEN);
+	return unLinkAt(dir, path);
+}
+
+int fileStatFd(int fd, u64 pkstat) {
+	struct Dirent *file;
+	unwrap(getDirentByFd(fd, &file, NULL));
+	struct kstat kstat;
+	fileStat(file, &kstat);
+	copyOut(pkstat, &kstat, sizeof(struct kstat));
+	return 0;
 }

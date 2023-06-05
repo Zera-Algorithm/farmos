@@ -182,6 +182,9 @@ int cpuid();
 struct cpu *mycpu(void);
 struct Proc *myProc();
 
+// 记住，如果函数声明中需要引入其他类型，不要直接引入头文件，直接声明一下数据类型就可以了
+typedef struct Dirent Dirent;
+
 void procInit();
 struct Proc *pidToProcess(u64 pid);
 struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 priority);
@@ -190,6 +193,7 @@ void procDestroy(struct Proc *proc);
 void procFree(struct Proc *proc);
 int procFork(u64 stackTop);
 void procExecve(char *path, u64 argv, u64 envp);
+void* mapFile(struct Proc *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset);
 
 inline int procCanRun(struct Proc *proc) {
 	return (proc->state == RUNNABLE || proc->state == RUNNING);
