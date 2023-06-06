@@ -153,3 +153,28 @@ void vmmInit() {
 
 
 
+
+## 内存管理工具
+
+FarmOS 对其它模块的内存操作进行了部分抽象和封装，提供了遍历页表的工具函数，位于 `kern/mm/vmtools.c`。
+
+以下是遍历页表工具函数的接口：
+
+```c
+typedef err_t (*pte_callback_t)(Pte *pd, u64 target_va, Pte *target_pte, void *arg);
+typedef err_t (*pt_callback_t)(Pte *pd, Pte *target_pt, u64 ptlevel, void *arg);
+
+err_t pdWalk(Pte *pd, pte_callback_t pte_callback, pt_callback_t pt_callback, void *arg);
+```
+
+在需要遍历页表时，只需要重写所需的回调函数，在回调函数中实现所需的功能，而不需要关心页表的结构以及如何遍历。遍历页表统一使用这部分函数使得代码被重用，提高了代码的可读性和可维护性，也降低了其它模块自行遍历页表时可能出现错误的情况。
+
+以下是在 FarmOS 中的两处实际用例：
+
+- `killProc()`
+	- `pdWalk(proc->pageTable, vmUnmapper, kvmUnmapper, NULL);`
+	- 在销毁进程时，需要遍历进程的页表，将页表中的映射解除，回收进程使用的页表物理页，解引用进程的数据段、代码段等。
+- `procFork()`
+	- `pdWalk(proc->pageTable, dupPageCallback, NULL, child->pageTable);`
+	- 在进行 `fork` 时，需要遍历进程的页表，加写时复制保护。
+
