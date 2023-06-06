@@ -129,13 +129,25 @@ int sysMkDirAt(int dirFd, u64 path, int mode) {
 }
 
 int sysMount(u64 special, u64 dir, u64 fstype, u64 flags, u64 data) {
-	// TODO
-	return 0;
+	char specialStr[MAX_NAME_LEN];
+	char dirPath[MAX_NAME_LEN];
+
+	// 1. 将special和dir加载到字符串数组中
+	copyInStr(special, specialStr, MAX_NAME_LEN);
+	copyInStr(dir, dirPath, MAX_NAME_LEN);
+
+	// 2. 挂载
+	return mountFs(specialStr, myProc()->cwd, dirPath);
 }
 
 int sysUnMount(u64 special, u64 flags) {
-	// TODO
-	return 0;
+	char specialStr[MAX_NAME_LEN];
+
+	// 1. 将special和dir加载到字符串数组中
+	copyInStr(special, specialStr, MAX_NAME_LEN);
+
+	// 2. 挂载
+	return umountFs(specialStr, myProc()->cwd);
 }
 
 int sysLinkAt(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {

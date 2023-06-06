@@ -75,7 +75,77 @@ void initRootFs() {
 }
 
 // mount之后，目录中原有的文件将被暂时取代为挂载的文件系统内的内容，umount时会重新出现
-void mountFs() {
+int mountFs(char *special, Dirent *baseDir, char *dirPath) {
+	// 1. 寻找mount的目录
+	Dirent *dir = getFile(baseDir, dirPath);
+	if (dir == NULL) {
+		warn("dir %s is not found!\n", dirPath);
+		return -1;
+	}
+
+	// 2. 寻找mount的文件
+	// 特判是否是设备（deprecated）
+	Dirent *image;
+	if (strncmp(special, "/dev/vda2", 10) == 0) {
+		image = NULL;
+	} else {
+		image = getFile(baseDir, special);
+		if (image == NULL) {
+			warn("image %s is not found!\n", special);
+			return -1;
+		}
+	}
+
+	// 3. 修改mount的目录的属性，并新建一个fs项目
+	dir->rawDirEnt.DIR_Attr |= ATTR_MOUNT;
+	writeBackDirent(dir);
+
+	FileSystem *fs;
+	allocFs(&fs);
+	fs->image = image;
+	fs->deviceNumber = 0;
+	fs->get = getBlock;
+	fs->mountPoint = dir;
+	fat32Init(fs);
+
+	return 0;
+}
+
+static int findFsOfDir(FileSystem *fs, void *data) {
+	Dirent *dir = (Dirent *)data;
+	if (fs->mountPoint == NULL) {
+		return 0;
+	} else {
+		return fs->mountPoint->firstClus == dir->firstClus;
+	}
+}
+
+int umountFs(char *dirPath, Dirent *baseDir) {
+	// 1. 寻找mount的目录
+	Dirent *dir = getFile(baseDir, dirPath);
+	if (dir == NULL) {
+		warn("dir %s is not found!\n", dirPath);
+		return -1;
+	}
+
+	// 2. 擦除目录的标记
+	// 要umount的目录一般使用getFile加载出来的是其文件系统的根目录，不能直接写回
+	Dirent *mntPoint = dir->fileSystem->mountPoint;
+	if (mntPoint == NULL || dir->parentDirent != NULL) {
+		warn("unmounted dir!\n");
+		return -1;
+	}
+	mntPoint->rawDirEnt.DIR_Attr &= (~ATTR_MOUNT);
+	writeBackDirent(mntPoint);
+
+	// 3. 卸载fs
+	FileSystem *fs = findFsBy(findFsOfDir, mntPoint);
+	if (fs == NULL) {
+		warn("can\'t find fs of dir %s!\n", dirPath);
+		return -1;
+	}
+	deAllocFs(fs);
+	return 0;
 }
 
 // 簇缓冲区：簇最大为128个BUF_SIZE
@@ -342,6 +412,16 @@ static int walkPath(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, 
 			return -E_NOT_FOUND;
 		}
 
+		// Note: 处理mount的目录
+		if (dir->rawDirEnt.DIR_Attr & ATTR_MOUNT) {
+			fs = findFsBy(findFsOfDir, dir);
+			if (fs == NULL) {
+				warn("load mount fs error on dir %s!\n", dir->name);
+				panic("");
+			}
+			dir = &(fs->root);
+		}
+
 		if (strncmp(name, ".", 2) == 0) {
 			continue;
 		} else if (strncmp(name, "..", 3) == 0) {
@@ -367,6 +447,16 @@ static int walkPath(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, 
 			}
 			return r;
 		}
+	}
+
+	// Note: 处理mount的目录
+	if (file->rawDirEnt.DIR_Attr & ATTR_MOUNT) {
+		fs = findFsBy(findFsOfDir, file);
+		if (fs == NULL) {
+			warn("load mount fs error on dir %s!\n", file->name);
+			panic("");
+		}
+		file = &(fs->root);
 	}
 
 	if (pdir) {
@@ -568,8 +658,15 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 	Dirent *dir, *f;
 	int r;
 	longEntSet longSet;
+	FileSystem *fs;
 
-	if ((r = walkPath(fatFs, path, baseDir, &dir, &f, lastElem, &longSet)) == 0) {
+	if (baseDir) {
+		fs = baseDir->fileSystem;
+	} else {
+		fs = fatFs;
+	}
+
+	if ((r = walkPath(fs, path, baseDir, &dir, &f, lastElem, &longSet)) == 0) {
 		warn("file or directory exists: %s\n", path);
 		return -E_FILE_EXISTS;
 	}

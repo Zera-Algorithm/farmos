@@ -19,4 +19,7 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 void fileGetPath(Dirent *dirent, char *path);
 void initRootFs();
 
+int mountFs(char *special, Dirent *baseDir, char *dirPath);
+int umountFs(char *dirPath, Dirent *baseDir);
+
 #endif

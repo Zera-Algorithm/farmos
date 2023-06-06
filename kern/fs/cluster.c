@@ -211,6 +211,7 @@ i64 fileBlockNo(FileSystem *fs, u64 firstclus, u64 fblockno) {
 	for (u32 i = 0; i < fblockno / block_per_clus; i++) {
 		curClus = fatRead(fs, curClus);
 		if (!FAT32_NOT_END_CLUSTER(curClus)) {
+			warn("read mounted img error! exceed fileSize!\n");
 			return -1;
 		}
 	}

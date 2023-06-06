@@ -6,8 +6,6 @@
 #include <lib/printf.h>
 #include <lib/string.h>
 
-#define MAX_FS_COUNT 16
-
 // 最多挂载16个文件系统
 static struct FileSystem fs[MAX_FS_COUNT];
 
@@ -18,6 +16,7 @@ void allocFs(struct FileSystem **pFs) {
 	for (int i = 0; i < MAX_FS_COUNT; i++) {
 		if (fs[i].valid == 0) {
 			*pFs = &fs[i];
+			memset(&fs[i], 0, sizeof(FileSystem));
 			fs[i].valid = 1;
 			return;
 		}
@@ -31,4 +30,13 @@ void allocFs(struct FileSystem **pFs) {
 void deAllocFs(struct FileSystem *fs) {
 	fs->valid = 0;
 	memset(fs, 0, sizeof(struct FileSystem));
+}
+
+FileSystem *findFsBy(findfs_callback_t findfs, void *data) {
+	for (int i = 0; i < MAX_FS_COUNT; i++) {
+		if (findfs(&fs[i], data)) {
+			return &fs[i];
+		}
+	}
+	return NULL;
 }

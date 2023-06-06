@@ -84,6 +84,7 @@ typedef struct FAT32LongDirectory {
 
 // FarmOS自定义属性，用来表示链接文件
 #define ATTR_LINK 0x40
+#define ATTR_MOUNT 0x80
 
 // FAT32 结构体大小定义
 #define DIRENT_SIZE 32

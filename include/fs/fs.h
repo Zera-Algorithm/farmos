@@ -64,10 +64,11 @@ struct SuperBlock {
 struct FileSystem {
 	bool valid; // 是否有效
 	char name[8];
-	SuperBlock superBlock; // 超级块
-	Dirent root;	       // root项
-	struct Dirent *image;  // mount对应的文件描述符
-	int deviceNumber;      // 对应真实设备的编号，暂不使用
+	SuperBlock superBlock;	   // 超级块
+	Dirent root;		   // root项
+	struct Dirent *image;	   // mount对应的文件描述符
+	struct Dirent *mountPoint; // 挂载点
+	int deviceNumber;	   // 对应真实设备的编号，暂不使用
 	struct Buffer *(*get)(struct FileSystem *fs, u64 blockNum); // 读取FS的一个Buffer
 	// 强制规定：传入的fs即为本身的fs
 	// 稍后用read返回的这个Buffer指针进行写入和释放动作
@@ -94,7 +95,12 @@ union st_mode {
 	} __attribute__((packed)) bits; // 取消优化对齐
 };
 
+typedef int (*findfs_callback_t)(FileSystem *fs, void *data);
+
 void allocFs(struct FileSystem **pFs);
 void deAllocFs(struct FileSystem *fs);
+FileSystem *findFsBy(findfs_callback_t findfs, void *data);
+
+#define MAX_FS_COUNT 16
 
 #endif

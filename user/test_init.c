@@ -8,18 +8,14 @@
 int main() {
 	printf("test_init started!\n");
 	int wstatus = 0;
-	mkdir("/dev", 0600);
-	int fd = open("/dev/vda2", O_CREATE | O_RDWR);
-	close(fd);
 
-	char *test_files[] = {"/pipe",
-
-			      // 以下测试均能通过
-			      "/fstat", "/mmap", "/munmap", "/mount", "/unlink", "/umount",
-			      "/mkdir_", "/close", "/dup", "/dup2", "/open", "/chdir", "/openat",
-			      "/getdents", "/fork", "/write", "/read", "/getcwd", "/brk", "/getpid",
-			      "/getppid", "/gettimeofday", "/exit", "/times", "/uname", "/execve",
-			      "/yield", "/wait", "/clone", "/waitpid", "/sleep", NULL};
+	char *test_files[] = {
+	    // 以下测试均能通过
+	    "/pipe",	 "/fstat",	  "/mmap",    "/munmap", "/mount",  "/unlink", "/umount",
+	    "/mkdir_",	 "/close",	  "/dup",     "/dup2",	 "/open",   "/chdir",  "/openat",
+	    "/getdents", "/fork",	  "/write",   "/read",	 "/getcwd", "/brk",    "/getpid",
+	    "/getppid",	 "/gettimeofday", "/exit",    "/times",	 "/uname",  "/execve", "/yield",
+	    "/wait",	 "/clone",	  "/waitpid", "/sleep",	 NULL};
 
 	int child = fork();
 	if (child) {
@@ -27,7 +23,7 @@ int main() {
 		syscall_shutdown();
 	} else {
 		// child
-		char *const argv[] = {"Hello!", "test_echo", NULL};
+		char *const argv[] = {NULL};
 		char *const envp[] = {NULL};
 		// printf("[test_init]: before execve! I'm %x\n", getpid());
 
