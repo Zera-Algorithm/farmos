@@ -20,26 +20,24 @@ static Buffer *getBlock(FileSystem *fs, u64 blockNum) {
 	if (fs->image == NULL) {
 		// 是挂载了根设备，直接读取块缓存层的数据即可
 		return bufRead(fs->deviceNumber, blockNum);
+	} else {
+		// 处理挂载了文件的情况
+		Dirent *img = fs->image;
+		FileSystem *parentFs = fs->image->fileSystem;
+		int blockNo = fileBlockNo(parentFs, img->firstClus, blockNum);
+		return bufRead(parentFs->deviceNumber, blockNo);
 	}
-	// TODO: 处理挂载了文件的情况
-
-	panic("unimplemented");
-	return NULL;
 }
 
-void fat32Init() {
+/**
+ * @brief 用fat32初始化一个文件系统
+ */
+static void fat32Init(FileSystem *fs) {
 	log(LEVEL_GLOBAL, "fat32 is initing...\n");
-	FileSystem *fs;
-	allocFs(&fs);
-
-	fs->image = NULL;
-	fs->deviceNumber = 0;
-	fs->get = getBlock;
 	strncpy(fs->name, "FAT32", 8);
 	panic_on(clusterInit(fs));
 
 	log(LEVEL_GLOBAL, "cluster Init Finished!\n");
-	direntInit();
 
 	// 初始化根目录
 	fs->root.firstClus = fs->superBlock.bpb.root_clus;
@@ -62,9 +60,22 @@ void fat32Init() {
 	log(LEVEL_GLOBAL, "root directory init finished!\n");
 
 	assert(sizeof(FAT32Directory) == DIRENT_SIZE);
-	fatFs = fs;
 
 	log(LEVEL_GLOBAL, "fat32 init finished!\n");
+}
+
+void initRootFs() {
+	allocFs(&fatFs);
+
+	fatFs->image = NULL;
+	fatFs->deviceNumber = 0;
+	fatFs->get = getBlock;
+
+	fat32Init(fatFs);
+}
+
+// mount之后，目录中原有的文件将被暂时取代为挂载的文件系统内的内容，umount时会重新出现
+void mountFs() {
 }
 
 // 簇缓冲区：簇最大为128个BUF_SIZE

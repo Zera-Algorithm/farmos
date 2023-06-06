@@ -95,9 +95,14 @@ int sysGetCwd(u64 buf, int size) {
  * @param pfd 指向int fd[2]的指针，存储返回的管道文件描述符。其中，fd[0]为读取，fd[1]为写入
  */
 int sysPipe2(u64 pfd) {
-	return SYSCALL_ERROR;
-	panic("unimplemented");
-	return 0;
+	int fd[2];
+	int ret = pipe(fd);
+	if (ret < 0) {
+		return ret;
+	} else {
+		copyOut(pfd, fd, sizeof(fd));
+		return ret;
+	}
 }
 
 int sysChdir(u64 path) {
@@ -356,9 +361,6 @@ void sysNanoSleep(u64 pTimeSpec) {
 	myProc()->trapframe->a0 = 0;
 
 	sleepProc(myProc(), clocks);
-
-	mycpu()->proc = NULL; // 将此CPU上的进程取下来
-	schedule(1);
 }
 
 static void *syscallTable[] = {
@@ -392,6 +394,7 @@ static void *syscallTable[] = {
     [SYS_linkat] = sysLinkAt,
     [SYS_unlinkat] = sysUnLinkAt,
     [SYS_fstat] = sysFstat,
+    [SYS_pipe2] = sysPipe2,
 };
 
 /**

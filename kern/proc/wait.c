@@ -24,9 +24,6 @@ inline static u64 __waitChild(struct Proc *proc, i64 pid, u64 pStatus, int optio
 		proc->wait.options = options;
 		naiveSleep(proc, "wait");
 
-		mycpu()->proc = NULL;
-		log(LEVEL_MODULE, "fall in sleep!\n");
-		schedule(1);
 		return 0; // 欺骗编译器
 	}
 }

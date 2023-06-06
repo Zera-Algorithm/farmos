@@ -76,6 +76,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	}
 
 	fds[kernFd].dirent = fileDirent;
+	fds[kernFd].pipe = NULL;
 	fds[kernFd].type = dev_file;
 	fds[kernFd].offset = 0;
 	fds[kernFd].flags = flags;

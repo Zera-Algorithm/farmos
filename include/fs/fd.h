@@ -3,13 +3,14 @@
 
 #include <fs/fat32.h>
 #include <fs/fs.h>
+#include <fs/pipe.h>
 #include <types.h>
 
 #define FDNUM 1024
 
 struct Fd {
 	Dirent *dirent;
-	// PIPE
+	struct Pipe *pipe;
 	int type;
 	uint offset;
 	uint flags;

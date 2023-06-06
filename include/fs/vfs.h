@@ -17,5 +17,6 @@ void fileStat(struct Dirent *file, struct kstat *pKStat);
 int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset,
 		   longEntSet *longSet);
 void fileGetPath(Dirent *dirent, char *path);
+void initRootFs();
 
 #endif

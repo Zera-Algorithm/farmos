@@ -25,8 +25,8 @@ struct Dirent {
 	/* for OS */
 	// 操作系统相关的数据结构
 	enum { ZERO = 10, OSRELEASE = 12, NONE = 15 } dev;
-	// FileSystem *head;
-	u32 off; // 在上一个目录项中的内容偏移，用于写回
+	FileSystem *head; // 仅用于是挂载点的目录，指向该挂载点所对应的文件系统
+	u32 off;	  // 在上一个目录项中的内容偏移，用于写回
 
 	LIST_ENTRY(Dirent) direntLink; // 自己的链接
 	struct DirentList childList;   // 子Dirent列表
@@ -66,7 +66,7 @@ struct FileSystem {
 	char name[8];
 	SuperBlock superBlock; // 超级块
 	Dirent root;	       // root项
-	struct Fd *image;      // mount对应的文件描述符
+	struct Dirent *image;  // mount对应的文件描述符
 	int deviceNumber;      // 对应真实设备的编号，暂不使用
 	struct Buffer *(*get)(struct FileSystem *fs, u64 blockNum); // 读取FS的一个Buffer
 	// 强制规定：传入的fs即为本身的fs

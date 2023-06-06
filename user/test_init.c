@@ -8,6 +8,9 @@
 int main() {
 	printf("test_init started!\n");
 	int wstatus = 0;
+	mkdir("/dev", 0600);
+	int fd = open("/dev/vda2", O_CREATE | O_RDWR);
+	close(fd);
 
 	char *test_files[] = {"/pipe",
 

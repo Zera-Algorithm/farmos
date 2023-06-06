@@ -6,6 +6,7 @@
 #include <lib/queue.h>
 #include <lib/string.h>
 #include <proc/proc.h>
+#include <proc/schedule.h>
 
 struct ProcList procSleepList = {NULL};
 
@@ -23,6 +24,9 @@ void naiveSleep(struct Proc *proc, const char *reason) {
 
 	TAILQ_REMOVE(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
 	LIST_INSERT_HEAD(&procSleepList, proc, procSleepLink);
+
+	mycpu()->proc = NULL; // 将此CPU上的进程取下来
+	schedule(1);
 }
 
 /**

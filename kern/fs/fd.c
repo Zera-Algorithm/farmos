@@ -1,11 +1,13 @@
 #include <dev/sbi.h>
 #include <fs/fat32.h>
 #include <fs/fd.h>
+#include <fs/pipe.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
 #include <proc/proc.h>
+#include <proc/sleep.h>
 
 static uint fdBitMap[FDNUM / 32] = {0};
 struct Fd fds[FDNUM];
@@ -16,6 +18,7 @@ static int writeconsole = -1;
 static int errorconsole = -1;
 
 void freeFd(uint i);
+int pipeIsClose(int fd);
 
 int readConsoleAlloc() {
 	if (readconsole == -1) {
@@ -95,13 +98,25 @@ int closeFd(int fd) {
  * @brief 将内核fd引用计数减一
  */
 void freeFd(uint i) {
+	struct Pipe *p;
 	assert(i >= 0 && i < FDNUM);
 	citesNum[i] -= 1;
 	if (citesNum[i] == 0) {
+		// TODO 这里后续要继续特殊判，是file对应的fd关闭还是pipe对应的fd关闭
+		// TODO 如果是file,是否要继续考虑怎么回收Dirent
+		// TODO 如果是pipe对应的fd关闭，则需要回收struct pipe对应的内存
 		int index = i >> 5;
 		int inner = i & 31;
 		fdBitMap[index] &= ~(1 << inner);
+		if (fds[i].type == dev_pipe) {
+			p = fds[i].pipe;
+			p->count -= 1;
+			if (p && p->count == 0) {
+				kvmFree((u64)fds[i].pipe); //释放pipe结构体所在的物理内存
+			}
+		}
 		fds[i].dirent = NULL;
+		fds[i].pipe = NULL;
 		fds[i].type = 0;
 		fds[i].offset = 0;
 		fds[i].flags = 0;
@@ -114,6 +129,8 @@ int read(int fd, u64 buf, size_t count) {
 	Dirent *dirent;
 	int n, i;
 	char ch;
+	struct Pipe *p;
+
 	if (fd < 0 || fd >= MAX_FD_COUNT) {
 		warn("read param fd is wrong, please check\n");
 		return -1;
@@ -146,10 +163,73 @@ int read(int fd, u64 buf, size_t count) {
 				fds[kernFd].offset += count;
 				return count;
 			} else {
-				return -1;
+				// fd 的类型是 pipe
+				p = fds[kernFd].pipe;
+				for (i = 0; i < count; i++) {
+					while (p->pipeReadPos == p->pipeWritePos) {
+						if (i > 0 || pipeIsClose(fd) == 1) {
+							// TODO
+							// 返回之前判断是否写端正在阻塞，是，就唤醒
+							fds[kernFd].offset += i;
+							return i;
+						} else {
+							// TODO
+							// 这里意思是读不了，需要阻塞读pipe的进程
+							warn("pipe is empty, can\'t be read. "
+							     "sleep!\n");
+
+							p->waitProc = myProc();
+							myProc()->pipeWait.i = i;
+							myProc()->pipeWait.p = p;
+							myProc()->pipeWait.kernFd = kernFd;
+							myProc()->pipeWait.count = count;
+							myProc()->pipeWait.buf = buf;
+							myProc()->pipeWait.fd = fd;
+							naiveSleep(myProc(), "pipe");
+							return -1;
+						}
+					}
+					ch = p->pipeBuf[p->pipeReadPos % PIPE_BUF_SIZE];
+					copyOut((buf + i), &ch, 1);
+					p->pipeReadPos++;
+				}
+				// TODO 返回之前判断是否写端正在阻塞，是，就唤醒
+				fds[kernFd].offset += count;
+				return count;
 			}
 		}
 	}
+}
+
+static void __onWakeup(struct Proc *proc) {
+	naiveWakeup(proc);
+
+	int i = proc->pipeWait.i;
+	struct Pipe *p = proc->pipeWait.p;
+	int kernFd = proc->pipeWait.kernFd;
+	int count = proc->pipeWait.count;
+	u64 buf = proc->pipeWait.buf;
+	int fd = proc->pipeWait.fd;
+
+	for (i = 0; i < count; i++) {
+		while (p->pipeReadPos == p->pipeWritePos) {
+			if (i > 0 || pipeIsClose(fd) == 1) {
+				fds[kernFd].offset += i;
+				proc->trapframe->a0 = i;
+				return;
+			} else {
+				warn("pipe is broken, can\'t be read. sleep!\n");
+				proc->trapframe->a0 = -1;
+				return;
+			}
+		}
+		char ch = p->pipeBuf[p->pipeReadPos % PIPE_BUF_SIZE];
+		copyOut((buf + i), &ch, 1);
+		p->pipeReadPos++;
+	}
+	fds[kernFd].offset += count;
+	proc->trapframe->a0 = count;
+	return;
 }
 
 int write(int fd, u64 buf, size_t count) {
@@ -157,6 +237,7 @@ int write(int fd, u64 buf, size_t count) {
 	Dirent *dirent;
 	int n, i;
 	char ch;
+	struct Pipe *p;
 	if (fd < 0 || fd >= MAX_FD_COUNT) {
 		warn("write param fd is wrong, please check\n");
 		return -1;
@@ -187,8 +268,34 @@ int write(int fd, u64 buf, size_t count) {
 				fds[kernFd].offset += count;
 				return count;
 			} else {
-				// pipe
-				return -1;
+				p = fds[kernFd].pipe;
+				for (i = 0; i < count; i++) {
+					while (p->pipeWritePos - p->pipeReadPos == PIPE_BUF_SIZE) {
+						if (pipeIsClose(fd) == 1) {
+							// TODO
+							// wirte返回值需要查看linux手册，确认没写完且读端关闭的返回值
+							fds[kernFd].offset += i;
+							return i;
+						} else {
+							// TODO
+							// 这里意思是写不了，需要阻塞写pipe的进程
+							return -1;
+						}
+					}
+					copyIn((buf + i), &ch, 1);
+					p->pipeBuf[p->pipeWritePos % PIPE_BUF_SIZE] = ch;
+					p->pipeWritePos++;
+				}
+				// TODO 判断读端是否阻塞，是，就唤醒读端
+				fds[kernFd].offset += count;
+
+				if (p->waitProc) {
+					log(LEVEL_GLOBAL, "wakeup a process!\n");
+					__onWakeup(p->waitProc);
+					p->waitProc = NULL;
+				}
+
+				return count;
 			}
 		}
 	}
@@ -340,4 +447,19 @@ int fileStatFd(int fd, u64 pkstat) {
 	fileStat(file, &kstat);
 	copyOut(pkstat, &kstat, sizeof(struct kstat));
 	return 0;
+}
+
+int pipeIsClose(int fd) {
+	// 由调用者保证fd一定有效
+	int kernFd = myProc()->fdList[fd];
+	struct Pipe *p = fds[kernFd].pipe;
+	if (p != NULL) {
+		if (p->count <= 1) {
+			return 1;
+		} else {
+			return 0;
+		}
+	} else {
+		return 0;
+	}
 }

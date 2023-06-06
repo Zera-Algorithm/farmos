@@ -197,3 +197,23 @@ void clusterFree(FileSystem *fs, u64 cluster, u64 prev) {
 		fatWrite(fs, cluster, 0);
 	}
 }
+
+/**
+ * 计算文件的第 fblockno 个块所在的实际扇区号
+ * @param  fs       该文件所在的文件系统
+ * @param  firstclus 文件的第一个簇号
+ * @param  fblockno 希望计算文件第几个块的扇区号
+ */
+i64 fileBlockNo(FileSystem *fs, u64 firstclus, u64 fblockno) {
+	const u64 block_per_clus = fs->superBlock.bpb.sec_per_clus;
+	// 找到第 fblockno 个块所在的簇号
+	u32 curClus = firstclus;
+	for (u32 i = 0; i < fblockno / block_per_clus; i++) {
+		curClus = fatRead(fs, curClus);
+		if (!FAT32_NOT_END_CLUSTER(curClus)) {
+			return -1;
+		}
+	}
+	// 找到第 fblockno 个块所在的扇区号
+	return clusterSec(fs, curClus) + fblockno % block_per_clus;
+}

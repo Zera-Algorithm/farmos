@@ -6,6 +6,7 @@
 #include <dev/virtio.h>
 #include <fs/buf.h>
 #include <fs/fat32.h>
+#include <fs/vfs.h>
 #include <lib/printf.h>
 #include <mm/mmu.h>
 #include <mm/pmm.h>
@@ -105,14 +106,15 @@ void main() {
 		// bufTest(6);
 		// bufTest(7);
 
-		fat32Init();
+		direntInit();
+		initRootFs();
 		// fat32Test();
 
 		// testProcRun();
 		procInit();
 		PROC_CREATE(test_init, 1);
 		struct Proc *proc = PROC_CREATE(test_while, 2);
-		// PROC_CREATE(test_clone, 2);
+		// PROC_CREATE(test_pipe, 2);
 		// PROC_CREATE(test_execve, 1);
 
 		// PROC_CREATE(test_sleep, 1);

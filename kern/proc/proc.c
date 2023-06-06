@@ -670,6 +670,7 @@ static void doChildManage(struct Proc *parent) {
  * @param proc 要结束的进程
  */
 void procDestroy(struct Proc *proc) {
+	log(LEVEL_GLOBAL, "I will kill proc %s(0x%08lx)\n", proc->name, proc->pid);
 	// 杀死进程
 	killProc(proc);
 

@@ -113,6 +113,8 @@ extern struct ProcSchedQueue procSchedQueue[NCPU];
 
 #define MAX_FD_COUNT 256
 
+struct Pipe;
+
 /**
  * zrp注：当前没有实现内核线程，每个用户进程只有用户态一种状态，难以处理
  * 睡眠问题。目前的策略是由唤醒者帮助睡眠者完成其事务，但这需要在进程控制块中
@@ -165,6 +167,17 @@ struct Proc {
 		int options;
 		u8 exitCode; // 进程的退出状态
 	} wait;
+
+	// 实现Pipe等待唤醒机制的结构体
+	// TODO: 之后绝对要用内核线程取代！！！
+	struct PipeWait {
+		int i;
+		struct Pipe *p;
+		int kernFd;
+		int count;
+		u64 buf;
+		int fd;
+	} pipeWait;
 
 	struct trapframe *trapframe;  // data page for trampoline.S
 	struct file *ofile[NOFILE];   // Open files
