@@ -19,6 +19,7 @@ static int errorconsole = -1;
 
 void freeFd(uint i);
 int pipeIsClose(int fd);
+static void __onWakeup(struct Proc *proc);
 
 int readConsoleAlloc() {
 	if (readconsole == -1) {
@@ -111,6 +112,11 @@ void freeFd(uint i) {
 		if (fds[i].type == dev_pipe) {
 			p = fds[i].pipe;
 			p->count -= 1;
+
+			// 唤醒仍在睡眠的对端程序
+			if (p->waitProc != NULL) {
+				__onWakeup(p->waitProc);
+			}
 			if (p && p->count == 0) {
 				kvmFree((u64)fds[i].pipe); //释放pipe结构体所在的物理内存
 			}
@@ -218,7 +224,7 @@ static void __onWakeup(struct Proc *proc) {
 				proc->trapframe->a0 = i;
 				return;
 			} else {
-				warn("pipe is broken, can\'t be read. sleep!\n");
+				warn("pipe can\'t be read.\n");
 				proc->trapframe->a0 = -1;
 				return;
 			}

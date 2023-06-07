@@ -92,7 +92,7 @@ The remote fence function acts as a full TLB flush if
 
   指示远程Hart执行SFENCE.VMA指令，刷新TLB表项，刷新的虚拟地址范围位`start_addr` 到`start_addr + size` 的这一段
 
-  ![image-20230501173112170](/home/zrp/.config/Typora/typora-user-images/image-20230501173112170.png)
+  ![image-20230501173112170](assets/image-20230501173112170.png)
 
 * ```c
   struct sbiret sbi_remote_sfence_vma_asid(unsigned long hart_mask,
@@ -139,5 +139,7 @@ reference: https://tinylab.org/opensbi-firmware-and-sbi-hsm/
 
 
 OpenSBI 在 Qemu中的位置：
+
+`qemu-7.1.0/roms/opensbi/`
 
 ![image-20230501223557149](./assets/image-20230501223557149.png)

@@ -189,7 +189,7 @@ void userTrapReturn() {
 	// 关中断，避免中断对S态到U态转换的干扰
 	intr_off();
 
-	// 加载trapoline地址
+	// 加载trampoline地址
 	u64 trampolineUserVec = TRAMPOLINE + (userVec - trampoline);
 	w_stvec(trampolineUserVec);
 
