@@ -136,7 +136,7 @@ struct Proc {
 	 *
 	 */
 	int killed; // If non-zero, have been killed
-	int xstate; // Exit status to be returned to parent's wait
+	// int xstate; // Exit status to be returned to parent's wait
 	u64 pid; // 进程ID，应当由进程在队列中的位置和累积创建进程排名组成
 
 	// wait_lock must be held when using this:
@@ -180,7 +180,6 @@ struct Proc {
 	} pipeWait;
 
 	struct trapframe *trapframe;  // data page for trampoline.S
-	struct file *ofile[NOFILE];   // Open files
 	struct Dirent *cwd;	      // Current directory
 	char name[MAX_PROC_NAME_LEN]; // Process name (debugging)
 

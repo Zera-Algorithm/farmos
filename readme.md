@@ -107,9 +107,9 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [引导](./docs/FarmOS%20-%20boot.md)
 * [Trap和中断](./docs/FarmOS%20-%20Trap%E4%B8%8E%E6%97%B6%E9%92%9F%E4%B8%AD%E6%96%AD.md)
 * [内存管理](./docs/FarmOS%20-%20%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.md)
-* 用户进程与调度
-* 系统调用的处理
-* VFS
+* [用户进程与调度](./docs/FarmOS%20-%20%E7%94%A8%E6%88%B7%E8%BF%9B%E7%A8%8B%E4%B8%8E%E8%B0%83%E5%BA%A6.md)
+* [系统调用的处理](./docs/FarmOS%20-%20%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E7%9A%84%E5%AE%9E%E7%8E%B0.md)
+* [VFS](./docs/FarmOS%20-%20VFS.md)
 
 
 ## 一些说明

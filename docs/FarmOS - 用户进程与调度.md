@@ -11,7 +11,7 @@ include
     ├── schedule.h
     ├── sleep.h
     └── wait.h
-    
+
 kern
 └── proc
     ├── Makefile
@@ -20,6 +20,77 @@ kern
     ├── schedule.c
     ├── sleep.c
     └── wait.c
+```
+
+### 数据结构
+
+进程控制块是管理进程的基本数据结构，其形式如下：
+
+```
+struct Proc {
+	struct spinlock lock;
+
+	// p->lock must be held when using these:
+	enum ProcState state; // 进程状态
+	char sleepReason[16]; // 睡眠原因
+	/**
+	 * 有下面几种情况：
+	 * nanosleep：线程睡眠
+	 * wait：等待子进程
+	 *
+	 */
+	int killed; // If non-zero, have been killed
+	u64 pid; // 进程ID，应当由进程在队列中的位置和累积创建进程排名组成
+
+	// wait_lock must be held when using this:
+	u64 parentId; // Parent process
+	u64 priority;
+
+	int fdList[MAX_FD_COUNT];
+
+	// these are private to the process, so p->lock need not be held.
+	uint64 sz;	  // Size of process memory (bytes)
+	Pte *pageTable;	  // User page table
+	u64 programBreak; // 用于brk系统调用，以增减该进程的堆空间，进程可以访问任何处于programBreak及以下的内存
+
+	// 实现进程运行时间审计的结构体
+	struct ProcTime {
+		u64 totalUtime; // 进程运行的总时钟数
+		u64 lastTime;	// 进程上一次运行时的时钟数
+		u64 totalStime; // 系统时间（可以实现为系统调用花掉的时间）
+
+		u64 procSleepClocks; // 进程要睡眠的周期数
+		u64 procSleepBegin;  // 进程开始睡眠的时间
+	} procTime;
+
+	// 实现等待机制的结构体
+	struct Wait {
+		u64 pid;
+		u64 uPtr_status; // int *
+		int options;
+		u8 exitCode; // 进程的退出状态
+	} wait;
+
+	// 实现Pipe等待唤醒机制的结构体
+	struct PipeWait {
+		int i;
+		struct Pipe *p;
+		int kernFd;
+		int count;
+		u64 buf;
+		int fd;
+	} pipeWait;
+
+	struct trapframe *trapframe;  // 进程的Trapframe
+	struct Dirent *cwd;	      // 进程当前工作目录
+	char name[MAX_PROC_NAME_LEN]; // 进程名称（用于Debug）
+
+	LIST_ENTRY(Proc) procFreeLink;	// 空闲链表链接
+	LIST_ENTRY(Proc) procSleepLink; // 进程睡眠链接(进程可以因为多种原因睡眠)
+	LIST_ENTRY(Proc) procChildLink; // 子进程列表链接
+	TAILQ_ENTRY(Proc) procSchedLink[NCPU]; // cpu调度队列链接
+	struct ProcList childList;	       // 子进程列表
+};
 ```
 
 ### 用户进程的加载与运行
