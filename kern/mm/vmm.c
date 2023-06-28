@@ -1,6 +1,7 @@
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lock/mutex.h>
 #include <mm/mmu.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
@@ -103,6 +104,8 @@ static void memoryTest() {
 	log(LEVEL_GLOBAL, "Passed Kernel MemMap Test!\n");
 }
 
+mutex_t kvmlock;
+
 void vmmInit() {
 	// 第一步：初始化内核页目录
 	log(LEVEL_GLOBAL, "Virtual Memory Init Start\n");
@@ -133,31 +136,42 @@ void vmmInit() {
 	// 第八步：测试
 	memoryTest();
 	log(LEVEL_GLOBAL, "Virtual Memory Init Finished, `vm` Functions Available!\n");
+
+	mtx_init(&kvmlock, "kvmlock", false);
 }
 
 // 功能接口函数
 u64 kvmAlloc() {
+	mtx_lock(&kvmlock);
 	Page *pp = pmAlloc();
 	pmPageIncRef(pp);
+	mtx_unlock(&kvmlock);
 	return pageToPa(pp);
 }
 
 void kvmFree(u64 pa) {
+	mtx_lock(&kvmlock);
 	Page *pp = paToPage(pa);
 	pmPageDecRef(pp);
+	mtx_unlock(&kvmlock);
 }
 
 u64 vmAlloc() {
+	mtx_lock(&kvmlock);
 	Page *pp = pmAlloc();
+	mtx_unlock(&kvmlock);
 	return pageToPa(pp);
 }
 
 Pte ptLookup(Pte *pgdir, u64 va) {
+	mtx_lock(&kvmlock);
 	Pte *pte = ptWalk(pgdir, va, false);
+	mtx_unlock(&kvmlock);
 	return pte == NULL ? 0 : *pte;
 }
 
 err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
+	mtx_lock(&kvmlock);
 	// 如果页表项已经存在，抹除其内容（可优化）
 	Pte *originPte = ptWalk(pgdir, va, false);
 	if (originPte != NULL && (*originPte & PTE_V)) {
@@ -174,11 +188,13 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 		tlbFlush();
 	}
 
+	mtx_unlock(&kvmlock);
 	log(LEVEL_MODULE, "end insert of va 0x%016lx, pa 0x%016lx\n", va, pa);
 	return 0;
 }
 
 err_t ptUnmap(Pte *pgdir, u64 va) {
+	mtx_lock(&kvmlock);
 	Pte *pte = ptWalk(pgdir, va, false);
 	if (!(*pte & PTE_V)) {
 		return -E_NO_MAP;
@@ -188,5 +204,6 @@ err_t ptUnmap(Pte *pgdir, u64 va) {
 	if (ptFetch() == pgdir) {
 		tlbFlush(va);
 	}
+	mtx_unlock(&kvmlock);
 	return 0;
 }

@@ -229,6 +229,30 @@ static inline void intr_off() {
 	w_sstatus(r_sstatus() & ~SSTATUS_SIE);
 }
 
+// RASP THREAD FUNCTIONS START
+
+static inline register_t intr_enable() {
+	register_t ret;
+	asm volatile("csrrsi %0, sstatus, %1" : "=&r"(ret) : "i"(SSTATUS_SIE));
+	return (ret & (SSTATUS_SIE));
+}
+
+static inline register_t intr_disable() {
+	register_t ret;
+	asm volatile("csrrci %0, sstatus, %1" : "=&r"(ret) : "i"(SSTATUS_SIE));
+	return (ret & (SSTATUS_SIE));
+}
+
+static inline void intr_restore(register_t sie) {
+	if (sie) {
+		asm volatile("csrs sstatus, %0" : : "r"(SSTATUS_SIE));
+	} else {
+		asm volatile("csrc sstatus, %0" : : "r"(SSTATUS_SIE));
+	}
+}
+
+// RASP THREAD FUNCTIONS END
+
 // are device interrupts enabled?
 static inline int intr_get() {
 	uint64 x = r_sstatus();

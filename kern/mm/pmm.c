@@ -9,6 +9,7 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <mm/pmm.h>
+#include <param.h>
 
 struct Page {
 	u32 ref;
@@ -47,6 +48,10 @@ void pmmInit() {
 	bufferData = pmInitPush(freemem, BGROUP_NUM * sizeof(BufferDataGroup), &freemem);
 	extern void *bufferGroups;
 	bufferGroups = pmInitPush(freemem, BGROUP_NUM * sizeof(BufferGroup), &freemem);
+
+	// 为内核栈分配内存
+	extern void *kstacks;
+	kstacks = pmInitPush(freemem, NPROC * KTHREAD_STACK_PAGE * PAGE_SIZE, &freemem);
 
 	// 第二部分：初始化空闲链表
 	log(MM_GLOBAL, "Physical Memory Freelist Init Start: Freemem = 0x%0lx\n", freemem);

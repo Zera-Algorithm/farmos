@@ -5,7 +5,9 @@
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/transfer.h>
-#include <proc/proc.h>
+#include <proc/cpu.h>
+#include <proc/thread.h>
+#define myProc() (cpu_this()->cpu_running)
 
 int openat(int fd, u64 filename, int flags, mode_t mode) {
 	struct Dirent *dirent = NULL, *fileDirent = NULL;

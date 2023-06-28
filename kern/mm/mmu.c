@@ -1,6 +1,8 @@
 #include <dev/sbi.h>
 #include <lib/printf.h>
 #include <mm/mmu.h>
+#include <param.h>
+#include <riscv.h>
 
 // long类型的最大数字
 #define MAXLONG 0xFFFFFFFFFFFFFFFFul

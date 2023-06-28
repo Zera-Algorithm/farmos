@@ -24,6 +24,8 @@ typedef u64 size_t;
 typedef i32 err_t; // err_t允许返回负数，不能用u开头的类型
 typedef i64 off_t;
 typedef u64 pte_t;
+typedef u64 register_t;
+typedef u64 ptr_t;
 
 // FarmOS 页表项
 typedef pte_t Pte;

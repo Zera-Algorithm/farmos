@@ -6,8 +6,16 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
-#include <proc/proc.h>
 #include <proc/sleep.h>
+
+// DEPRECATED
+#include <proc/cpu.h>
+#define myProc() (cpu_this()->cpu_running)
+void naiveSleep(thread_t *proc, const char *reason) {
+}
+void naiveWakeup(thread_t *proc) {
+}
+// END DEPRECATED
 
 static uint fdBitMap[FDNUM / 32] = {0};
 struct Fd fds[FDNUM];
@@ -19,7 +27,7 @@ static int errorconsole = -1;
 
 void freeFd(uint i);
 int pipeIsClose(int fd);
-static void __onWakeup(struct Proc *proc);
+static void __onWakeup(thread_t *proc);
 
 int readConsoleAlloc() {
 	if (readconsole == -1) {
@@ -207,7 +215,7 @@ int read(int fd, u64 buf, size_t count) {
 	}
 }
 
-static void __onWakeup(struct Proc *proc) {
+static void __onWakeup(thread_t *proc) {
 	naiveWakeup(proc);
 
 	int i = proc->pipeWait.i;
@@ -221,11 +229,11 @@ static void __onWakeup(struct Proc *proc) {
 		while (p->pipeReadPos == p->pipeWritePos) {
 			if (i > 0 || pipeIsClose(fd) == 1) {
 				fds[kernFd].offset += i;
-				proc->trapframe->a0 = i;
+				proc->td_trapframe->a0 = i;
 				return;
 			} else {
 				warn("pipe can\'t be read.\n");
-				proc->trapframe->a0 = -1;
+				proc->td_trapframe->a0 = -1;
 				return;
 			}
 		}
@@ -234,7 +242,7 @@ static void __onWakeup(struct Proc *proc) {
 		p->pipeReadPos++;
 	}
 	fds[kernFd].offset += count;
-	proc->trapframe->a0 = count;
+	proc->td_trapframe->a0 = count;
 	return;
 }
 

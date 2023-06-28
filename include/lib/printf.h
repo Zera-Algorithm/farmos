@@ -1,8 +1,8 @@
 #ifndef _printk_h_
 #define _printk_h_
 
-#include <proc/proc.h>
 #include <stdarg.h>
+#include <trap/trapframe.h>
 
 // 初始化锁
 void printInit(void);

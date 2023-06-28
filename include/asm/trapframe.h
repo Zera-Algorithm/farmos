@@ -1,5 +1,5 @@
-#ifndef _TRAPFRAME_H
-#define _TRAPFRAME_H
+#ifndef _ASM_TRAPFRAME_H
+#define _ASM_TRAPFRAME_H
 /**
  * @brief 下面定义Trapframe各个字段的偏移
  */
@@ -39,4 +39,21 @@
 #define OFFSET_T5 264
 #define OFFSET_T6 272
 #define OFFSET_KERNEL_SP 280
+
+#define CTX_RA_OFF 0
+#define CTX_SP_OFF 8
+#define CTX_GP_OFF 16
+#define CTX_TP_OFF 24
+#define CTX_S0_OFF 32
+#define CTX_S1_OFF 40
+#define CTX_S2_OFF 48
+#define CTX_S3_OFF 56
+#define CTX_S4_OFF 64
+#define CTX_S5_OFF 72
+#define CTX_S6_OFF 80
+#define CTX_S7_OFF 88
+#define CTX_S8_OFF 96
+#define CTX_S9_OFF 104
+#define CTX_S10_OFF 112
+#define CTX_S11_OFF 120
 #endif

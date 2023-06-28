@@ -5,7 +5,12 @@
 #define EXCCODE_PAGE_FAULT 15
 
 void kerneltrap();
-void userTrap();
-void userTrapReturn();
+
 void trapInitHart(void);
+
+// User Trap
+void utrap_entry();
+void utrap_return();
+void utrap_firstsched();
+
 #endif

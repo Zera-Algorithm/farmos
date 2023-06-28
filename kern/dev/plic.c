@@ -1,5 +1,5 @@
 #include <mm/memlayout.h>
-#include <proc/proc.h>
+#include <proc/cpu.h>
 #include <types.h>
 
 //
@@ -16,7 +16,7 @@ void plicInit() {
 }
 
 void plicInitHart() {
-	int hart = cpuid();
+	int hart = cpu_this_id();
 
 	// 允许VIRTIO的IRQ中断
 	*(u32 *)PLIC_SENABLE(hart) = (1 << VIRTIO0_IRQ);
@@ -29,7 +29,7 @@ void plicInitHart() {
  * @brief 向PLIC索要当前中断的IRQ编号
  */
 int plicClaim() {
-	int hart = cpuid();
+	int hart = cpu_this_id();
 	int irq = *(u32 *)PLIC_SCLAIM(hart);
 	return irq;
 }
@@ -39,6 +39,6 @@ int plicClaim() {
  * @param irq 处理完的中断编号
  */
 void plicComplete(int irq) {
-	int hart = cpuid();
+	int hart = cpu_this_id();
 	*(u32 *)PLIC_SCLAIM(hart) = irq;
 }

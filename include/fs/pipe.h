@@ -3,14 +3,13 @@
 #include <types.h>
 
 #define PIPE_BUF_SIZE 256
-
-struct Proc;
+struct thread;
 struct Pipe {
 	u32 count;
 	u64 pipeReadPos;	   // read position
 	u64 pipeWritePos;	   // write position
 	u8 pipeBuf[PIPE_BUF_SIZE]; // data buffer
-	struct Proc *waitProc;
+	struct thread *waitProc;
 };
 
 int pipe(int fd[2]);

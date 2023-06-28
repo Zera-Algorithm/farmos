@@ -1,11 +1,10 @@
 #ifndef _SLEEP_H
 #define _SLEEP_H
 
+#include <proc/thread.h>
 #include <types.h>
-void sleepProc(struct Proc *proc, u64 clocks);
-void wakeupProc();
 
-void naiveSleep(struct Proc *proc, const char *reason);
-void naiveWakeup(struct Proc *proc);
+void sleep(void *chan, mutex_t *mtx, const char *msg);
+void wakeup(void *chan);
 
 #endif

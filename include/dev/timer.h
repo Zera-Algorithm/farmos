@@ -7,7 +7,7 @@
 #define CLOCK_PER_USEC 10
 
 // 中断时间间隔为0.005s(200Hz)
-#define INTERVAL 50000
+#define INTERVAL 500000
 
 uint64 getTime();
 u64 getUSecs();

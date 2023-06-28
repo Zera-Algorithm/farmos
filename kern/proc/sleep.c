@@ -1,81 +1,66 @@
-//
-// 管理进程睡眠事务
-//
-#include <dev/timer.h>
-#include <lib/printf.h>
-#include <lib/queue.h>
-#include <lib/string.h>
-#include <proc/proc.h>
-#include <proc/schedule.h>
+#include <proc/cpu.h>
+#include <proc/sched.h>
+#include <proc/sleep.h>
 
-struct ProcList procSleepList = {NULL};
+void sleep(void *chan, mutex_t *mtx, const char *msg) {
+	thread_t *td = cpu_this()->cpu_running;
+	// 先获取进程锁，再释放传入的另一个锁，保证另一个锁释放后当前进程的状态不会被修改
+	mtx_lock(&td->td_lock);
+	mtx_unlock(mtx);
+	// 将当前进程加入睡眠队列
+	tdq_critical_enter(&thread_runq);
+	TAILQ_REMOVE(&thread_runq.tq_head, td, td_runq);
+	tdq_critical_exit(&thread_runq);
 
-/**
- * @brief 简单睡眠函数
- * @param proc 要睡眠的进程
- * @param reason 睡眠的原因
- */
-void naiveSleep(struct Proc *proc, const char *reason) {
-	u64 cpu = cpuid();
-	proc->state = SLEEPING;
+	tdq_critical_enter(&thread_sleepq);
+	TAILQ_INSERT_TAIL(&thread_sleepq.tq_head, td, td_sleepq);
+	tdq_critical_exit(&thread_sleepq);
 
-	strncpy(proc->sleepReason, reason, 16);
-	proc->sleepReason[15] = 0; // 防止缓冲区溢出
+	// 保存睡眠信息
+	td->td_wchan = (ptr_t)chan;
+	td->td_status = SLEEPING;
+	td->td_wmesg = msg;
 
-	TAILQ_REMOVE(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
-	LIST_INSERT_HEAD(&procSleepList, proc, procSleepLink);
+	// 释放进程锁，进入睡眠
+	schedule();
 
-	mycpu()->proc = NULL; // 将此CPU上的进程取下来
-	schedule(1);
+	// 此时已经被唤醒，进程状态为 RUNNING，清空睡眠信息
+	td->td_wchan = 0;
+	td->td_wmesg = NULL;
+
+	// 将当前进程从睡眠队列中移除
+	tdq_critical_enter(&thread_sleepq);
+	TAILQ_REMOVE(&thread_sleepq.tq_head, td, td_sleepq);
+	tdq_critical_exit(&thread_sleepq);
+
+	tdq_critical_enter(&thread_runq);
+	TAILQ_INSERT_TAIL(&thread_runq.tq_head, td, td_runq);
+	tdq_critical_exit(&thread_runq);
+
+	// 释放进程锁，重新获取传入的另一个锁
+	mtx_unlock(&td->td_lock);
+	mtx_lock(mtx);
 }
 
-/**
- * @brief 简单唤醒函数
- * @todo 多核环境下，要被唤醒的进程可能并不在本CPU上
- */
-void naiveWakeup(struct Proc *proc) {
-	int cpu = cpuid();
-	proc->state = RUNNABLE;
-	proc->sleepReason[0] = 0;
-	// 将此进程从睡眠队列中移除，加入到调度队列
-	LIST_REMOVE(proc, procSleepLink);
-	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
-}
-
-/**
- * @brief 使进程陷入定时睡眠，从当前CPU的运行队列中移除，放入到睡眠队列中。但不管调度相关的事情
- */
-void sleepProc(struct Proc *proc, u64 clocks) {
-	proc->procTime.procSleepBegin = getTime();
-	proc->procTime.procSleepClocks = clocks;
-
-	naiveSleep(proc, "nanosleep");
-}
-
-/**
- * @brief 在每次时钟中断时调用。检查当前是否有处于NanoSleep状态且可唤醒的进程
- */
-void wakeupProc() {
-	struct Proc *proc;
-	u64 curTime = getTime();
-	int pick = 0;
-
-	do {
-		pick = 0;
-		LIST_FOREACH (proc, &procSleepList, procSleepLink) {
-			if (strncmp(proc->sleepReason, "nanosleep", 16) != 0) {
-				continue;
-			}
-
-			// 该进程睡眠时间已超过设定时间
-			if (proc->procTime.procSleepBegin + proc->procTime.procSleepClocks <=
-			    curTime) {
-				pick = 1;
-
-				// 将此进程从睡眠队列中移除，加入到调度队列
-				naiveWakeup(proc);
-				break;
-			}
+void wakeup(void *chan) {
+	thread_t *td = NULL;
+	threadq_t readyq;
+	TAILQ_INIT(&readyq.tq_head);
+	// 将睡眠队列中所有等待 chan 的进程唤醒
+	tdq_critical_enter(&thread_sleepq);
+	TAILQ_FOREACH (td, &thread_sleepq.tq_head, td_sleepq) {
+		mtx_lock(&td->td_lock);
+		if (td->td_status == SLEEPING && td->td_wchan == (ptr_t)chan) {
+			td->td_status = RUNNABLE;
+			TAILQ_REMOVE(&thread_sleepq.tq_head, td, td_sleepq);
+			TAILQ_INSERT_TAIL(&readyq.tq_head, td, td_runq);
 		}
-	} while (pick == 1);
+		mtx_unlock(&td->td_lock);
+	}
+	tdq_critical_exit(&thread_sleepq);
+
+	// 将唤醒的进程加入就绪队列
+	tdq_critical_enter(&thread_runq);
+	TAILQ_CONCAT(&thread_runq.tq_head, &readyq.tq_head, td_runq);
+	tdq_critical_exit(&thread_runq);
 }

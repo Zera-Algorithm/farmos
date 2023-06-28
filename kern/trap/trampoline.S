@@ -11,6 +11,9 @@
 #include <riscv.h>
 #include <mm/memlayout.h>
 
+
+// 该段在用户态和内核态均有映射，因此不应该使用内核地址或用户地址
+// 只能使用两端均映射的地址，也就是 TRAMPOLINE 和 TRAPFRAME
 .section trampSec
 .globl trampoline
 trampoline:
@@ -18,17 +21,11 @@ trampoline:
 .align 4
 .globl userVec
 userVec:
-	// trap.c会将stvec指向这里，所有所有用户态的trap都从这里开始
-	// 注意：此时此时处于S态，但仍然是用户的页表
+	// e0: 硬件设置好 sepc/scause/stval，屏蔽中断（压入 SPIE 位），进入监管态
 
-	// 保存a0
+	// e1: 借用 sscratch 将所有 31 个寄存器保存到 TRAPFRAME
 	csrw sscratch, a0
-
-	// 加载TRAPFRAME
-	// 每个用户都会有一个固定的虚拟地址用于存陷入异常时的寄存器状态
 	li a0, TRAPFRAME
-
-	// 在TRAPFRAME里面保存寄存器信息(除了a0)
 	sd  ra,  OFFSET_RA(a0)
 	sd  sp,  OFFSET_SP(a0)
 	sd  gp,  OFFSET_GP(a0)
@@ -59,34 +56,24 @@ userVec:
 	sd  t4,  OFFSET_T4(a0)
 	sd  t5,  OFFSET_T5(a0)
 	sd  t6,  OFFSET_T6(a0)
-
-	// 保存a0
 	csrr t0, sscratch
 	sd t0, OFFSET_A0(a0)
 
-	// tp加载当前的hartid
-	ld tp, OFFSET_HARTID(a0)
-
-	// 保存epc
+	// e2: 保存 sepc 到 TRAPFRAME
 	csrr t0, sepc
 	sd t0, OFFSET_EPC(a0)
 
-	// t0 加载trap_handler
+	// e3: 准备内核线程现场（入口地址、内核栈）
 	ld t0, OFFSET_TRAP_HANDLER(a0)
-
-	// t1 加载satp
-	ld t1, OFFSET_KERNEL_SATP(a0)
-
-	// 准备一个正确的sp
 	ld sp, OFFSET_KERNEL_SP(a0)
 
-	// 等待过去的内存访问操作结束
+	// e4: 恢复内核号（切到用户态时暂存在 TRAPFRAME 里）
+	ld tp, OFFSET_HARTID(a0)
+	
+	// e5: 内存屏障、切换到内核页表、再次内存屏障
+	ld t1, OFFSET_KERNEL_SATP(a0)
 	sfence.vma zero, zero
-
-	// 加载内核页表
 	csrw satp, t1
-
-	// 刷新MMU
 	sfence.vma zero, zero
 
 	jr t0
@@ -94,16 +81,26 @@ userVec:
 
 .align 4
 .globl userRet
+/*
+ * void userRet(u64 user_satp)
+ * a0/x10 = user_satp
+ */
 userRet:
-	# userRet(pagetable)：a0保存页目录
-	# 作为跳板，从内核态跳到用户态
+	
+	// ue5: 内存屏障、切换到用户页表、再次内存屏障
 	sfence.vma zero, zero
 	csrw satp, a0
 	sfence.vma zero, zero
 
-	li a0, TRAPFRAME
+	// ue4: 由内核函数存储内核号
+	// ue3: 由内核函数保存内核线程现场（TRAPFRAME->KERNEL_SP/TRAPFRAME->TRAP_HANDLER）
 
-	# 从TRAPFRAME恢复所有变量，除了a0
+	// ue2: 从 TRAPFRAME 中恢复 sepc
+	li a0, TRAPFRAME
+	ld t0, OFFSET_EPC(a0)
+	csrw sepc, t0
+
+	// ue1: 将所有 31 个寄存器从 TRAPFRAME 中恢复
 	ld  ra,  OFFSET_RA(a0)
 	ld  sp,  OFFSET_SP(a0)
 	ld  gp,  OFFSET_GP(a0)
@@ -134,10 +131,8 @@ userRet:
 	ld  t4,  OFFSET_T4(a0)
 	ld  t5,  OFFSET_T5(a0)
 	ld  t6,  OFFSET_T6(a0)
-
-	# 恢复a0
 	ld  a0,  OFFSET_A0(a0)
 
-	# 利用userTrapRet设置的sstatus和sepc，返回用户态
+	// ue0: 硬件从 sepc 恢复，开启中断（恢复 SPIE 位），进入用户态
 	sret
 

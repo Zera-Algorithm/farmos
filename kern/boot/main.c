@@ -7,12 +7,14 @@
 #include <fs/buf.h>
 #include <fs/fat32.h>
 #include <fs/vfs.h>
+#include <lib/log.h>
 #include <lib/printf.h>
 #include <mm/mmu.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <param.h>
-#include <proc/proc.h>
+#include <proc/cpu.h>
+#include <proc/thread.h>
 #include <riscv.h>
 #include <types.h>
 
@@ -22,7 +24,7 @@ volatile static int isStarted[NCPU];
 // 用于在启动阶段标识一个核是否是第一个被启动的核
 volatile static int isFirstHart = 1;
 
-void testProcRun();
+void testProcRun(int);
 
 /**
  * @brief 启动剩余的 hart
@@ -37,6 +39,7 @@ void hartInit() {
 }
 
 extern void trapInitHart();
+extern void sched_init();
 
 // start() jumps here in supervisor mode on all CPUs.
 void main() {
@@ -44,25 +47,25 @@ void main() {
 		isFirstHart = 0;
 
 		// 初始化 isStarted（原因是初始时.BSS段可能不会被赋值为0）
-		printf("NCPU = %d\n", NCPU);
+		printInit();
+		log(LEVEL_GLOBAL, "NCPU = %d\n", NCPU);
 		for (int i = 0; i < NCPU; i++) {
 			isStarted[i] = 0;
 		}
-		isStarted[cpuid()] = 1; // 标记自己已启动
+		isStarted[cpu_this_id()] = 1; // 标记自己已启动
 
 		// consoleinit();
-		printInit();
-		printf("FarmOS kernel is booting (on hart %d)\n", cpuid());
+		log(LEVEL_GLOBAL, "FarmOS kernel is booting (on hart %d)\n", cpu_this_id());
 		parseDtb();
-		printf("\n");
 
 		// 内存管理机制初始化
 		pmmInit();
 		vmmInit();
-		bufInit();
+		// bufInit();
 
 		// initKernelMemory(); // 初始化内核页表
 		vmEnable(); // 开启分页
+		thread_init();
 		// procinit();      // process table
 		// trapinit();      // trap vectors
 		trapInitHart(); // install kernel trap vector
@@ -76,11 +79,78 @@ void main() {
 		// userinit();      // first user process
 		// *(char *)0 = 0;  // 尝试触发异常
 		hartInit(); // 启动其他Hart（成功分页后再启动其他核）
-
+		assert(intr_get() == 0);
 		__sync_synchronize();
 		started = 1;
-
+		printf("Waiting from Hart %d\n", cpu_this_id());
+		assert(intr_get() == 0);
+		testProcRun(0);
+		testProcRun(1);
+		testProcRun(2);
+		testProcRun(3);
+		testProcRun(4);
+		testProcRun(5);
+		testProcRun(6);
+		testProcRun(7);
+		assert(intr_get() == 0);
 		// 等待其它核全部启动完毕再开始virtio测试
+		// while (1) {
+		// 	__sync_synchronize();
+		// 	int tot = 0;
+		// 	for (int i = 0; i < NCPU; i++) {
+		// 		tot += isStarted[i];
+		// 	}
+		// 	if (tot == NCPU) {
+		// 		break;
+		// 	}
+		// }
+		printf("hart %d ~~~~~~~~~~~~~~~~~~~\n", cpu_this_id());
+		assert(intr_get() == 0);
+		sched_init();
+		// // virtio驱动读写测试
+		// virtio_disk_init();
+		// // virtioTest();
+		// // bufTest(0);
+		// // bufTest(1);
+		// // bufTest(2);
+		// // bufTest(0);
+		// // bufTest(3);
+		// // bufTest(4);
+		// // bufTest(0);
+		// // bufTest(5);
+		// // bufTest(6);
+		// // bufTest(7);
+
+		// direntInit();
+		// initRootFs();
+		// // fat32Test();
+
+		// // testProcRun();
+		// procInit();
+		// PROC_CREATE(test_init, 1);
+		// struct Proc *proc = PROC_CREATE(test_while, 2);
+		// // PROC_CREATE(test_pipe, 2);
+		// // PROC_CREATE(test_execve, 1);
+
+		// // PROC_CREATE(test_sleep, 1);
+		// procRun(NULL, proc);
+	} else {
+		printf("hart %d step in\n", cpu_this_id());
+		while (started == 0) {
+			;
+		}
+		__sync_synchronize();
+		printf("hart %d is starting\n", cpu_this_id());
+		vmEnable(); // turn on paging
+		printf("hart %d is starting\n", cpu_this_id());
+		trapInitHart(); // install kernel trap vector
+		timerInit();
+
+		plicInitHart(); // 启动中断控制器，开始接收中断
+
+		isStarted[cpu_this_id()] = 1;
+		__sync_synchronize(); // TODO: 封装一层
+
 		while (1) {
 			__sync_synchronize();
 			int tot = 0;
@@ -91,49 +161,8 @@ void main() {
 				break;
 			}
 		}
-
-		// virtio驱动读写测试
-		virtio_disk_init();
-		// virtioTest();
-		// bufTest(0);
-		// bufTest(1);
-		// bufTest(2);
-		// bufTest(0);
-		// bufTest(3);
-		// bufTest(4);
-		// bufTest(0);
-		// bufTest(5);
-		// bufTest(6);
-		// bufTest(7);
-
-		direntInit();
-		initRootFs();
-		// fat32Test();
-
-		// testProcRun();
-		procInit();
-		PROC_CREATE(test_init, 1);
-		struct Proc *proc = PROC_CREATE(test_while, 2);
-		// PROC_CREATE(test_pipe, 2);
-		// PROC_CREATE(test_execve, 1);
-
-		// PROC_CREATE(test_sleep, 1);
-		procRun(NULL, proc);
-	} else {
-		while (started == 0) {
-			;
-		}
-		__sync_synchronize();
-
-		vmEnable(); // turn on paging
-		printf("hart %d is starting\n", cpuid());
-		trapInitHart(); // install kernel trap vector
-		timerInit();
-
-		plicInitHart(); // 启动中断控制器，开始接收中断
-
-		isStarted[cpuid()] = 1;
-		__sync_synchronize(); // TODO: 封装一层
+		printf("hart %d ~~~~~~~~~~~~~~~~~~~\n", cpu_this_id());
+		sched_init();
 	}
 
 	while (1) {

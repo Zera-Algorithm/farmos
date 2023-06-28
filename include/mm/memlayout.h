@@ -71,12 +71,16 @@
 // 内核的一个临时地址，可以用于动态内存分配
 #define KERNEL_TEMP 0x600000000ul
 
+// 内核页表中，内核栈部分
+#define KTHREAD_STACK_PAGE 4				    // 内核栈占用的页数
+#define KTHREAD_STACK_SIZE (KTHREAD_STACK_PAGE * PAGE_SIZE) // 内核栈占用的大小
+#define KTHREAD_STACK(p)                                                                           \
+	(TRAMPOLINE - 2 * PAGE_SIZE -                                                              \
+	 ((p) + 1) *                                                                               \
+	     (KTHREAD_STACK_SIZE + PAGE_SIZE)) // 内核栈的起始地址，p 取 [0, NPROC)，每个进程占用
+					       // KTHREAD_STACK_PAGE + 1 页
+
 // 以下是用户空间的内存布局图
-
-// map the trampoline page to the highest address,
-// in both user and kernel space.
-#define TRAMPOLINE (MAXVA - PAGE_SIZE)
-
 // User memory layout.
 // Address zero first:
 //   text
@@ -86,6 +90,10 @@
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
+
+// map the trampoline page to the highest address,
+// in both user and kernel space.
+#define TRAMPOLINE (MAXVA - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 #define USTACKTOP TRAPFRAME
 

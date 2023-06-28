@@ -3,7 +3,10 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <mm/vmm.h>
-#include <proc/proc.h>
+#include <proc/thread.h>
+
+#include <proc/cpu.h>
+#define myProc() (cpu_this()->cpu_running)
 
 int pipe(int fd[2]) {
 	int fd1 = -1, fd2 = -1;

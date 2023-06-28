@@ -28,7 +28,6 @@ u64 getUSecs() {
  * @brief 打开全局中断，设置核内时钟下一Tick的时间，以初始化时钟
  */
 void timerInit() {
-	intr_on();
 	SBI_SET_TIMER(getTime() + INTERVAL);
 }
 

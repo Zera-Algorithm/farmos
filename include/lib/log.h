@@ -11,11 +11,13 @@
 #define PROC_MODULE 1
 #define PROC_GLOBAL 5
 
+#define MTX 10
+
 // 日志级别定义（全局）
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 999
+#define LOG_LEVEL 9
 #define DEBUG 2
 
 // 日志输出函数
@@ -37,7 +39,7 @@ void _warn(const char *, int, const char *, const char *, ...);
  * @brief 警告日志输出
  */
 #define warn(...)                                                                                  \
-	if (0)                                                                                     \
+	if (1)                                                                                     \
 		do {                                                                               \
 			_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                          \
 	} while (0)

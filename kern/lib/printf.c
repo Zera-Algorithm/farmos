@@ -2,15 +2,15 @@
 #include <lib/printf.h>
 #include <lib/terminal.h>
 #include <lib/vprint.h>
-#include <lock/spinlock.h>
-#include <proc/proc.h>
+#include <lock/mutex.h>
+#include <proc/cpu.h>
 #include <riscv.h>
 
 // 建立一个printf的锁，保证同一个printf中的数据都能在一次输出完毕
-struct spinlock pr_lock;
+mutex_t pr_lock;
 
 void printInit() {
-	initlock(&pr_lock, "printf");
+	mtx_init(&pr_lock, "printf", false);
 }
 
 // vprintfmt只调用output输出可输出字符，不包括0，所以需要记得在字符串后补0
@@ -40,9 +40,9 @@ void printf(const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 
-	acquire(&pr_lock);
+	mtx_lock(&pr_lock); // todo lock
 	vprintfmt(output, NULL, fmt, ap);
-	release(&pr_lock);
+	mtx_unlock(&pr_lock);
 
 	va_end(ap);
 }
@@ -52,9 +52,9 @@ void sprintf(char *buf, const char *fmt, ...) {
 	va_start(ap, fmt);
 	char *mybuf = buf;
 
-	acquire(&pr_lock);
+	mtx_lock(&pr_lock);
 	vprintfmt(outputToStr, &mybuf, fmt, ap);
-	release(&pr_lock);
+	mtx_unlock(&pr_lock);
 
 	va_end(ap);
 }
@@ -64,13 +64,13 @@ void _log(const char *file, int line, const char *func, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 
-	acquire(&pr_lock);
+	mtx_lock(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %12s:%-4d %12s()" SGR_RESET ": ", FARM_INFO "[INFO]" SGR_RESET SGR_BLUE,
-		     file, line, func);
+	printfNoLock("%s %2d %12s:%-4d %12s()" SGR_RESET ": ",
+		     FARM_INFO "[INFO]" SGR_RESET SGR_BLUE, cpu_this_id(), file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
-	release(&pr_lock);
+	mtx_unlock(&pr_lock);
 
 	va_end(ap);
 }
@@ -79,13 +79,13 @@ void _warn(const char *file, int line, const char *func, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 
-	acquire(&pr_lock);
+	mtx_lock(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %12s:%-4d %12s()" SGR_RESET ": ", FARM_WARN "[WARN]" SGR_RESET SGR_YELLOW,
-		     file, line, func);
+	printfNoLock("%s %2d %12s:%-4d %12s()" SGR_RESET ": ",
+		     FARM_WARN "[WARN]" SGR_RESET SGR_YELLOW, cpu_this_id(), file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
-	release(&pr_lock);
+	mtx_unlock(&pr_lock);
 
 	va_end(ap);
 }
@@ -94,14 +94,14 @@ void _error(const char *file, int line, const char *func, const char *fmt, ...) 
 	va_list ap;
 	va_start(ap, fmt);
 
-	acquire(&pr_lock);
+	mtx_lock(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %12s:%-4d %12s()" SGR_RESET ": ", FARM_ERROR "[ERROR]" SGR_RESET SGR_RED,
-		     file, line, func);
+	printfNoLock("%s %2d %12s:%-4d %12s()" SGR_RESET ": ",
+		     FARM_ERROR "[ERROR]" SGR_RESET SGR_RED, cpu_this_id(), file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);
 	printfNoLock("\n\n");
-	release(&pr_lock);
+	mtx_unlock(&pr_lock);
 
 	va_end(ap);
 
