@@ -413,6 +413,8 @@ static void *syscallTable[] = {
  *
  */
 void syscallEntry(Trapframe *tf) {
+	log(LEVEL_GLOBAL, "cpu %d, syscall %d, proc %lx\n", cpu_this_id(), tf->a7, myProc());
+
 	// S态时间审计
 	// u64 startTime = getTime();
 

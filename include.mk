@@ -7,6 +7,10 @@ TEST_RUNNER = ./official_tests/user/src/oscomp/test_runner.py
 OS_OUTPUT	= os_output.txt
 OUTPUT_JSON = output.json
 
+ifndef NCPU
+NCPU := 2
+endif
+
 CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
@@ -16,13 +20,14 @@ OBJDUMP = $(TOOLPREFIX)objdump
 # 编译C语言时的参数
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
 # CFLAGS = -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+# -M 生成一个.D文件，记录.c文件的头文件依赖关系
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 # 增加外部可控宏定义
-CFLAGS += -DNCPU=2
+CFLAGS += -DNCPU=$(NCPU)
 
 # Disable PIE when possible (for Ubuntu 16.10 toolchain)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
@@ -41,3 +46,7 @@ QEMUOPTS = -machine virt -bios default -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 # 加载的是一个virtio块设备
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+# 子文件夹的Makefile所公用的功能，引入包含头文件依赖的.d文件
+DEPS = $(wildcard *.d)
+-include $(DEPS)

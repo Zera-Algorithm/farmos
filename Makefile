@@ -23,7 +23,7 @@ modules := $(KERN) $(LIB) $(USER)
 all: $(KERNEL_ELF)
 
 # 生成 kernel，并将其反汇编到kernel.asm
-$(KERNEL_ELF): clean $(modules) $(KERNEL_LD)
+$(KERNEL_ELF): $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
 	$(OBJDUMP) -S $(KERNEL_ELF) > $(KERN)/kernel.asm
 
@@ -43,9 +43,6 @@ GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
-ifndef NCPU
-NCPU := 2
-endif
 
 # 可以暂时不需要镜像文件
 # qemu: $(KERNEL_ELF)
@@ -62,7 +59,7 @@ qemu-gdb: $(KERNEL_ELF) .gdbinit fs.img
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
 comp: all fs.img
-	qemu-system-riscv64 -machine virt -kernel $(KERNEL_ELF) -m 128M -nographic -smp 2 -bios default -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -no-reboot > $(OS_OUTPUT)
+	qemu-system-riscv64 -machine virt -kernel $(KERNEL_ELF) -m 128M -nographic -smp $(NCPU) -bios default -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -no-reboot > $(OS_OUTPUT)
 
 judge: $(OS_OUTPUT)
 	$(PYTHON) $(TEST_RUNNER) $(OS_OUTPUT) > $(OUTPUT_JSON)

@@ -6,7 +6,7 @@
 // 每us的时钟数
 #define CLOCK_PER_USEC 10
 
-// 中断时间间隔为0.005s(200Hz)
+// 中断时间间隔为0.05s(20Hz)
 #define INTERVAL 500000
 
 uint64 getTime();

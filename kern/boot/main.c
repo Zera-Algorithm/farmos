@@ -23,6 +23,7 @@ volatile static int started = 0;
 volatile static int isStarted[NCPU];
 // 用于在启动阶段标识一个核是否是第一个被启动的核
 volatile static int isFirstHart = 1;
+volatile static int is_fully_started = 0;
 
 void testProcRun(int);
 

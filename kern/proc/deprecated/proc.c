@@ -237,7 +237,7 @@ struct Proc *procCreate(const char *name, const void *binary, size_t size, u64 p
 	panic_on(loadCode(proc, binary, size, &proc->programBreak));
 
 	// 4. 寻找一个合适的CPU插入进程
-	int cpu = cpuid(); // TODO: 考虑随机分配的方法
+	int cpu = cpu_this_id(); // TODO: 考虑随机分配的方法
 	log(DEFAULT, "insert proc %08lx\n", proc->pid);
 	TAILQ_INSERT_HEAD(&procSchedQueue[cpu], proc, procSchedLink[cpu]);
 	assert(!TAILQ_EMPTY(&procSchedQueue[cpu]));
