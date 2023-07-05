@@ -17,5 +17,6 @@ extern cpu_t cpus[NCPU];
 
 cpu_t *cpu_this();
 register_t cpu_this_id();
+void cpu_idle();
 
 #endif // _CPU_H_

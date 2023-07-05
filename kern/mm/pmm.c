@@ -51,7 +51,7 @@ void pmmInit() {
 
 	// 为内核栈分配内存
 	extern void *kstacks;
-	kstacks = pmInitPush(freemem, NPROC * KTHREAD_STACK_PAGE * PAGE_SIZE, &freemem);
+	kstacks = pmInitPush(freemem, NPROC * TD_KSTACK_PAGE_NUM * PAGE_SIZE, &freemem);
 
 	// 第二部分：初始化空闲链表
 	log(MM_GLOBAL, "Physical Memory Freelist Init Start: Freemem = 0x%0lx\n", freemem);

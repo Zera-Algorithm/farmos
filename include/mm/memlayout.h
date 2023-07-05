@@ -71,14 +71,14 @@
 // 内核的一个临时地址，可以用于动态内存分配
 #define KERNEL_TEMP 0x600000000ul
 
-// 内核页表中，内核栈部分
-#define KTHREAD_STACK_PAGE 4				    // 内核栈占用的页数
-#define KTHREAD_STACK_SIZE (KTHREAD_STACK_PAGE * PAGE_SIZE) // 内核栈占用的大小
-#define KTHREAD_STACK(p)                                                                           \
-	(TRAMPOLINE - 2 * PAGE_SIZE -                                                              \
-	 ((p) + 1) *                                                                               \
-	     (KTHREAD_STACK_SIZE + PAGE_SIZE)) // 内核栈的起始地址，p 取 [0, NPROC)，每个进程占用
-					       // KTHREAD_STACK_PAGE + 1 页
+// 内核页表中，线程的内核栈部分
+#define TD_KSTACK_PAGE_NUM 4				// 内核栈占用的页数
+#define TD_KSTACK_SIZE (TD_KSTACK_PAGE_NUM * PAGE_SIZE) // 内核栈占用的大小
+#define TD_KSTACK(p) (STACKTOP - ((p) + 1) * (TD_KSTACK_SIZE + PAGE_SIZE))
+// 用户页表中，线程的用户栈部分
+#define TD_USTACK_PAGE_NUM 4				// 用户栈占用的页数
+#define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
+#define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
 
 // 以下是用户空间的内存布局图
 // User memory layout.
@@ -95,6 +95,7 @@
 // in both user and kernel space.
 #define TRAMPOLINE (MAXVA - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
-#define USTACKTOP TRAPFRAME
+#define STACKTOP (TRAPFRAME - PAGE_SIZE)
+#define USTACKTOP STACKTOP
 
 #endif

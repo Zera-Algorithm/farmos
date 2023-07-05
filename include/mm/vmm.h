@@ -32,12 +32,16 @@
 
 void vmmInit();
 
-u64 vmAlloc() __attribute__((warn_unused_result));
-u64 kvmAlloc() __attribute__((warn_unused_result)); // Auto Inc Ref
-void kvmFree(u64 pa);				    // Auto Dec Ref
-Pte ptLookup(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
+// 进行了引用计数，必须保证在使用完毕后使用 kvmFree 进行释放
+u64 kvmAlloc() __attribute__((warn_unused_result));
+// 传入的物理页必须通过是 kvmAlloc 分配的
+void kvmFree(u64 pa);
+
+u64 vmAlloc() __attribute__((warn_unused_result)); // 未进行引用计数，必须保证使用 ptMap 进行映射
 err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) __attribute__((warn_unused_result));
 err_t ptUnmap(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
+
+Pte ptLookup(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
 
 Pte paToPte(u64 pa);
 u64 pteToPa(Pte pte);

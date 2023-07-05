@@ -11,7 +11,8 @@
 #define PROC_MODULE 1
 #define PROC_GLOBAL 5
 
-#define MTX 10
+#define MUTEX_SPIN 10
+#define MUTEX_SLEEP 10
 
 // 日志级别定义（全局）
 #define LEVEL_GLOBAL 10

@@ -13,7 +13,7 @@ void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
 	assert(cpu_this()->cpu_mutex_depth == 1);
-	assert(cpu_this()->cpu_running->td_status == RUNNABLE);
+	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
 	 *     从线程的视角来看，它调用了 td_switch，传入了自己的上下文和一个参数 0。
 	 * 下一次它被调度运行时是从 td_switch 返回。
@@ -40,8 +40,20 @@ static thread_t *sched_runnable(thread_t *old) {
 	tdq_critical_enter(&thread_runq);
 	// 将旧线程放回队列
 	if (old != NULL) {
-		TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
+		if (old->td_status == RUNNABLE) {
+			TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
+		}
+		mtx_unlock(&old->td_lock);
 	}
+
+	while (TAILQ_EMPTY(&thread_runq.tq_head)) {
+		// 等待新线程加入队列
+		tdq_critical_exit(&thread_runq);
+		log(LEVEL_GLOBAL, "No thread runnable, idle\n");
+		cpu_idle();
+		tdq_critical_enter(&thread_runq);
+	}
+
 	// 选择新线程
 	thread_t *cur = NULL;
 	TAILQ_FOREACH (cur, &thread_runq.tq_head, td_runq) { // todo: 调度顺序
@@ -82,7 +94,6 @@ void sched_init() {
 thread_t *sched_switch(thread_t *old, register_t param) {
 	// 释放旧线程的锁
 	assert(mtx_hold(&old->td_lock));
-	mtx_unlock(&old->td_lock);
 
 	// 清理旧线程状态
 	cpu_t *cpu = cpu_this();
@@ -90,7 +101,7 @@ thread_t *sched_switch(thread_t *old, register_t param) {
 
 	// 选择新线程
 	thread_t *ret = sched_runnable(old);
-	log(LEVEL_GLOBAL, "Hart Sched %s -> %s\n", old->name, ret->name);
+	log(LEVEL_GLOBAL, "Hart Sched %s -> %s\n", old->td_name, ret->td_name);
 
 	cpu->cpu_running = ret;
 	ret->td_status = RUNNING;

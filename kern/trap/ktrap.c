@@ -19,7 +19,6 @@
 #define cpuid() (cpu_this_id())
 
 extern void kernelvec();
-extern void syscallEntry(Trapframe *tf);
 
 #define SCAUSE_EXCEPTION 0
 #define SCAUSE_INTERRUPT 1

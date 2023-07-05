@@ -174,7 +174,7 @@ static int procAlloc(struct Proc **pproc, u64 parentId, u64 stackTop) {
 
 	log(DEBUG, "before init pageTable!\n");
 
-	// 3. 初始化进程proc的页表
+	// 3. 初始化进程proc的页表(分配了用户栈及用户栈顶)
 	unwrap(initProcPageTable(proc, stackTop));
 
 	log(DEBUG, "after init pageTable!\n");

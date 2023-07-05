@@ -16,3 +16,8 @@ register_t cpu_this_id() {
 cpu_t *cpu_this() {
 	return &cpus[cpu_this_id()];
 }
+
+void cpu_idle() {
+	for (int i = 0; i < 1000000; i++)
+		;
+}

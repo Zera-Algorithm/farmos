@@ -9,4 +9,8 @@ void copyOut(u64 uPtr, void *kPtr, int len);
 void copyIn(u64 uPtr, void *kPtr, int len);
 void copyInStr(u64 uPtr, void *kPtr, int n);
 
+void copy_in(Pte *upd, u64 uptr, void *kptr, size_t len);
+void copy_in_str(Pte *upd, u64 uptr, void *kptr, size_t len);
+void copy_out(Pte *upd, u64 uptr, void *kptr, size_t len);
+
 #endif

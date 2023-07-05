@@ -27,7 +27,7 @@ void testProcRun(int index) {
 	// 1. 设置proc
 	thread_t *proc = td_alloc();
 	mtx_set(&proc->td_lock, testProcName[index], false);
-	strncpy(proc->name, testProcName[index], sizeof(proc->name));
+	strncpy(proc->td_name, testProcName[index], sizeof(proc->td_name));
 
 	// 4. 映射代码段
 	void *code = (void *)vmAlloc();

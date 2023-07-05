@@ -13,19 +13,21 @@
 #define NPROC 1024
 #endif
 
+// init进程的tid
+#define TID_INIT (0 | (1 * NPROC))
+
 typedef enum thread_state { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE } thread_state_t;
 
 typedef struct thread {
 	context_t td_context; // 内核上下文作为第一个成员（由 td_lock 保护）
-	ptr_t td_kstack; // 内核栈所在页的首地址（已初始化，由 td_lock 保护）
+	ptr_t td_kstack; // 内核栈所在页的首地址（已被初始化，由 td_lock 保护）
 	trapframe_t *td_trapframe; // 用户态上下文（由 td_lock 保护）
 
-	mutex_t td_lock;	  // 线程锁
-	thread_state_t td_status; // 线程状态（由 td_lock 保护）
+	mutex_t td_lock;		 // 线程锁（已被初始化）
+	thread_state_t td_status;	 // 线程状态（由 td_lock 保护）
+	char td_name[MAX_PROC_NAME_LEN]; // 线程名
 
 	u64 td_tid; // 线程id（由 td_lock 保护）
-	// u64 td_mutex_depth; // 线程锁深度（必须通过 cpu_this 调用，由关闭中断保护）
-	// u64 td_mutex_saved_sstatus; // 线程锁值（必须通过 cpu_this 调用，由关闭中断保护）
 
 	ptr_t td_wchan;	      // 线程等待的 chan（由 td_lock 保护）
 	const char *td_wmesg; // 线程等待的原因（由 td_lock 保护）
@@ -33,7 +35,8 @@ typedef struct thread {
 	// should in proc
 	pte_t *td_pt; // 线程用户态页表
 	u64 td_pid;   // 线程所属进程
-	u64 td_ppid;  // 线程所属进程的父进程
+
+	ptr_t td_brk; // 进程堆顶
 	int fdList[MAX_FD_COUNT];
 	struct PipeWait {
 		int i;
@@ -43,13 +46,17 @@ typedef struct thread {
 		u64 buf;
 		int fd;
 	} pipeWait;
-	struct Dirent *cwd;	      // Current directory
-	char name[MAX_PROC_NAME_LEN]; // Process name (debugging)
+	struct Dirent *cwd; // Current directory
+
 	// should in proc end
 
 	TAILQ_ENTRY(thread) td_runq;   // 运行队列
-	TAILQ_ENTRY(thread) td_freeq;  // 运行队列
+	TAILQ_ENTRY(thread) td_freeq;  // 自由队列
 	TAILQ_ENTRY(thread) td_sleepq; // 睡眠队列
+
+	struct thread *td_parent;	  // 父线程
+	LIST_HEAD(, thread) td_childlist; // 子线程
+	LIST_ENTRY(thread) td_childentry; // 兄弟线程
 } thread_t;
 
 extern thread_t threads[NPROC];
@@ -74,10 +81,22 @@ extern threadq_t thread_sleepq;
 #define tdq_critical_enter(tdq) mtx_lock(&(tdq)->tq_lock)
 #define tdq_critical_exit(tdq) mtx_unlock(&(tdq)->tq_lock)
 
-// deprecated
-// elf mapper
-int loadCode(thread_t *td, const void *binary, size_t size, u64 *maxva);
-// old pt init
-void td_initupt(thread_t *proc);
+// 线程初始化
+void td_initupt(thread_t *td);
+void td_initustack(thread_t *td);
+void td_setustack(thread_t *td, u64 argc, char **argv);
+void td_initucode(thread_t *td, const void *bin, size_t size);
+
+void td_destroy() __attribute__((noreturn));
+void td_recycleupt(thread_t *td);
+
+void td_create(const char *name, const void *bin, size_t size);
+
+#define TD_CREATE(program, name)                                                                   \
+	({                                                                                         \
+		extern char binary_##program[];                                                    \
+		extern int binary_##program##_size;                                                \
+		td_create(name, binary_##program, binary_##program##_size);                        \
+	})
 
 #endif // _THREAD_H_

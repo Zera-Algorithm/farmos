@@ -1,0 +1,45 @@
+#include <lib/log.h>
+#include <proc/cpu.h>
+#include <proc/thread.h>
+#include <sys/syscall.h>
+#include <sys/syscall_ids.h>
+
+static void *syscallTable[] = {
+    [1023] = NULL,
+    [SYS_exit] = sys_exit,
+};
+
+/**
+ * @brief 系统调用入口。会按照tf中传的参数信息（a0~a7）调用相应的系统调用函数，并将返回值保存在a0中
+ *
+ */
+
+void syscall_entry(Trapframe *tf) {
+	log(LEVEL_GLOBAL, "cpu %d, syscall %d, proc %lx\n", cpu_this_id(), tf->a7,
+	    cpu_this()->cpu_running->td_tid);
+
+	// S态时间审计
+	// u64 startTime = getTime();
+
+	u64 sysno = tf->a7;
+	// 系统调用最多6个参数
+	u64 (*func)(u64, u64, u64, u64, u64, u64);
+
+	// 根据反汇编结果，一个ecall占用4字节的空间
+	tf->epc += 4;
+
+	// 获取系统调用函数
+	func = (u64(*)(u64, u64, u64, u64, u64, u64))syscallTable[sysno];
+	if (func == NULL) {
+		tf->a0 = SYSCALL_ERROR;
+		warn("unimplemented or unknown syscall: %d\n", sysno);
+		sys_exit(SYSCALL_ERROR);
+	}
+
+	// 将系统调用返回值放入a0寄存器
+	tf->a0 = func(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4, tf->a5);
+
+	// // S态时间审计
+	// u64 endTime = getTime();
+	// myProc()->procTime.totalStime += (endTime - startTime);
+}

@@ -10,7 +10,7 @@
 #include <lib/transfer.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
-#include <trap/syscall_ids.h>
+#include <sys/syscall_ids.h>
 
 #define myProc() (cpu_this()->cpu_running)
 #define SYSCALL_ERROR -1
@@ -301,7 +301,7 @@ struct timespec {
 // /**
 //  * @brief 克隆一个子进程（或者子线程）
 //  * @param flags 克隆选项。SIGCHLD：克隆子进程；
-//  * @param stack 进程的栈顶
+//  * @param stack 进程的栈顶，为0表示使用默认栈顶（用户空间顶部）
 //  * @param ptid 父线程id，ignored
 //  * @param tls TLS线程本地存储描述符，ignored
 //  * @param ctid 子线程id，ignored
@@ -375,6 +375,7 @@ struct timespec {
 // }
 
 static void *syscallTable[] = {
+    [1023] = NULL,
     // [SYS_brk] = sysBrk,
     // [SYS_mmap] = sysMmap,
     // [SYS_munmap] = sysMunmap,

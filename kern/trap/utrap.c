@@ -1,22 +1,15 @@
-#include <dev/plic.h>
-#include <dev/sbi.h>
 #include <dev/timer.h>
-#include <dev/virtio.h>
 #include <lib/log.h>
 #include <lib/printf.h>
-#include <lib/string.h>
-#include <lock/spinlock.h>
 #include <mm/memlayout.h>
-#include <mm/vmm.h>
-#include <param.h>
 #include <proc/cpu.h>
-#include <proc/sleep.h>
+#include <proc/thread.h>
 #include <riscv.h>
+#include <sys/syscall.h>
 #include <trap/trap.h>
-#include <types.h>
 
 extern void kernelvec();
-extern void syscallEntry(Trapframe *tf);
+
 extern void yield();
 
 #define SCAUSE_EXCEPTION 0
@@ -90,7 +83,7 @@ void utrap_entry() {
 		// 用户态异常
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
-			syscallEntry(td->td_trapframe);
+			syscall_entry(td->td_trapframe);
 		} else {
 			printReg(td->td_trapframe);
 			error("uncaught exception.\n"
@@ -100,7 +93,7 @@ void utrap_entry() {
 			      "\tSepc: 0x%016lx (kern/kernel.asm)\n"
 			      "\tStval(bad memory address): 0x%016lx\n",
 			      "Curenv: pid = 0x%08lx, name = %s\n", cpu_this_id(), exc_code,
-			      excCause[exc_code], r_sepc(), r_stval(), td->td_pid, td->name);
+			      excCause[exc_code], r_sepc(), r_stval(), td->td_pid, td->td_name);
 		}
 	}
 
@@ -127,7 +120,7 @@ void utrap_return() {
 
 	// ue3: 将内核线程入口、内核栈地址、内核号存入 TRAPFRAME
 	td->td_trapframe->trap_handler = (u64)utrap_entry;
-	td->td_trapframe->kernel_sp = td->td_kstack + KTHREAD_STACK_SIZE;
+	td->td_trapframe->kernel_sp = td->td_kstack + TD_KSTACK_SIZE;
 
 	// ue0: 为硬件行为做好准备，切换用户异常入口
 	u64 trampolineUserVec = TRAMPOLINE + (userVec - trampoline);
