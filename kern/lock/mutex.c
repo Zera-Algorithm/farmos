@@ -59,6 +59,11 @@ static inline void mtx_release(mutex_t *m) {
 	atomic_unlock(&m->mtx_lock_object.lo_locked);
 }
 
+static inline bool mtx_acquired(mutex_t *m) {
+	assert(intr_get() == 0);
+	return m->mtx_lock_object.lo_locked && m->mtx_owner == cpu_this();
+}
+
 // 接口实现
 void mtx_init(mutex_t *m, const char *td_name, bool debug) {
 	m->mtx_lock_object.lo_name = td_name;
@@ -72,7 +77,7 @@ void mtx_set(mutex_t *m, const char *td_name, bool debug) {
 }
 
 /**
- * @brief 判断当前线程是否持有锁，必须在关中断的情况下调用
+ * @brief 判断当前线程是否持有锁，必须在关中断的情况下调用，只能用于外部接口
  */
 bool mtx_hold(mutex_t *m) {
 	assert(intr_get() == 0);
@@ -91,7 +96,7 @@ void mtx_lock(mutex_t *m) {
 	// 进入临界区，中断关闭
 	mtx_enter();
 	// 进入时断言：当前线程未持有锁
-	assert(mtx_hold(m) == false);
+	assert(mtx_acquired(m) == false);
 
 	// 获取锁
 	mtx_acquire(m);
@@ -107,7 +112,7 @@ void mtx_unlock(mutex_t *m) {
 	// 进入时中断仍然是关闭的
 
 	// 解锁时断言：当前线程持有锁，且锁的使用方式为自旋锁
-	assert(mtx_hold(m) == true);
+	assert(mtx_acquired(m) == true);
 
 	// 释放锁前，清除所有者
 	m->mtx_owner = 0;
