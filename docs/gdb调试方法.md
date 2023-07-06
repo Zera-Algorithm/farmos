@@ -96,3 +96,16 @@ list main
 
 (6)全部的线程执行某gdb命令：thread apply all gdb_cmd
 reference: https://blog.csdn.net/weixin_42158742/article/details/113100151
+
+### 11 调试用户态程序
+
+在gdb中输入 `symbol-file <用户态二进制文件(例如test_printf.b)>`，即可将symbol切换到用户态。
+
+> reference: https://pdos.csail.mit.edu/6.828/2012/labguide.html
+
+### 12 vscode调试时输入命令
+
+在VSCode下面的调试控制台选项卡，命令框输入 `-exec <要执行的gdb命令>`，即可在线执行命令。
+
+> Execute debugger commands using "-exec <command>", for example "-exec info registers" will list registers in use (when GDB is the debugger).
+

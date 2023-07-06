@@ -38,14 +38,6 @@ typedef struct thread {
 
 	ptr_t td_brk; // 进程堆顶
 	int fdList[MAX_FD_COUNT];
-	struct PipeWait {
-		int i;
-		struct Pipe *p;
-		int kernFd;
-		int count;
-		u64 buf;
-		int fd;
-	} pipeWait;
 	struct Dirent *cwd; // Current directory
 
 	// should in proc end

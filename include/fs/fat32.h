@@ -92,6 +92,10 @@ typedef struct FAT32LongDirectory {
 // 获取簇大小的宏
 #define CLUS_SIZE(fs) ((fs)->superBlock.bytes_per_clus)
 
+// 判断是否是目录，需要传入raw_dirent的指针
+#define IS_DIRECTORY(raw_dirent) ((raw_dirent)->DIR_Attr & ATTR_DIRECTORY)
+#define IS_MOUNT_DIR(raw_dirent) ((raw_dirent)->DIR_Attr & ATTR_MOUNT)
+
 unsigned char checkSum(unsigned char *pFcbName);
 void fat32Test();
 

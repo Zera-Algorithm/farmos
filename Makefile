@@ -15,7 +15,8 @@ include include.mk
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # 编译好待链接的目标文件
-OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x
+# 这里必须改，不然入口_entry不在0x80200000
+OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x $(KERN)/*/*/*.o
 modules := $(KERN) $(LIB) $(USER)
 
 .PHONY: all clean $(modules)

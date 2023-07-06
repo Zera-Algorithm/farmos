@@ -4,7 +4,7 @@
 typedef struct Dirent Dirent;
 
 void direntInit();
-Dirent *direntAlloc();
-void direntDeAlloc(Dirent *dirent);
+Dirent *dirent_alloc();
+void dirent_dealloc(Dirent *dirent);
 
 #endif

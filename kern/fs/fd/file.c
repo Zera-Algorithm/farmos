@@ -1,13 +1,34 @@
 #include <fs/fat32.h>
 #include <fs/fd.h>
+#include <fs/fd_device.h>
 #include <fs/file.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/transfer.h>
+#include <lock/mutex.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #define myProc() (cpu_this()->cpu_running)
+
+static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
+static int fd_file_write(struct Fd *fd, u64 buf, u64 n, u64 offset);
+int fd_file_close(struct Fd *fd);
+int fd_file_stat(struct Fd *fd, u64 pkStat);
+
+// 定义console设备访问函数
+// 内部的函数均应该是可重入函数，即没有static变量，不依赖全局变量（锁除外）
+struct FdDev fd_dev_file = {
+    .dev_id = 'f',
+    .dev_name = "file",
+    .dev_read = fd_file_read,
+    .dev_write = fd_file_write,
+    .dev_close = fd_file_close,
+    .dev_stat = fd_file_stat,
+};
+
+// 注意：设备的相关读写均不需要对fd加锁
+// Fd的锁应当由fd.c维护
 
 int openat(int fd, u64 filename, int flags, mode_t mode) {
 	struct Dirent *dirent = NULL, *fileDirent = NULL;
@@ -83,8 +104,45 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	fds[kernFd].offset = 0;
 	fds[kernFd].flags = flags;
 	fds[kernFd].stat.st_mode = mode;
+	fds[kernFd].fd_dev = &fd_dev_file; // 设置dev
 
 	myProc()->fdList[userFd] = kernFd;
 
 	return userFd;
+}
+
+// 读一个文件，返回读取的字节数
+static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	Dirent *dirent = fd->dirent;
+	n = file_read(dirent, 1, buf, fd->offset, n);
+	if (n < 0) {
+		warn("file read num is below zero\n");
+		return -1;
+	}
+	fd->offset += n;
+	return n;
+}
+
+static int fd_file_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	Dirent *dirent = fd->dirent;
+	n = file_write(dirent, 1, buf, fd->offset, n);
+	if (n < 0) {
+		warn("file read num is below zero\n");
+		return -1;
+	}
+	fd->offset += n;
+	return n;
+}
+
+// 文件关闭暂不需要额外动作
+int fd_file_close(struct Fd *fd) {
+	return 0;
+}
+
+int fd_file_stat(struct Fd *fd, u64 pkStat) {
+	struct Dirent *file = fd->dirent;
+	struct kstat kstat;
+	fileStat(file, &kstat);
+	copyOut(pkStat, &kstat, sizeof(struct kstat));
+	return 0;
 }

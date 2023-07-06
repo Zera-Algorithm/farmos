@@ -4,11 +4,13 @@
 #include <lock/lock.h>
 #include <types.h>
 
-typedef struct mutex {
+struct mutex {
 	lock_object_t mtx_lock_object;
 	void *mtx_owner; // 指向当前持有锁的 cpu
 	bool mtx_debug;
-} mutex_t;
+};
+
+typedef struct mutex mutex_t;
 
 void mtx_init(mutex_t *m, const char *name, bool debug);
 void mtx_set(mutex_t *m, const char *name, bool debug);

@@ -84,7 +84,7 @@ struct timespec {
 
 // int sysGetCwd(u64 buf, int size) {
 // 	char kBuf[256];
-// 	fileGetPath(myProc()->cwd, kBuf);
+// 	dirent_get_path(myProc()->cwd, kBuf);
 // 	copyOut(buf, kBuf, strlen(kBuf) + 1);
 // 	return buf;
 // }
@@ -136,7 +136,7 @@ struct timespec {
 // 	copyInStr(dir, dirPath, MAX_NAME_LEN);
 
 // 	// 2. 挂载
-// 	return mountFs(specialStr, myProc()->cwd, dirPath);
+// 	return mount_fs(specialStr, myProc()->cwd, dirPath);
 // }
 
 // int sysUnMount(u64 special, u64 flags) {
@@ -146,7 +146,7 @@ struct timespec {
 // 	copyInStr(special, specialStr, MAX_NAME_LEN);
 
 // 	// 2. 挂载
-// 	return umountFs(specialStr, myProc()->cwd);
+// 	return umount_fs(specialStr, myProc()->cwd);
 // }
 
 // int sysLinkAt(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {

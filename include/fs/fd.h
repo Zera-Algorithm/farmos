@@ -3,19 +3,26 @@
 
 #include <fs/fat32.h>
 #include <fs/fs.h>
-#include <fs/pipe.h>
 #include <types.h>
 
 #define FDNUM 1024
 
-struct Fd {
+typedef struct FdDev FdDev;
+
+typedef struct Fd {
+	// 保证每个fd的读写不并发
+	struct sleeplock lock;
+
 	Dirent *dirent;
 	struct Pipe *pipe;
 	int type;
 	uint offset;
 	uint flags;
 	struct kstat stat;
-};
+	FdDev *fd_dev;
+
+	u32 refcnt; // 引用计数
+} Fd;
 
 typedef struct DirentUser {
 	uint64 d_ino;		 // 索引结点号
@@ -51,9 +58,6 @@ int closeFd(int fd);
 void cloneAddCite(uint i);
 int read(int fd, u64 buf, size_t count);
 int write(int fd, u64 buf, size_t count);
-int readConsoleAlloc();
-int writeConsoleAlloc();
-int errorConsoleAlloc();
 int dup(int fd);
 int dup3(int old, int new);
 void freeFd(uint i);

@@ -175,6 +175,31 @@ u32 fatRead(FileSystem *fs, u64 cluster) {
 	return content;
 }
 
+/**
+ * @brief 清空cluster
+ */
+static void clusterZero(FileSystem *fs, u64 cluster) {
+	int n = fs->superBlock.bytes_per_clus;
+
+	// 计算簇号 cluster 所在的扇区号
+	u64 secno = clusterSec(fs, cluster);
+	// 计算簇号 cluster 所在的扇区内的偏移量
+
+	// 写扇区
+	for (u64 i = 0; i < n; secno++) {
+		Buffer *buf = fs->get(fs, secno);
+		// 计算本次读写的长度
+		size_t len = fs->superBlock.bpb.bytes_per_sec;
+		memset(&buf->data->data[0], 0, len);
+		bufWrite(buf);
+		bufRelease(buf);
+		i += len;
+	}
+}
+
+/**
+ * @brief 分配一个扇区，并将其内容清空
+ */
 u64 clusterAlloc(FileSystem *fs, u64 prev) {
 	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2;
 	     cluster++) {
@@ -183,6 +208,7 @@ u64 clusterAlloc(FileSystem *fs, u64 prev) {
 				fatWrite(fs, prev, cluster);
 			}
 			fatWrite(fs, cluster, FAT32_EOF);
+			clusterZero(fs, cluster);
 			return cluster;
 		}
 	}
