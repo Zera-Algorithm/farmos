@@ -110,7 +110,6 @@ void main() {
 		}
 		printf("hart %d ~~~~~~~~~~~~~~~~~~~\n", cpu_this_id());
 	} else {
-		printf("hart %d step in\n", cpu_this_id());
 		while (started == 0) {
 			;
 		}

@@ -112,7 +112,6 @@ static void td_free(thread_t *td) {
 
 	// 旧设计字段
 	memset(td->fdList, 0, sizeof(td->fdList));
-	memset(&td->pipeWait, 0, sizeof(td->pipeWait));
 	td->cwd = NULL;
 
 	// 将线程加入空闲线程队列

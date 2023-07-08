@@ -10,7 +10,7 @@
 mutex_t pr_lock;
 
 void printInit() {
-	mtx_init(&pr_lock, "printf", false);
+	mtx_init(&pr_lock, "printf", false, MTX_SPIN); // 此处禁止调试信息输出！否则会递归获取锁
 }
 
 // vprintfmt只调用output输出可输出字符，不包括0，所以需要记得在字符串后补0

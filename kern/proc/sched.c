@@ -12,7 +12,7 @@
 void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
-	assert(cpu_this()->cpu_mutex_depth == 1);
+	assert(cpu_this()->cpu_lk_depth == 1);
 	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
 	 *     从线程的视角来看，它调用了 td_switch，传入了自己的上下文和一个参数 0。

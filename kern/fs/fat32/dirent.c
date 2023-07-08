@@ -25,7 +25,7 @@ struct DirentList dirent_free_list = {NULL};
 struct mutex mtx_dirent;
 
 void dirent_init() {
-	mtx_init(&mtx_dirent, "Dirent", 1);
+	mtx_init(&mtx_dirent, "Dirent", 1, MTX_SPIN);
 
 	for (int i = 0; i < MAX_DIRENT; i++) {
 		LIST_INSERT_HEAD(&dirent_free_list, &dirents[i], dirent_link);
