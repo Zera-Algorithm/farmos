@@ -12,7 +12,7 @@
 void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
-	assert(cpu_this()->cpu_mutex_depth == 1);
+	assert(cpu_this()->cpu_lk_depth == 1);
 	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
 	 *     从线程的视角来看，它调用了 td_switch，传入了自己的上下文和一个参数 0。
@@ -36,7 +36,6 @@ void yield() {
  * @brief 从可执行队列中选出一个线程，从队列中移除并加锁返回
  */
 static thread_t *sched_runnable(thread_t *old) {
-	thread_t *ret = NULL;
 	tdq_critical_enter(&thread_runq);
 	// 将旧线程放回队列
 	if (old != NULL) {
@@ -55,17 +54,10 @@ static thread_t *sched_runnable(thread_t *old) {
 	}
 
 	// 选择新线程
-	thread_t *cur = NULL;
-	TAILQ_FOREACH (cur, &thread_runq.tq_head, td_runq) { // todo: 调度顺序
-		mtx_lock(&cur->td_lock);
-		if (cur->td_status == RUNNABLE) {
-			// 返回新线程（已加锁）
-			TAILQ_REMOVE(&thread_runq.tq_head, cur, td_runq);
-			ret = cur;
-			break;
-		}
-		mtx_unlock(&ret->td_lock);
-	}
+	thread_t *ret = TAILQ_FIRST(&thread_runq.tq_head);
+	mtx_lock(&ret->td_lock);
+	TAILQ_REMOVE(&thread_runq.tq_head, ret, td_runq);
+
 	tdq_critical_exit(&thread_runq);
 
 	return ret;

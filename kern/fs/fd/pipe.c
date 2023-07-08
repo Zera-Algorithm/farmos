@@ -68,7 +68,7 @@ int pipe(int fd[2]) {
 		p->pipeReadPos = 0;
 		p->pipeWritePos = 0;
 		// 初始化管道的锁
-		mtx_init(&p->lock, "pipe", 1);
+		mtx_init(&p->lock, "pipe", 1, MTX_SPIN);
 		memset(p->pipeBuf, 0, PIPE_BUF_SIZE);
 
 		fds[kernfd1].dirent = NULL;

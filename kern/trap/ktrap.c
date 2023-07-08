@@ -10,6 +10,7 @@
 #include <mm/vmm.h>
 #include <param.h>
 #include <proc/sleep.h>
+#include <proc/thread.h>
 #include <riscv.h>
 #include <trap/trap.h>
 #include <types.h>

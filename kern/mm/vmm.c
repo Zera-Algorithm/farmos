@@ -107,6 +107,9 @@ static void memoryTest() {
 mutex_t kvmlock;
 
 void vmmInit() {
+	// 第零步：初始化模块锁
+	mtx_init(&kvmlock, "kvmlock", false, MTX_SPIN);
+
 	// 第一步：初始化内核页目录
 	log(LEVEL_GLOBAL, "Virtual Memory Init Start\n");
 	kernPd = (Pte *)pageToPa(pmAlloc());
@@ -136,8 +139,6 @@ void vmmInit() {
 	// 第八步：测试
 	memoryTest();
 	log(LEVEL_GLOBAL, "Virtual Memory Init Finished, `vm` Functions Available!\n");
-
-	mtx_init(&kvmlock, "kvmlock", false);
 }
 
 // 功能接口函数

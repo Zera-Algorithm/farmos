@@ -14,10 +14,10 @@ void *kstacks;
 
 void thread_init() {
 	extern mutex_t td_tid_lock;
-	mtx_init(&td_tid_lock, "td_tid_lock", false);
-	mtx_init(&thread_runq.tq_lock, "thread_runq", false);
-	mtx_init(&thread_freeq.tq_lock, "thread_freeq", false);
-	mtx_init(&thread_sleepq.tq_lock, "thread_sleepq", false);
+	mtx_init(&td_tid_lock, "td_tid_lock", false, MTX_SPIN);
+	mtx_init(&thread_runq.tq_lock, "thread_runq", false, MTX_SPIN);
+	mtx_init(&thread_freeq.tq_lock, "thread_freeq", false, MTX_SPIN);
+	mtx_init(&thread_sleepq.tq_lock, "thread_sleepq", false, MTX_SPIN);
 	TAILQ_INIT(&thread_runq.tq_head);
 	TAILQ_INIT(&thread_freeq.tq_head);
 	TAILQ_INIT(&thread_sleepq.tq_head);
@@ -26,7 +26,7 @@ void thread_init() {
 		// 插入空闲线程队列
 		TAILQ_INSERT_HEAD(&thread_freeq.tq_head, td, td_freeq);
 		// 初始化线程锁
-		mtx_init(&td->td_lock, "thread", false);
+		mtx_init(&td->td_lock, "thread", false, MTX_SPIN);
 		// 初始化子线程队列
 		LIST_INIT(&td->td_childlist);
 		// 初始化线程内核栈

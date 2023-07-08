@@ -9,8 +9,8 @@ typedef struct thread thread_t;
 // Per-CPU state.
 typedef struct cpu {
 	thread_t *cpu_running;
-	u64 cpu_mutex_depth;	     // 锁深度
-	u64 cpu_mutex_saved_sstatus; // 锁值
+	u64 cpu_lk_depth;	  // 锁深度
+	u64 cpu_lk_saved_sstatus; // 锁值
 } cpu_t;
 
 extern cpu_t cpus[NCPU];

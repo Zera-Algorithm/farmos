@@ -13,6 +13,7 @@
 
 // DEPRECATED
 #include <proc/cpu.h>
+#include <proc/thread.h>
 #define myProc() (cpu_this()->cpu_running)
 // END DEPRECATED
 
@@ -30,7 +31,7 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
 
 // TODO: 实现初始化
 void fd_init() {
-	mtx_init(&mtx_fd, "sys_fdtable", 1);
+	mtx_init(&mtx_fd, "sys_fdtable", 1, MTX_SPIN);
 
 	for (int i = 0; i < FDNUM; i++) {
 		// TODO!: 初始化sleeplock
