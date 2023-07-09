@@ -5,6 +5,8 @@ LIB  = lib
 KERNEL_LD := linker/kernel.ld
 INCLUDES := -I./include
 KERNEL_ELF := kernel-qemu
+# kernel的二进制文件
+KERNEL_BIN := hifive.bin
 
 include include.mk
 
@@ -37,6 +39,9 @@ fs.img:
 	cp backup_fs.img fs.img
 	# dd if=/dev/zero of=fs.img bs=16k count=1024
 	# mkfs.vfat -F 12 fs.img
+
+hifive: $(KERNEL_ELF)
+	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
