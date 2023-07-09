@@ -79,6 +79,8 @@
 #define TD_USTACK_PAGE_NUM 4				// 用户栈占用的页数
 #define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
 #define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
+#define TD_TEMPUSTACK (TD_USTACK - TD_USTACK_SIZE - PAGE_SIZE)
+#define TD_TEMPUSTACK_OFFSET (TD_USTACK - TD_TEMPUSTACK)
 
 // 以下是用户空间的内存布局图
 // User memory layout.
