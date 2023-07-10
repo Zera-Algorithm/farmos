@@ -40,12 +40,12 @@ endif
 LDFLAGS = -z max-page-size=4096
 
 # -bios default: 缺省的SBI实现(OpenSBI)
-QEMUOPTS = -machine virt -bios default -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU) -nographic
+QEMUOPTS = -machine sifive_u -bios default -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU) -nographic
 # 比赛要求virtio legacy驱动
 # QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 # 加载的是一个virtio块设备
-QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+# QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 # 子文件夹的Makefile所公用的功能，引入包含头文件依赖的.d文件
 DEPS = $(wildcard *.d)

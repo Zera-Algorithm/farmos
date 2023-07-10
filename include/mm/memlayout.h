@@ -2,9 +2,9 @@
 #define _MEMLAYOUT_H
 /**
  * FarmOS 的虚拟内存布局：
- * 
+ *
  * |------------------| MAXVA
- * |     PAGE_SIZE    | 
+ * |     PAGE_SIZE    |
  * |------------------| TRAMPOLINE
  * |     PAGE_SIZE    |
  * |------------------| TRAPFRAME
@@ -13,7 +13,7 @@
  * |    STACK_SIZE    |
  * |------------------| TD_KSTACK/USTACK
  * |                  |
- * 
+ *
  * 用户空间中，从 0 开始为用户代码和数据，以及用户堆
  * 内核空间中，从 0x80200000 开始为内核代码和数据
  */
@@ -80,6 +80,8 @@
 // qemu puts UART registers here in physical memory.
 #define UART0 0x10000000ul
 #define UART0_IRQ 10
+
+#define HIFIVE_UART 0x10010000ul
 
 // virtio mmio interface
 #define VIRTIO0 0x10001000ul

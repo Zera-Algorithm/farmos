@@ -17,6 +17,7 @@
 #include <proc/thread.h>
 #include <riscv.h>
 #include <types.h>
+#include <dev/uart.h>
 
 volatile static int started = 0;
 // 用于记录当前哪个核已被启动
@@ -49,6 +50,10 @@ void main() {
 
 		// 初始化 isStarted（原因是初始时.BSS段可能不会被赋值为0）
 		printInit();
+
+		uart_init();
+		uart_test();
+
 		log(LEVEL_GLOBAL, "NCPU = %d\n", NCPU);
 		for (int i = 0; i < NCPU; i++) {
 			isStarted[i] = 0;

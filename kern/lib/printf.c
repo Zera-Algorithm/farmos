@@ -5,6 +5,7 @@
 #include <lock/mutex.h>
 #include <proc/cpu.h>
 #include <riscv.h>
+#include <dev/uart.h>
 
 // 建立一个printf的锁，保证同一个printf中的数据都能在一次输出完毕
 mutex_t pr_lock;
@@ -25,7 +26,8 @@ static void outputToStr(void *data, const char *buf, size_t len) {
 
 static void output(void *data, const char *buf, size_t len) {
 	for (int i = 0; i < len; i++) {
-		SBI_PUTCHAR(buf[i]);
+		// SBI_PUTCHAR(buf[i]);
+		uart_putchar(buf[i]);
 	}
 }
 
