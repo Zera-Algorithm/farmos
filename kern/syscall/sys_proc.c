@@ -8,7 +8,7 @@ void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;
 	log(LEVEL_GLOBAL, "thread %s exit with code %d\n", td->td_name, code);
 	td->td_exitcode = code;
-	mtx_lock(&td->td_lock);
+	// mtx_lock(&td->td_lock);
 	td_destroy();
 }
 
