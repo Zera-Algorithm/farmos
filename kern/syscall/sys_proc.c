@@ -12,7 +12,6 @@ void sys_exit(err_t code) {
 	td_destroy();
 }
 
-typedef u64 fileid_t;
 extern fileid_t file_load(const char *path, void **bin, size_t *size);
 extern void file_unload(fileid_t file);
 
@@ -30,7 +29,7 @@ void sys_exec(u64 path, char **argv, u64 envp) {
 	thread_t *td = cpu_this()->cpu_running;
 	char buf[MAX_PROC_NAME_LEN];
 	copy_in_str(td->td_pt, path, buf, MAX_PROC_NAME_LEN);
-	
+
 	// 从旧的用户栈拷贝参数到新的用户栈
 	td_initustack(td, TD_TEMPUSTACK);
 	td_setustack(td, argc_count(td->td_pt, argv), argv);
