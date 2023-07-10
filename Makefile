@@ -7,6 +7,7 @@ INCLUDES := -I./include
 KERNEL_ELF := kernel-qemu
 # kernel的二进制文件
 KERNEL_BIN := hifive.bin
+KERNEL_UIMAGE := hifive.uImage
 
 include include.mk
 
@@ -40,8 +41,12 @@ fs.img:
 	# dd if=/dev/zero of=fs.img bs=16k count=1024
 	# mkfs.vfat -F 12 fs.img
 
-hifive: $(KERNEL_ELF)
+objcopy: $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
+
+mkimage: objcopy
+	mkimage -A riscv -O linux -C none -a 0x80200000 -e 0x80200000 \
+		-n farmos -d $(KERNEL_BIN) $(KERNEL_UIMAGE)
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
