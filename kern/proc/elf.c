@@ -1,8 +1,3 @@
-#include <fs/cluster.h>
-#include <fs/fat32.h>
-#include <fs/fd.h>
-#include <fs/fs.h>
-#include <fs/vfs.h>
 #include <lib/elf.h>
 #include <lib/log.h>
 #include <lib/string.h>
@@ -61,78 +56,6 @@ static int loadCode(thread_t *td, const void *binary, size_t size, u64 *maxva) {
 	td->td_trapframe->epc = elfHeader->e_entry;
 	return 0;
 }
-
-////////////////////////
-static char strBuf[1024];
-/**
- * @param argv char *[]类型
- */
-static inline u64 initStack(void *stackTop, u64 argv) {
-	u64 argUPtr[20]; // TODO: 可以允许更多的参数
-	u64 argc = 0;
-	void *stackNow = stackTop;
-
-	// 1. 存储 argv 数组里面的字符串
-	do {
-		u64 pStr, len;
-		copyIn(argv, &pStr, sizeof(void *));
-
-		// 空指针，表示结束
-		if (pStr == 0) {
-			break;
-		}
-
-		copyInStr(pStr, strBuf, 1024);
-		len = strlen(strBuf);
-
-		log(LEVEL_GLOBAL, "passed argv str: %s\n", strBuf);
-
-		stackNow -= (len + 1);
-		safestrcpy(stackNow, strBuf, 1024);
-
-		argUPtr[argc++] = USTACKTOP - (stackTop - stackNow);
-
-		argv += sizeof(char *); // 读取下一个字符串
-	} while (1);
-	argUPtr[argc++] = 0;
-
-	// 2. 存储 char * 数组 argv
-	stackNow -= argc * sizeof(char *);
-	memcpy(stackNow, argUPtr, argc * sizeof(char *));
-
-	argc -= 1;
-
-	// 3. 存储argc（argv由用户本地计算）
-	stackNow -= sizeof(long);
-	*(u64 *)stackNow = argc;
-
-	return USTACKTOP - (stackTop - stackNow);
-}
-
-// /**
-//  * @brief 读取一个文件到内核的虚拟内存
-//  * @param binary 返回文件的虚拟地址
-//  * @param size 返回文件的大小
-//  */
-// static void loadFileToKernel(Dirent *file, void **binary, int *size) {
-// 	int _size;
-// 	void *_binary;
-
-// 	*size = _size = file->fileSize;
-// 	*binary = _binary = (void *)KERNEL_TEMP;
-// 	extern Pte *kernPd; // 内核页表
-
-// 	// 1. 分配足够的页
-// 	int npage = (_size) % PAGE_SIZE == 0 ? (_size / PAGE_SIZE) : (_size / PAGE_SIZE + 1);
-// 	for (int i = 0; i < npage; i++) {
-// 		u64 pa = vmAlloc();
-// 		u64 va = ((u64)_binary) + i * PAGE_SIZE;
-// 		panic_on(ptMap(kernPd, va, pa, PTE_R | PTE_W));
-// 	}
-
-// 	// 2. 读取文件
-// 	fileRead(file, 0, (u64)_binary, 0, _size);
-// }
 
 /**
  * @brief 加载用户程序，设置 Trapframe 中的程序入口（epc）。

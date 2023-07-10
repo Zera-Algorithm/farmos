@@ -19,6 +19,7 @@
 typedef enum thread_state { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE } thread_state_t;
 
 typedef struct thread {
+	// 线程核心属性
 	context_t td_context; // 内核上下文作为第一个成员（由 td_lock 保护）
 	ptr_t td_kstack; // 内核栈所在页的首地址（已被初始化，由 td_lock 保护）
 	trapframe_t *td_trapframe; // 用户态上下文（由 td_lock 保护）
@@ -28,7 +29,9 @@ typedef struct thread {
 	char td_name[MAX_PROC_NAME_LEN]; // 线程名
 
 	u64 td_tid; // 线程id（由 td_lock 保护）
+	u64 td_exitcode; // 线程退出码（由 td_lock 保护）
 
+	// 睡眠相关
 	ptr_t td_wchan;	      // 线程等待的 chan（由 td_lock 保护）
 	const char *td_wmesg; // 线程等待的原因（由 td_lock 保护）
 
@@ -42,6 +45,7 @@ typedef struct thread {
 
 	// should in proc end
 
+	// 线程队列相关
 	TAILQ_ENTRY(thread) td_runq;   // 运行队列
 	TAILQ_ENTRY(thread) td_freeq;  // 自由队列
 	TAILQ_ENTRY(thread) td_sleepq; // 睡眠队列
@@ -75,7 +79,7 @@ extern threadq_t thread_sleepq;
 
 // 线程初始化
 void td_initupt(thread_t *td);
-void td_initustack(thread_t *td);
+void td_initustack(thread_t *td, u64 ustack);
 void td_setustack(thread_t *td, u64 argc, char **argv);
 void td_initucode(thread_t *td, const void *bin, size_t size);
 

@@ -60,7 +60,7 @@ thread_t *td_alloc() {
  */
 static void td_uvminit(thread_t *td, const char *name, const void *bin, size_t size) {
 	// 初始化用户地址栈空间（若已有栈空间则原先的栈会被解引用）
-	td_initustack(td);
+	td_initustack(td, TD_USTACK);
 
 	// 初始化用户代码段
 	td_initucode(td, bin, size);

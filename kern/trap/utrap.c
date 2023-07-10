@@ -84,6 +84,13 @@ void utrap_entry() {
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
 			syscall_entry(td->td_trapframe);
+		} else if (exc_code == EXCCODE_PAGE_FAULT) {
+			// 页错误，属于内核线程范畴，允许中断 todo
+			if (page_fault_handler(r_stval() & ~(PAGE_SIZE - 1))) {
+				// 页错误处理失败，杀死进程
+				warn("page fault on pid = %d, kill it.\n", td->td_pid);
+				sys_exit(-1);// errcode todo
+			}
 		} else {
 			printReg(td->td_trapframe);
 			error("uncaught exception.\n"
