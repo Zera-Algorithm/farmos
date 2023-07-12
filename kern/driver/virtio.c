@@ -2,9 +2,12 @@
 #include <fs/buf.h>
 #include <lib/error.h>
 #include <lib/log.h>
+#include <lib/printf.h>
 #include <lib/string.h>
+#include <lock/mutex.h>
 #include <mm/memlayout.h>
 #include <param.h>
+#include <proc/sleep.h>
 #include <riscv.h>
 #include <types.h>
 
@@ -12,6 +15,8 @@
 #define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
 #define availOffset (sizeof(struct virtq_desc) * NUM)
 void *virtioDriverBuffer;
+
+mutex_t mtx_virtio;
 
 static struct disk {
 
@@ -32,7 +37,9 @@ static struct disk {
 } disk;
 
 void virtio_disk_init(void) {
+	mtx_init(&mtx_virtio, "virtio", false, MTX_SPIN);
 
+	mtx_lock(&mtx_virtio);
 	uint32 status = 0;
 
 	// 检查设备的魔术值、版本、设备ID和厂商ID，确保找到了virtio磁盘设备。如果条件不满足，会触发panic
@@ -133,6 +140,8 @@ void virtio_disk_init(void) {
 	// 设置DRIVER_OK状态位，告诉设备驱动程序已准备完毕
 	status |= VIRTIO_CONFIG_S_DRIVER_OK;
 	*R(VIRTIO_MMIO_STATUS) = status;
+
+	mtx_unlock(&mtx_virtio);
 }
 
 static int alloc_desc() {
@@ -191,6 +200,7 @@ static int alloc3_desc(int *idx) {
  * @param write 是否读。设为0表示读取，1表示写入
  */
 void virtio_disk_rw(Buffer *b, int write) {
+	mtx_lock(&mtx_virtio);
 	uint64 sector = b->blockno * (BUF_SIZE / 512);
 
 	// the spec's Section 5.2 says that legacy block operations use
@@ -255,20 +265,24 @@ void virtio_disk_rw(Buffer *b, int write) {
 	*R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
 
 	log(LEVEL_MODULE, "enter virtio wait!\n");
+	// printf("rw: Buffer = %lx\n", b);
+
 	while (b->disk == 1) {
-		__sync_synchronize();
-		continue;
+		sleep(b, &mtx_virtio, "sleep waiting for virtio...\n");
 	}
+
 	log(LEVEL_MODULE, "exit virtio wait!\n");
 
 	disk.info[idx[0]].b = 0;
 	free_chain(idx[0]);
+	mtx_unlock(&mtx_virtio);
 }
 
 /**
  * @brief virtio驱动的中断处理函数
  */
 void virtio_disk_intr() {
+	mtx_lock(&mtx_virtio);
 	*R(VIRTIO_MMIO_INTERRUPT_ACK) = *R(VIRTIO_MMIO_INTERRUPT_STATUS) & 0x3;
 
 	__sync_synchronize();
@@ -284,15 +298,20 @@ void virtio_disk_intr() {
 			panic("virtio_disk_intr status");
 
 		Buffer *b = disk.info[id].b;
+		// printf("intr: Buffer = %lx\n", b);
+
 		__sync_synchronize();
 		assert(b->disk == 1);
 		b->disk = 0; // disk is done with buf
 		__sync_synchronize();
 
+		wakeup(b);
+
 		disk.used_idx += 1;
 	}
 
 	log(LEVEL_MODULE, "finish virtio intr\n");
+	mtx_unlock(&mtx_virtio);
 }
 
 /**

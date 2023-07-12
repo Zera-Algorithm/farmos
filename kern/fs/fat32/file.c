@@ -7,6 +7,14 @@
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lock/mutex.h>
+
+/**
+ * @brief mtx_file是负责维护磁盘file访问互斥性的锁。
+ * 每次我们携带dirent指针进入文件系统层对文件进行操作，都需要获取这个锁，以保证对dirent的
+ * 读、写、删除等是互斥的。之前曾设计过更细粒度的锁（对每个Dirent加锁），但因太复杂而使用此粗粒度的锁。
+ */
+mutex_t mtx_file;
 
 /**
  * 管理文件相关事务
@@ -28,6 +36,8 @@ struct FileDev file_dev_file = {
  * @return NULL表示失败
  */
 struct Dirent *getFile(struct Dirent *baseDir, char *path) {
+	mtx_lock_sleep(&mtx_file);
+
 	Dirent *file;
 	longEntSet longSet;
 	FileSystem *fs;
@@ -42,8 +52,10 @@ struct Dirent *getFile(struct Dirent *baseDir, char *path) {
 
 	int r = walk_path(fs, path, baseDir, 0, &file, 0, &longSet);
 	if (r < 0) {
+		mtx_unlock_sleep(&mtx_file);
 		return NULL;
 	} else {
+		mtx_unlock_sleep(&mtx_file);
 		return file;
 	}
 }
@@ -52,7 +64,9 @@ struct Dirent *getFile(struct Dirent *baseDir, char *path) {
  * @brief 关闭Dirent，使其引用计数减一
  */
 void file_close(Dirent *file) {
+	mtx_lock_sleep(&mtx_file);
 	dput_path(file);
+	mtx_unlock_sleep(&mtx_file);
 }
 
 /**
@@ -74,9 +88,13 @@ static u32 fileGetClusterNo(Dirent *file, int fileClusNo) {
  * @return 返回读取文件的字节数
  */
 int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
+	mtx_lock_sleep(&mtx_file);
+
 	log(LEVEL_MODULE, "read from file %s: off = %d, n = %d\n", file->name, off, n);
 	if (off >= file->file_size) {
 		// 起始地址超出文件的最大范围
+
+		mtx_unlock_sleep(&mtx_file);
 		return -E_EXCEED_FILE;
 	} else if (off + n > file->file_size) {
 		warn("read too much. shorten read length from %d to %d!\n", n,
@@ -107,6 +125,8 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 		clus = fatRead(file->file_system, clus);
 		len += MIN(clusSize, n - len);
 	}
+
+	mtx_unlock_sleep(&mtx_file);
 	return n;
 }
 
@@ -141,6 +161,8 @@ static void fileExtend(struct Dirent *file, int newSize) {
  * @return 返回写入文件的字节数
  */
 int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
+	mtx_lock_sleep(&mtx_file);
+
 	log(LEVEL_GLOBAL, "write file: %s\n", file->name);
 	assert(n != 0);
 
@@ -174,6 +196,7 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 		len += MIN(clusSize, n - len);
 	}
 
+	mtx_unlock_sleep(&mtx_file);
 	return n;
 }
 

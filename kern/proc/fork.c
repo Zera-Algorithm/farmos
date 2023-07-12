@@ -45,7 +45,8 @@ u64 td_fork(thread_t *td, u64 childsp) {
 	child->td_status = RUNNABLE;
 	safestrcpy(child->td_name, td->td_name, MAX_PROC_NAME_LEN);
 
-	// 复制父线程的文件信息 todo
+	// 复制父线程的文件信息
+	fork_thread_fs(&td->td_fs_struct, &child->td_fs_struct);
 
 	// 将子线程加入调度队列
 	tdq_critical_enter(&thread_runq);

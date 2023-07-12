@@ -78,6 +78,9 @@ void td_create(const char *name, const void *bin, size_t size) {
 	thread_t *td = td_alloc();
 	td_uvminit(td, name, bin, size);
 
+	// 初始化进程的文件系统结构体
+	init_thread_fs(&td->td_fs_struct);
+
 	// 设置进程运行状态
 	td->td_status = RUNNABLE;
 
@@ -110,10 +113,6 @@ void td_free(thread_t *td) {
 	// 进程字段（TODO）
 	td->td_pid = 0;
 
-	// 旧设计字段
-	memset(td->fdList, 0, sizeof(td->fdList));
-	td->cwd = NULL;
-
 	// 将线程加入空闲线程队列
 	tdq_critical_enter(&thread_freeq);
 	TAILQ_INSERT_TAIL(&thread_freeq.tq_head, td, td_freeq);
@@ -130,6 +129,9 @@ static void td_recycle(thread_t *td) {
 
 	// 回收进程描述符 todo
 	td->td_status = ZOMBIE;
+
+	// 回收进程的fs资源
+	recycle_thread_fs(&td->td_fs_struct);
 }
 
 /**

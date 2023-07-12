@@ -26,6 +26,7 @@ typedef i64 off_t;
 typedef u64 pte_t;
 typedef u64 register_t;
 typedef u64 ptr_t;
+typedef u32 mode_t;
 typedef u64 fileid_t;
 
 // FarmOS 页表项

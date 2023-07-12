@@ -1,4 +1,8 @@
+#include <dev/plic.h>
 #include <dev/timer.h>
+#include <dev/virtio.h>
+#include <fs/dirent.h>
+#include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <mm/memlayout.h>
@@ -76,6 +80,22 @@ void utrap_entry() {
 			// 先设置下次时钟中断的触发时间，再进行调度
 			timerSetNextTick();
 			yield();
+		} else if (exc_code == INTERRUPT_EXTERNEL) {
+			log(DEFAULT, "externel interrupt on CPU %d!\n", cpu_this_id());
+			int irq = plicClaim();
+
+			if (irq == VIRTIO0_IRQ) {
+				// Note: call virtio intr handler
+				log(DEFAULT, "[cpu %d] catch virtio intr\n", cpu_this_id());
+				virtio_disk_intr();
+			} else {
+				log(DEFAULT, "[cpu %d] unknown externel interrupt irq = %d\n",
+				    cpu_this_id(), irq);
+			}
+
+			if (irq) {
+				plicComplete(irq);
+			}
 		} else {
 			warn("unknown interrupt %d, ignored.\n", exc_code);
 		}
@@ -144,7 +164,25 @@ void utrap_return() {
 	entry_user_ret(user_satp);
 }
 
+int is_first_thread = 1;
+
 void utrap_firstsched() {
 	mtx_unlock(&cpu_this()->cpu_running->td_lock);
+
+	extern mutex_t pr_lock;
+	mtx_lock(&pr_lock);
+	if (is_first_thread == 1) {
+		is_first_thread = 0;
+		mtx_unlock(&pr_lock);
+
+		// 初始化文件系统（需要持有自旋锁）
+		virtio_disk_init();
+		bufInit();
+		dirent_init();
+		init_root_fs();
+	} else {
+		mtx_unlock(&pr_lock);
+	}
+
 	utrap_return();
 }

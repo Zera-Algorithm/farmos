@@ -6,6 +6,7 @@
 #include <dev/virtio.h>
 #include <fs/buf.h>
 #include <fs/fat32.h>
+#include <fs/fd.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
@@ -42,6 +43,8 @@ void hartInit() {
 extern void trapInitHart();
 extern void sched_init();
 
+// #define SINGLE
+
 // start() jumps here in supervisor mode on all CPUs.
 void main() {
 	if (isFirstHart == 1) {
@@ -67,19 +70,19 @@ void main() {
 		// initKernelMemory(); // 初始化内核页表
 		vmEnable(); // 开启分页
 		thread_init();
-		// procinit();      // process table
-		// trapinit();      // trap vectors
 		trapInitHart(); // install kernel trap vector
 		timerInit();	// 初始化核内时钟
 		plicInit();	// 设置中断控制器
 		plicInitHart(); // 设置本hart的中断控制器
-		// binit();         // buffer cache
-		// iinit();         // inode table
-		// fileinit();      // file table
+		fd_init();
 		// virtio_disk_init(); // emulated hard disk
 		// userinit();      // first user process
 		// *(char *)0 = 0;  // 尝试触发异常
+
+#ifndef SINGLE
 		hartInit(); // 启动其他Hart（成功分页后再启动其他核）
+#endif
+
 		__sync_synchronize();
 
 		extern mutex_t mtx_file_load;
@@ -101,6 +104,8 @@ void main() {
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;
+
+#ifndef SINGLE
 		while (1) {
 			__sync_synchronize();
 			int tot = 0;
@@ -111,6 +116,8 @@ void main() {
 				break;
 			}
 		}
+#endif
+
 		printf("hart %d ~~~~~~~~~~~~~~~~~~~\n", cpu_this_id());
 	} else {
 		while (started == 0) {

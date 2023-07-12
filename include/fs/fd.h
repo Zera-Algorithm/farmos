@@ -3,6 +3,7 @@
 
 #include <fs/fat32.h>
 #include <fs/fs.h>
+#include <lock/mutex.h>
 #include <types.h>
 
 #define FDNUM 1024
@@ -11,7 +12,7 @@ typedef struct FdDev FdDev;
 
 typedef struct Fd {
 	// 保证每个fd的读写不并发
-	struct sleeplock lock;
+	mutex_t lock;
 
 	Dirent *dirent;
 	struct Pipe *pipe;
@@ -53,6 +54,7 @@ extern uint citesNum[FDNUM];
 
 #define AT_FDCWD -100
 
+void fd_init();
 int fdAlloc();
 int closeFd(int fd);
 void cloneAddCite(uint i);

@@ -27,7 +27,7 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 		   longEntSet *longSet);
 int dir_alloc_file(Dirent *dir, Dirent **file, char *name);
 void dirent_get_path(Dirent *dirent, char *path);
-void initRootFs();
+void init_root_fs();
 int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile,
 	      char *lastelem, longEntSet *longSet);
 

@@ -11,14 +11,14 @@
 #define PROC_MODULE 1
 #define PROC_GLOBAL 5
 
-#define MUTEX_SPIN 10
+#define MUTEX_SPIN 2
 #define MUTEX_SLEEP 10
 
 // 日志级别定义（全局）
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 9
+#define LOG_LEVEL 999
 #define DEBUG 2
 
 // 日志输出函数

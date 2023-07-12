@@ -1,6 +1,7 @@
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
+#include <fs/thread_fs.h>
 #include <lib/queue.h>
 #include <lock/mutex.h>
 #include <proc/context.h>
@@ -40,8 +41,7 @@ typedef struct thread {
 	u64 td_pid;   // 线程所属进程(todo)
 
 	ptr_t td_brk; // 进程堆顶
-	int fdList[MAX_FD_COUNT];
-	struct Dirent *cwd; // Current directory
+	thread_fs_t td_fs_struct;
 
 	// should in proc end
 

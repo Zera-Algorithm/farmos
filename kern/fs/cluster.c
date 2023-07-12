@@ -13,6 +13,9 @@
 err_t clusterInit(FileSystem *fs) {
 	log(FAT_MODULE, "Fat32 FileSystem Init Start\n");
 	// 读取 BPB
+	assert(fs != NULL);
+	assert(fs->get != NULL);
+
 	Buffer *buf = fs->get(fs, 0);
 	if (buf == NULL) {
 		log(FAT_MODULE, "buf == NULL\n");

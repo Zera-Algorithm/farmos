@@ -9,8 +9,10 @@
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/wchar.h>
+#include <lock/mutex.h>
 
 FileSystem *fatFs;
+extern mutex_t mtx_file;
 
 // recursive
 /**
@@ -27,10 +29,19 @@ static void build_dirent_tree(Dirent *parent) {
 			// 读到末尾
 			break;
 		}
+		printf("get child: %s, parent: %s\n", child->name, parent->name);
+
+		// 跳过.和..
+		if (strncmp(child->name, ".          ", 11) == 0 ||
+		    strncmp(child->name, "..         ", 11) == 0) {
+			continue;
+		}
 		LIST_INSERT_HEAD(&parent->child_list, child, dirent_link);
 
-		// 向下一层递归
-		build_dirent_tree(child);
+		// 如果为目录，就向下一层递归
+		if (child->type == DIRENT_DIR) {
+			build_dirent_tree(child);
+		}
 	}
 }
 
@@ -74,8 +85,12 @@ void fat32_init(FileSystem *fs) {
 	log(LEVEL_GLOBAL, "fat32 init finished!\n");
 }
 
-void initRootFs() {
+void init_root_fs() {
 	extern FileSystem *fatFs;
+	extern mutex_t mtx_fs;
+	mtx_init(&mtx_fs, "fs", false, MTX_SPIN);
+	mtx_init(&mtx_file, "mtx_file", 1, MTX_SLEEP);
+
 	allocFs(&fatFs);
 
 	fatFs->image = NULL;

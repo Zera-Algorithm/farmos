@@ -37,8 +37,9 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	int kernFd, userFd = -1;
 
 	copyInStr(filename, nameBuf, NAME_MAX_LEN);
-	if (fd == -100) {
-		dirent = myProc()->cwd;
+	if (fd == AT_FDCWD) {
+		dirent = get_cwd_dirent(&(myProc()->td_fs_struct));
+		assert(dirent != NULL);
 	} else {
 		// 判断相对路径还是绝对路径
 		if (nameBuf[0] != '/') {
@@ -46,11 +47,12 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 				warn("openat param fd is wrong, please check\n");
 				return -1;
 			} else {
-				if (myProc()->fdList[fd] < 0 || myProc()->fdList[fd] >= FDNUM) {
+				if (myProc()->td_fs_struct.fdList[fd] < 0 ||
+				    myProc()->td_fs_struct.fdList[fd] >= FDNUM) {
 					warn("kern fd is wrong, please check\n");
 					return -1;
 				} else {
-					dirent = fds[myProc()->fdList[fd]].dirent;
+					dirent = fds[myProc()->td_fs_struct.fdList[fd]].dirent;
 				}
 			}
 		}
@@ -61,7 +63,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 
 	// 检查用户可分配的Fd已分配完全
 	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (myProc()->fdList[i] == -1) {
+		if (myProc()->td_fs_struct.fdList[i] == -1) {
 			userFd = i;
 			break;
 		}
@@ -106,7 +108,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	fds[kernFd].stat.st_mode = mode;
 	fds[kernFd].fd_dev = &fd_dev_file; // 设置dev
 
-	myProc()->fdList[userFd] = kernFd;
+	myProc()->td_fs_struct.fdList[userFd] = kernFd;
 
 	return userFd;
 }

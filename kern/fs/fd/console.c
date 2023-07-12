@@ -74,12 +74,17 @@ static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	extern mutex_t pr_lock;
+	mtx_lock(&pr_lock);
+
 	char ch;
 	for (int i = 0; i < n; i++) {
 		copyIn((buf + i), &ch, 1);
 		SBI_PUTCHAR(ch);
 	}
 	fd->offset += n;
+
+	mtx_unlock(&pr_lock);
 	return n;
 }
 

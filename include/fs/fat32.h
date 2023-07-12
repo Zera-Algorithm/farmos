@@ -101,7 +101,6 @@ void fat32Test();
 
 typedef struct Dirent Dirent;
 
-typedef unsigned int mode_t;
 struct kstat {
 	uint64 st_dev;
 	uint64 st_ino;

@@ -18,7 +18,7 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
 # 编译C语言时的参数
-CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2 -g
 # CFLAGS = -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
 # -M 生成一个.D文件，记录.c文件的头文件依赖关系
 CFLAGS += -MD

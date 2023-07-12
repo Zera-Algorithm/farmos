@@ -32,10 +32,6 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
 // TODO: 实现初始化
 void fd_init() {
 	mtx_init(&mtx_fd, "sys_fdtable", 1, MTX_SPIN);
-
-	for (int i = 0; i < FDNUM; i++) {
-		// TODO!: 初始化sleeplock
-	}
 }
 
 void freeFd(uint i);
@@ -54,6 +50,7 @@ int fdAlloc() {
 		if ((fdBitMap[index] & (1 << inner)) == 0) {
 			fdBitMap[index] |= 1 << inner;
 			fds[i].refcnt = 1;
+			mtx_init(&fds[i].lock, "fd_lock", 1, MTX_SLEEP);
 
 			mtx_unlock(&mtx_fd);
 			return i;
@@ -69,8 +66,12 @@ int fdAlloc() {
  * @param i 内核fd编号
  */
 void cloneAddCite(uint i) {
+	mtx_lock(&fds[i].lock);
+
 	assert(i >= 0 && i < FDNUM);
 	fds[i].refcnt += 1; // 0 <= i < 1024
+
+	mtx_unlock(&fds[i].lock);
 }
 
 /**
@@ -82,13 +83,14 @@ int closeFd(int fd) {
 		warn("close param fd is wrong, please check\n");
 		return -1;
 	} else {
-		if (myProc()->fdList[fd] < 0 || myProc()->fdList[fd] >= FDNUM) {
+		if (myProc()->td_fs_struct.fdList[fd] < 0 ||
+		    myProc()->td_fs_struct.fdList[fd] >= FDNUM) {
 			warn("kern fd is wrong, please check\n");
 			return -1;
 		} else {
-			kernFd = myProc()->fdList[fd];
+			kernFd = myProc()->td_fs_struct.fdList[fd];
 			freeFd(kernFd);
-			myProc()->fdList[fd] = -1;
+			myProc()->td_fs_struct.fdList[fd] = -1;
 			return 0;
 		}
 	}
@@ -101,15 +103,17 @@ void freeFd(uint i) {
 	assert(i >= 0 && i < FDNUM);
 	Fd *fd = &fds[i];
 
-	mtx_lock(&mtx_fd);
-
+	mtx_lock_sleep(&fd->lock);
 	fd->refcnt -= 1;
 	if (fd->refcnt == 0) {
 		// Note 如果是file,不需要回收Dirent
 		// Note 如果是pipe对应的fd关闭，则需要回收struct pipe对应的内存
+
+		mtx_lock(&mtx_fd);
 		int index = i >> 5;
 		int inner = i & 31;
 		fdBitMap[index] &= ~(1 << inner);
+		mtx_unlock(&mtx_fd);
 
 		// 关闭fd对应的设备
 		fd->fd_dev->dev_close(fd);
@@ -120,10 +124,10 @@ void freeFd(uint i) {
 		fds[i].type = 0;
 		fds[i].offset = 0;
 		fds[i].flags = 0;
+
+		mtx_unlock_sleep(&fd->lock); // 此时fd已不可能被查询到，故可以安心放锁
 		memset(&fds[i].stat, 0, sizeof(struct kstat));
 	}
-
-	mtx_unlock(&mtx_fd);
 }
 
 /**
@@ -137,15 +141,20 @@ int read(int fd, u64 buf, size_t count) {
 
 	pfd = &fds[kernFd];
 
+	mtx_lock_sleep(&pfd->lock);
+
 	// 判断是否能读取
 	if ((pfd->flags & O_ACCMODE) == O_WRONLY) {
 		warn("fd can not be read\n");
 
+		mtx_unlock_sleep(&pfd->lock);
 		return -1;
 	}
 
 	// 处理dev_read
 	int ret = pfd->fd_dev->dev_read(pfd, buf, count, pfd->offset);
+
+	mtx_unlock_sleep(&pfd->lock);
 	return ret;
 }
 
@@ -157,15 +166,19 @@ int write(int fd, u64 buf, size_t count) {
 
 	pfd = &fds[kernFd];
 
+	mtx_lock_sleep(&pfd->lock);
+
 	// 判断是否能写入
 	if ((pfd->flags & O_ACCMODE) == O_RDONLY) {
 		warn("fd can not be write\n");
 
+		mtx_unlock_sleep(&pfd->lock);
 		return -1;
 	}
 
 	// 处理dev_write
-	int ret = pfd->fd_dev->dev_read(pfd, buf, count, pfd->offset);
+	int ret = pfd->fd_dev->dev_write(pfd, buf, count, pfd->offset);
+	mtx_unlock_sleep(&pfd->lock);
 	return ret;
 }
 
@@ -176,7 +189,7 @@ int dup(int fd) {
 
 	unwrap(getDirentByFd(fd, NULL, &kernFd));
 	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (myProc()->fdList[i] == -1) {
+		if (myProc()->td_fs_struct.fdList[i] == -1) {
 			newFd = i;
 			break;
 		}
@@ -186,7 +199,7 @@ int dup(int fd) {
 		return -1;
 	}
 
-	myProc()->fdList[newFd] = kernFd;
+	myProc()->td_fs_struct.fdList[newFd] = kernFd;
 	cloneAddCite(kernFd);
 	return newFd;
 }
@@ -202,18 +215,18 @@ int dup3(int old, int new) {
 		warn("dup param new[] is wrong, please check\n");
 		return -1;
 	}
-	if (myProc()->fdList[new] >= 0 && myProc()->fdList[new] < FDNUM) {
-		freeFd(myProc()->fdList[new]);
-	} else if (myProc()->fdList[new] >= FDNUM) {
+	if (myProc()->td_fs_struct.fdList[new] >= 0 && myProc()->td_fs_struct.fdList[new] < FDNUM) {
+		freeFd(myProc()->td_fs_struct.fdList[new]);
+	} else if (myProc()->td_fs_struct.fdList[new] >= FDNUM) {
 		warn("kern fd is wrong, please check\n");
 		return -1;
 	}
-	if (myProc()->fdList[old] < 0 || myProc()->fdList[old] >= FDNUM) {
+	if (myProc()->td_fs_struct.fdList[old] < 0 || myProc()->td_fs_struct.fdList[old] >= FDNUM) {
 		warn("kern fd is wrong, please check\n");
 		return -1;
 	}
-	copied = myProc()->fdList[old];
-	myProc()->fdList[new] = copied;
+	copied = myProc()->td_fs_struct.fdList[old];
+	myProc()->td_fs_struct.fdList[new] = copied;
 
 	// kernFd引用计数加1
 	cloneAddCite(copied);
@@ -226,7 +239,10 @@ int dup3(int old, int new) {
 int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 	if (fd == AT_FDCWD) {
 		if (dirent) {
-			*dirent = myProc()->cwd;
+			*dirent = get_cwd_dirent(&(myProc()->td_fs_struct));
+			if (*dirent == NULL) {
+				warn("cwd fd is invalid: %s\n", myProc()->td_fs_struct.cwd);
+			}
 			return 0;
 		}
 		// dirent无效时，由于AT_FDCWD是负数，应当继续下面的流程，直到报错
@@ -236,11 +252,13 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
 		return -1;
 	} else {
-		if (myProc()->fdList[fd] < 0 || myProc()->fdList[fd] >= FDNUM) {
-			warn("kern fd(%d) is wrong, please check\n", myProc()->fdList[fd]);
+		if (myProc()->td_fs_struct.fdList[fd] < 0 ||
+		    myProc()->td_fs_struct.fdList[fd] >= FDNUM) {
+			warn("kern fd(%d) is wrong, please check\n",
+			     myProc()->td_fs_struct.fdList[fd]);
 			return -1;
 		} else {
-			int kFd = myProc()->fdList[fd];
+			int kFd = myProc()->td_fs_struct.fdList[fd];
 			if (kernFd)
 				*kernFd = kFd;
 			if (dirent)

@@ -3,11 +3,11 @@
 #include <proc/thread.h>
 #include <sys/syscall.h>
 #include <sys/syscall_ids.h>
+#include <types.h>
 
 static void *syscallTable[] = {
-    [1023] = NULL,
-    [SYS_exit] = sys_exit,
-    [SYS_execve] = sys_exec,
+    [1023] = NULL,	     [SYS_openat] = sys_openat, [SYS_read] = sys_read,
+    [SYS_write] = sys_write, [SYS_exit] = sys_exit,	[SYS_execve] = sys_exec,
     [SYS_clone] = sys_clone,
 };
 
@@ -34,8 +34,9 @@ void syscall_entry(Trapframe *tf) {
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))syscallTable[sysno];
 	if (func == NULL) {
 		tf->a0 = SYSCALL_ERROR;
-		warn("unimplemented or unknown syscall: %d\n", sysno);
-		sys_exit(SYSCALL_ERROR);
+		// warn("unimplemented or unknown syscall: %d\n", sysno);
+		return;
+		// sys_exit(SYSCALL_ERROR);
 	}
 
 	// 将系统调用返回值放入a0寄存器

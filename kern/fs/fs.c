@@ -16,6 +16,8 @@ static struct FileSystem fs[MAX_FS_COUNT];
 struct mutex mtx_fs;
 
 static Buffer *getBlock(FileSystem *fs, u64 blockNum) {
+	assert(fs != NULL);
+
 	if (fs->image == NULL) {
 		// 是挂载了根设备，直接读取块缓存层的数据即可
 		return bufRead(fs->deviceNumber, blockNum);

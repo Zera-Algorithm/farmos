@@ -21,7 +21,7 @@ extern FileSystem *fatFs;
 static Dirent dirents[MAX_DIRENT];
 struct DirentList dirent_free_list = {NULL};
 
-// 针对dirent的整体互斥锁
+// 管理dirent分配和释放的互斥锁
 struct mutex mtx_dirent;
 
 void dirent_init() {
@@ -42,9 +42,9 @@ Dirent *dirent_alloc() {
 	Dirent *dirent = LIST_FIRST(&dirent_free_list);
 	// TODO: 需要初始化dirent的睡眠锁
 	LIST_REMOVE(dirent, dirent_link);
-	return dirent;
 
 	mtx_unlock(&mtx_dirent);
+	return dirent;
 }
 
 void dirent_dealloc(Dirent *dirent) {
