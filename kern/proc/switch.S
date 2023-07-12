@@ -1,3 +1,4 @@
+#include <mm/memlayout.h>
 #include <asm/trapframe.h>
 /*
  * void td_switch(thread_t *old)
@@ -25,6 +26,15 @@ td_switch:
         sd s9, CTX_S9_OFF(a0)
         sd s10, CTX_S10_OFF(a0)
         sd s11, CTX_S11_OFF(a0)
+
+        // 切换到原生内核栈
+        la sp, stack0           // sp = stack0
+        li t0, KSTACKSIZE       // t0 = KSTACKSIZE
+        mv t1, tp               // t1 = hartid
+        addi t1, t1, 1          // t1 = hartid + 1
+        mul t0, t0, t1          // t0 = KSTACKSIZE * (hartid + 1)
+        add sp, sp, t0          // sp = stack0 + KSTACKSIZE * (hartid + 1)
+        addi sp, sp, -16          // sp = stack0 + KSTACKSIZE * (hartid + 1) - 16
 
         // 此时旧进程的上下文已经保存完毕，可以认为是无锁临界区
         call sched_switch

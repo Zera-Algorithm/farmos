@@ -8,7 +8,7 @@
 static void *syscallTable[] = {
     [1023] = NULL,	     [SYS_openat] = sys_openat, [SYS_read] = sys_read,
     [SYS_write] = sys_write, [SYS_exit] = sys_exit,	[SYS_execve] = sys_exec,
-    [SYS_clone] = sys_clone,
+    [SYS_clone] = sys_clone, [SYS_wait4] = sys_wait4,
 };
 
 /**
@@ -34,7 +34,7 @@ void syscall_entry(Trapframe *tf) {
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))syscallTable[sysno];
 	if (func == NULL) {
 		tf->a0 = SYSCALL_ERROR;
-		// warn("unimplemented or unknown syscall: %d\n", sysno);
+		warn("unimplemented or unknown syscall: %d\n", sysno);
 		return;
 		// sys_exit(SYSCALL_ERROR);
 	}

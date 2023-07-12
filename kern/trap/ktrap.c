@@ -94,43 +94,6 @@ void kerneltrap(RawTrapFrame *tf) {
 	}
 }
 
-/**
- * @brief 当写入一个不可写的页时，会触发Store page fault，excCode=15;
- * @param stval 当发生页错误时，指代发生页错误的地址
- */
-void pageFaultHandler(int excCode, u64 epc, u64 stval) {
-	log(LEVEL_GLOBAL, "A page fault occurred on: EPC = 0x%08lx, STVAL = 0x%016lx\n", epc,
-	    stval);
-	u64 badAddr = stval & ~(PAGE_SIZE - 1);
-	thread_t *proc = myProc();
-
-	Pte pte = ptLookup(proc->td_pt, badAddr);
-	if (pte == 0) {
-		panic("Can\'t find page addr 0x%016lx.\n", badAddr);
-	}
-
-	if ((pte & PTE_U) == 0) {
-		panic("Write to kernel page! Panic!\n");
-	}
-
-	if (pte & PTE_W) {
-		panic("It is a PTE_W page! No way to handle!\n");
-	}
-
-	log(LEVEL_GLOBAL, "write to a not PTE_W page.\n");
-
-	if (pte & PTE_COW) {
-		u64 newPage = vmAlloc();
-		u64 oldPage = pteToPa(pte);
-		u64 perm = PTE_PERM(pte);
-		memcpy((void *)newPage, (void *)oldPage, PAGE_SIZE);
-		panic_on(ptMap(proc->td_pt, badAddr, newPage, (perm ^ PTE_COW) | PTE_W));
-		log(LEVEL_GLOBAL, "successfully filled COW page!\n");
-	} else {
-		panic("Not a PTE_COW Page!\n");
-	}
-}
-
 // 设置异常处理跳转入口
 void trapInitHart(void) {
 	w_stvec((uint64)kernelvec);

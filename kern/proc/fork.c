@@ -1,3 +1,4 @@
+#include <lib/log.h>
 #include <lib/string.h>
 #include <mm/vmm.h>
 #include <mm/vmtools.h>
@@ -16,8 +17,10 @@ static err_t duppage(Pte *pd, u64 target_va, Pte *target_pte, void *arg) {
 			perm = (perm & ~PTE_W) | PTE_COW;
 			return ptMap(childpd, target_va, pteToPa(parentpte), perm) ||
 			       ptMap(pd, target_va, pteToPa(parentpte), perm);
-		} else {
+		} else if (perm & PTE_U) {
 			return ptMap(childpd, target_va, pteToPa(parentpte), perm);
+		} else {
+			error("duppage: invalid perm %x\n", perm);
 		}
 	}
 	return 0;
@@ -43,7 +46,12 @@ u64 td_fork(thread_t *td, u64 childsp) {
 
 	// 父线程的内核线程信息不用复制，使用新内核线程的入口直接调度
 	child->td_status = RUNNABLE;
+
+	child->td_parent = td;
+	LIST_INSERT_HEAD(&td->td_childlist, child, td_childentry);
+
 	safestrcpy(child->td_name, td->td_name, MAX_PROC_NAME_LEN);
+	strcat(child->td_name, "_fork");
 
 	// 复制父线程的文件信息
 	fork_thread_fs(&td->td_fs_struct, &child->td_fs_struct);

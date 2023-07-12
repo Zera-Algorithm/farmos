@@ -43,6 +43,9 @@ static u64 wait_exit(thread_t *curtd, thread_t *child, u64 pstatus) {
 	}
 
 	td_free(child);
+
+	LIST_REMOVE(child, td_childentry);
+
 	mtx_unlock(&child->td_lock);
 	mtx_unlock(&wait_lock);
 	return tid;

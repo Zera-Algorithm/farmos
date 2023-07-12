@@ -97,10 +97,11 @@ void main() {
 		// testProcRun(5);
 		// testProcRun(6);
 		// testProcRun(7);
-		TD_CREATE(test_printf, "test1");
-		TD_CREATE(test_printf, "test2");
-		TD_CREATE(test_printf, "test3");
-		TD_CREATE(test_printf, "test4");
+		// TD_CREATE(test_printf, "test1");
+		// TD_CREATE(test_printf, "test2");
+		// TD_CREATE(test_printf, "test3");
+		TD_CREATE(test_clone, "test_clone");
+		// TD_CREATE(test_while, "test_while");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;

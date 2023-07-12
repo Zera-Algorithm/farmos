@@ -103,12 +103,15 @@ void td_free(thread_t *td) {
 	assert(td->td_status == ZOMBIE);
 	assert(mtx_hold(&td->td_lock));
 
+	log(LEVEL_GLOBAL, "td %s is freed\n", td->td_name);
+
 	// 将线程字段重置
 	td->td_status = UNUSED;
 	td->td_name[0] = '\0';
 	td->td_tid = 0;
 	td->td_wchan = 0;
 	td->td_wmesg = NULL;
+	td->td_parent = NULL;
 
 	// 进程字段（TODO）
 	td->td_pid = 0;
@@ -142,6 +145,9 @@ void td_destroy() {
 
 	// 回收进程资源
 	mtx_lock(&td->td_lock);
+
+	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
+
 	td_recycle(td);
 	mtx_unlock(&td->td_lock);
 
@@ -166,8 +172,8 @@ void td_destroy() {
 		mtx_unlock(&child->td_lock);
 	}
 
-	// 通知父进程（父进程 wait 时等待的是自己线程的指针）
-	wakeup(td);
+	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
+	wakeup(td->td_parent);
 
 	// 拿锁，调度新进程
 	mtx_lock(&td->td_lock);

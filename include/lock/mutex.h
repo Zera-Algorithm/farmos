@@ -4,12 +4,14 @@
 #include <lock/lock.h>
 #include <types.h>
 
+typedef struct thread thread_t;
+
 typedef struct mutex {
 	lock_object_t mtx_lock_object;
-	void *mtx_owner; // 仅在睡眠锁中使用
-	bool mtx_debug;	 // 是否输出调试信息
-	u8 mtx_type;	 // 锁的类型
-	u8 mtx_depth;	 // 锁的深度（意义与类型相关）
+	thread_t *mtx_owner; // 仅在睡眠锁中使用
+	bool mtx_debug;	     // 是否输出调试信息
+	u8 mtx_type;	     // 锁的类型
+	u8 mtx_depth;	     // 锁的深度（意义与类型相关）
 } mutex_t;
 
 #define MTX_SPIN 0x01

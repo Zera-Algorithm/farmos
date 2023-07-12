@@ -26,7 +26,7 @@ all: $(KERNEL_ELF)
 # 生成 kernel，并将其反汇编到kernel.asm
 $(KERNEL_ELF): $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
-	$(OBJDUMP) -S $(KERNEL_ELF) > $(KERN)/kernel.asm
+	$(OBJDUMP) -xS $(KERNEL_ELF) > $(KERN)/kernel.asm
 
 # modules即为 kern 各目录的生成产物，一般是一些 .o 文件
 $(modules):

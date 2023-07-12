@@ -141,12 +141,17 @@ void mtx_lock_sleep(mutex_t *m) {
 		// 睡眠锁未被自己认领，检查所有权字段
 		while (m->mtx_owner != 0) {
 			// 若自旋锁已被认领，则睡眠（睡眠时会释放自旋锁）
-			sleep(m, m, "mtx_lock_sleep");
+			mtx_sleep_debug("lock[%s] hold by %s, %s go sleeping\n",
+					m->mtx_lock_object.lo_name, m->mtx_owner->td_name,
+					cpu_this()->cpu_running->td_name);
+			sleep(m, m, m->mtx_lock_object.lo_name);
 		}
 		// 所有权为空，本进程认领睡眠锁
 		assert(cpu_this()->cpu_running != 0);
 		m->mtx_owner = cpu_this()->cpu_running;
 		m->mtx_depth = 1;
+
+		mtx_sleep_debug("lock[%s] acquired!\n", m->mtx_lock_object.lo_name);
 	}
 
 	// 认领完毕，释放互斥量
@@ -158,7 +163,10 @@ void mtx_unlock_sleep(mutex_t *m) {
 	assert(m->mtx_type == MTX_SLEEP);
 	mtx_lock(m);
 	// 检查所有权字段
-	assert(m->mtx_owner == cpu_this()->cpu_running);
+	if (m->mtx_owner != cpu_this()->cpu_running) {
+		panic("mtx_unlock_sleep: lock[%s] not hold!\n", m->mtx_lock_object.lo_name);
+	}
+	assert(m->mtx_depth > 0);
 	// 检查重入深度
 	if (m->mtx_depth > 1) {
 		// 重入，减少重入深度，不唤醒

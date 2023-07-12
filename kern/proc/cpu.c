@@ -18,6 +18,8 @@ cpu_t *cpu_this() {
 }
 
 void cpu_idle() {
+	intr_on();
 	for (int i = 0; i < 1000000; i++)
 		;
+	intr_off();
 }

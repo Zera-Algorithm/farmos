@@ -127,6 +127,8 @@ void freeFd(uint i) {
 
 		mtx_unlock_sleep(&fd->lock); // 此时fd已不可能被查询到，故可以安心放锁
 		memset(&fds[i].stat, 0, sizeof(struct kstat));
+	} else {
+		mtx_unlock_sleep(&fd->lock);
 	}
 }
 

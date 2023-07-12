@@ -8,7 +8,7 @@
 #include <trap/trapframe.h>
 #include <types.h>
 
-#define MAX_PROC_NAME_LEN 16
+#define MAX_PROC_NAME_LEN 32
 #define MAX_FD_COUNT 256
 #ifndef NPROC
 #define NPROC 1024
