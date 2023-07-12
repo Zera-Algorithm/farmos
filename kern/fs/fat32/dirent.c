@@ -158,6 +158,8 @@ void dget_path(Dirent *file) {
 			file = file->file_system->mountPoint;
 			if (file == NULL)
 				return;
+		} else {
+			file = get_parent_dirent(file);
 		}
 	}
 }
@@ -172,6 +174,8 @@ void dput_path(Dirent *file) {
 			file = file->file_system->mountPoint;
 			if (file == NULL)
 				return;
+		} else {
+			file = get_parent_dirent(file);
 		}
 	}
 }

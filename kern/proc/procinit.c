@@ -4,6 +4,7 @@
 #include <mm/vmm.h>
 #include <mm/vmtools.h>
 #include <param.h>
+#include <proc/sleep.h>
 #include <proc/thread.h>
 
 threadq_t thread_runq;
@@ -15,6 +16,7 @@ void *kstacks;
 void thread_init() {
 	extern mutex_t td_tid_lock;
 	mtx_init(&td_tid_lock, "td_tid_lock", false, MTX_SPIN);
+	mtx_init(&wait_lock, "wait_lock", false, MTX_SPIN);
 	mtx_init(&thread_runq.tq_lock, "thread_runq", false, MTX_SPIN);
 	mtx_init(&thread_freeq.tq_lock, "thread_freeq", false, MTX_SPIN);
 	mtx_init(&thread_sleepq.tq_lock, "thread_sleepq", false, MTX_SPIN);
@@ -64,15 +66,15 @@ void td_initupt(thread_t *td) {
  * @brief 分配并初始化一个新的用户空间栈
  * @note 申请了新的用户栈，并将其映射到用户页表，同时初始化用户栈指针
  */
-void td_initustack(thread_t *td) {
+void td_initustack(thread_t *td, u64 ustack) {
 	// 分配用户栈空间
 	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
 		u64 pa = vmAlloc();
-		u64 va = TD_USTACK + i * PAGE_SIZE;
+		u64 va = ustack + i * PAGE_SIZE;
 		panic_on(ptMap(td->td_pt, va, pa, PTE_R | PTE_W | PTE_U));
 	}
 	// 初始化用户栈空间指针
-	td->td_trapframe->sp = TD_USTACK + TD_USTACK_SIZE;
+	td->td_trapframe->sp = ustack + TD_USTACK_SIZE;
 	td->td_brk = 0;
 }
 
@@ -95,7 +97,7 @@ void td_setustack(thread_t *td, u64 argc, char **argv) {
 	for (int i = argc - 1; i >= 0; i--) {
 		// 指向参数字符串的用户地址空间指针
 		char *arg;
-		copy_in(td->td_pt, (u64)argv[i], &arg, sizeof(char *));
+		copy_in(td->td_pt, (u64)(&argv[i]), &arg, sizeof(char *));
 		// 从用户地址空间拷贝参数字符串
 		copy_in_str(td->td_pt, (u64)arg, buf, MAXARGLEN);
 		buf[MAXARGLEN] = '\0';
@@ -104,6 +106,8 @@ void td_setustack(thread_t *td, u64 argc, char **argv) {
 		buf[len - 1] = '\0';
 		// 将参数字符串压入用户栈
 		td->td_trapframe->sp -= len;
+		// 将字符串首地址对齐到 16 字节
+		td->td_trapframe->sp -= td->td_trapframe->sp % 16;
 		copy_out(td->td_pt, (u64)td->td_trapframe->sp, buf, len);
 		// 记录参数字符串的用户地址空间指针
 		argvbuf[i] = (char *)td->td_trapframe->sp;
@@ -112,9 +116,15 @@ void td_setustack(thread_t *td, u64 argc, char **argv) {
 
 	// 将参数指针压入用户栈
 	td->td_trapframe->sp -= (argc + 1) * sizeof(char *);
+	// 将指针数组首地址对齐到 16 字节
+	td->td_trapframe->sp -= td->td_trapframe->sp % 16;
 	copy_out(td->td_pt, (u64)td->td_trapframe->sp, argvbuf, (argc + 1) * sizeof(char *));
 
 	// 将参数数量压入用户栈
 	td->td_trapframe->sp -= sizeof(u64);
 	copy_out(td->td_pt, (u64)td->td_trapframe->sp, &argc, sizeof(u64));
+
+	// 将参数放入寄存器
+	// 通过 syscall 返回值实现 a0 = argc;
+	td->td_trapframe->a1 = td->td_trapframe->sp;
 }

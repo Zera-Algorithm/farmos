@@ -82,6 +82,9 @@ void main() {
 		hartInit(); // 启动其他Hart（成功分页后再启动其他核）
 		__sync_synchronize();
 
+		extern mutex_t mtx_file_load;
+		mtx_init(&mtx_file_load, "kload", 0, MTX_SLEEP);
+
 		assert(intr_get() == 0);
 		// testProcRun(0);
 		// testProcRun(1);

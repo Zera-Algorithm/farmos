@@ -7,6 +7,8 @@
 static void *syscallTable[] = {
     [1023] = NULL,
     [SYS_exit] = sys_exit,
+    [SYS_execve] = sys_exec,
+    [SYS_clone] = sys_clone,
 };
 
 /**

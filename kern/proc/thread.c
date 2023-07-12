@@ -60,7 +60,7 @@ thread_t *td_alloc() {
  */
 static void td_uvminit(thread_t *td, const char *name, const void *bin, size_t size) {
 	// 初始化用户地址栈空间（若已有栈空间则原先的栈会被解引用）
-	td_initustack(td);
+	td_initustack(td, TD_USTACK);
 
 	// 初始化用户代码段
 	td_initucode(td, bin, size);
@@ -96,7 +96,7 @@ void td_create(const char *name, const void *bin, size_t size) {
  * @note 进程自己调用 exit 变为僵尸进程或被 kill 后变成僵尸进程。
  * @pre 必须持有传入线程的锁
  */
-static void td_free(thread_t *td) {
+void td_free(thread_t *td) {
 	assert(td->td_status == ZOMBIE);
 	assert(mtx_hold(&td->td_lock));
 
@@ -125,6 +125,7 @@ static void td_free(thread_t *td) {
  * @note 仅在线程本身退出时调用。
  */
 static void td_recycle(thread_t *td) {
+	// 回收全部页表
 	td_recycleupt(td);
 
 	// 回收进程描述符 todo
@@ -136,14 +137,19 @@ static void td_recycle(thread_t *td) {
  */
 void td_destroy() {
 	thread_t *td = cpu_this()->cpu_running;
-	mtx_lock(&td->td_lock);
 
 	// 回收进程资源
+	mtx_lock(&td->td_lock);
 	td_recycle(td);
+	mtx_unlock(&td->td_lock);
+
+	// 拿等待锁，防止其它线程在此期间调用 wait
+	mtx_lock(&wait_lock);
 
 	// 处理子进程资源
 	thread_t *child;
-	LIST_UNTIL_EMPTY(child, &td->td_childlist) { // todo 同时拿两把进程锁
+	// 自己的子线程链表为私有，对其它线程不可见，不加锁，但修改子进程状态（td_free）时需要加锁
+	LIST_UNTIL_EMPTY(child, &td->td_childlist) {
 		mtx_lock(&child->td_lock);
 		LIST_REMOVE(child, td_childentry);
 		// 根据子进程状态处理
@@ -151,16 +157,19 @@ void td_destroy() {
 			td_free(child);
 		} else {
 			warn("haven't implement init, child %d is still alive", child->td_tid);
+			child->td_parent = 0;
 			// child->td_parent = TID_INIT;
 			// todo: insert to init's childlist and wake up init
 		}
 		mtx_unlock(&child->td_lock);
 	}
 
-	// 唤醒父进程 todo：拿了两把进程锁
-	wakeup(td->td_parent);
+	// 通知父进程（父进程 wait 时等待的是自己线程的指针）
+	wakeup(td);
 
-	// 调度新进程
+	// 拿锁，调度新进程
+	mtx_lock(&td->td_lock);
+	mtx_unlock(&wait_lock);
 	schedule();
 	error("td_destroy: should not reach here");
 }

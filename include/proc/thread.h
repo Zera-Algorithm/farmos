@@ -19,6 +19,7 @@
 typedef enum thread_state { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE } thread_state_t;
 
 typedef struct thread {
+	// 线程核心属性
 	context_t td_context; // 内核上下文作为第一个成员（由 td_lock 保护）
 	ptr_t td_kstack; // 内核栈所在页的首地址（已被初始化，由 td_lock 保护）
 	trapframe_t *td_trapframe; // 用户态上下文（由 td_lock 保护）
@@ -27,14 +28,16 @@ typedef struct thread {
 	thread_state_t td_status;	 // 线程状态（由 td_lock 保护）
 	char td_name[MAX_PROC_NAME_LEN]; // 线程名
 
-	u64 td_tid; // 线程id（由 td_lock 保护）
+	u64 td_tid;	 // 线程id（由 td_lock 保护）
+	u64 td_exitcode; // 线程退出码（由 td_lock 保护）
 
+	// 睡眠相关
 	ptr_t td_wchan;	      // 线程等待的 chan（由 td_lock 保护）
 	const char *td_wmesg; // 线程等待的原因（由 td_lock 保护）
 
 	// should in proc
 	pte_t *td_pt; // 线程用户态页表
-	u64 td_pid;   // 线程所属进程
+	u64 td_pid;   // 线程所属进程(todo)
 
 	ptr_t td_brk; // 进程堆顶
 	int fdList[MAX_FD_COUNT];
@@ -42,13 +45,14 @@ typedef struct thread {
 
 	// should in proc end
 
+	// 线程队列相关
 	TAILQ_ENTRY(thread) td_runq;   // 运行队列
 	TAILQ_ENTRY(thread) td_freeq;  // 自由队列
 	TAILQ_ENTRY(thread) td_sleepq; // 睡眠队列
 
-	struct thread *td_parent;	  // 父线程
+	struct thread *td_parent;	  // 父线程（只会由父进程修改，不加锁）
 	LIST_HEAD(, thread) td_childlist; // 子线程
-	LIST_ENTRY(thread) td_childentry; // 兄弟线程
+	LIST_ENTRY(thread) td_childentry; // 用于将当前线程加入父线程的子线程链表
 } thread_t;
 
 extern thread_t threads[NPROC];
@@ -75,14 +79,18 @@ extern threadq_t thread_sleepq;
 
 // 线程初始化
 void td_initupt(thread_t *td);
-void td_initustack(thread_t *td);
+void td_initustack(thread_t *td, u64 ustack);
 void td_setustack(thread_t *td, u64 argc, char **argv);
 void td_initucode(thread_t *td, const void *bin, size_t size);
 
+// 线程回收
 void td_destroy() __attribute__((noreturn));
+void td_free(thread_t *td);
 void td_recycleupt(thread_t *td);
 
+// 线程创建
 void td_create(const char *name, const void *bin, size_t size);
+u64 td_fork(thread_t *td, u64 childsp);
 
 #define TD_CREATE(program, name)                                                                   \
 	({                                                                                         \

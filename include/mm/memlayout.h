@@ -1,5 +1,63 @@
 #ifndef _MEMLAYOUT_H
 #define _MEMLAYOUT_H
+/**
+ * FarmOS 的虚拟内存布局：
+ *
+ * |------------------| MAXVA
+ * |     PAGE_SIZE    |
+ * |------------------| TRAMPOLINE
+ * |     PAGE_SIZE    |
+ * |------------------| TRAPFRAME
+ * |     PAGE_SIZE    |
+ * |------------------| STACKTOP/USTACKTOP
+ * |    STACK_SIZE    |
+ * |------------------| TD_KSTACK/USTACK
+ * |                  |
+ *
+ * 用户空间中，从 0 开始为用户代码和数据，以及用户堆
+ * 内核空间中，从 0x80200000 开始为内核代码和数据
+ */
+
+// FarmOS 物理页说明
+#define PAGE_SHIFT (12ull)	    // 基页大小为 4KB
+#define PAGE_SIZE (1 << PAGE_SHIFT) // 基页大小为 4KB
+#define PGROUNDUP(a) (((a) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
+#define PGROUNDDOWN(a) (((a)) & ~(PAGE_SIZE - 1))
+
+// 最大虚拟地址
+#ifndef MAXVA
+#define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+#endif // !MAXVA
+
+// FarmOS 虚拟内存布局
+#define TRAMPOLINE (MAXVA - PAGE_SIZE)
+#define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
+#define STACKTOP (TRAPFRAME - PAGE_SIZE)
+#define USTACKTOP STACKTOP
+
+// 内核初始化栈部分（静态数组）
+#define KSTACKSIZE (4 * PAGE_SIZE)
+
+// 内核页表中，线程的内核栈部分
+#define TD_KSTACK_PAGE_NUM 4				// 内核栈占用的页数
+#define TD_KSTACK_SIZE (TD_KSTACK_PAGE_NUM * PAGE_SIZE) // 内核栈占用的大小
+#define TD_KSTACK(p) (STACKTOP - ((p) + 1) * (TD_KSTACK_SIZE + PAGE_SIZE))
+
+// 用户页表中，线程的用户栈部分
+#define TD_USTACK_PAGE_NUM 4				// 用户栈占用的页数
+#define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
+#define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
+#define TD_TEMPUSTACK (TD_USTACK - TD_USTACK_SIZE - PAGE_SIZE)
+#define TD_TEMPUSTACK_OFFSET (TD_USTACK - TD_TEMPUSTACK)
+
+// 内核的起始位置
+#define KERNBASE 0x80200000ul
+
+// 可访问内存的起始位置
+#define MEMBASE 0x80000000ul
+
+// BELOW TO BE CLASSIFIED (TODO)
+
 // Physical memory layout
 
 // qemu -machine virt is set up like this,
@@ -46,56 +104,4 @@
 #define PLIC_MCLAIM(hart) (PLIC + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC + 0x201004 + (hart)*0x2000)
 
-// the kernel expects there to be RAM
-// for use by the kernel and user pages
-// from physical address 0x80000000 to PHYSTOP.
-#ifndef MAXVA
-#define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
-#endif
-// TODO：整理以上宏文件
-
-// FarmOS 物理页说明
-#define PAGE_SHIFT (12ull)	    // 基页大小为 4KB
-#define PAGE_SIZE (1 << PAGE_SHIFT) // 基页大小为 4KB
-#define PGROUNDUP(a) (((a) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
-#define PGROUNDDOWN(a) (((a)) & ~(PAGE_SIZE - 1))
-
-#define KSTACKSIZE (4096 * 4)
-
-// 内核的起始位置
-#define KERNBASE 0x80200000ul
-
-// 可访问内存的起始位置
-#define MEMBASE 0x80000000ul
-
-// 内核的一个临时地址，可以用于动态内存分配
-#define KERNEL_TEMP 0x600000000ul
-
-// 内核页表中，线程的内核栈部分
-#define TD_KSTACK_PAGE_NUM 4				// 内核栈占用的页数
-#define TD_KSTACK_SIZE (TD_KSTACK_PAGE_NUM * PAGE_SIZE) // 内核栈占用的大小
-#define TD_KSTACK(p) (STACKTOP - ((p) + 1) * (TD_KSTACK_SIZE + PAGE_SIZE))
-// 用户页表中，线程的用户栈部分
-#define TD_USTACK_PAGE_NUM 4				// 用户栈占用的页数
-#define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
-#define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
-
-// 以下是用户空间的内存布局图
-// User memory layout.
-// Address zero first:
-//   text
-//   original data and bss
-//   fixed-size stack
-//   expandable heap
-//   ...
-//   TRAPFRAME (p->trapframe, used by the trampoline)
-//   TRAMPOLINE (the same page as in the kernel)
-
-// map the trampoline page to the highest address,
-// in both user and kernel space.
-#define TRAMPOLINE (MAXVA - PAGE_SIZE)
-#define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
-#define STACKTOP (TRAPFRAME - PAGE_SIZE)
-#define USTACKTOP STACKTOP
-
-#endif
+#endif // !_MEMLAYOUT_H
