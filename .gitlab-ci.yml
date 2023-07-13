@@ -1,8 +1,21 @@
 stages:
   - check-style
 
+# 合并请求格式检查
+check-style-mr:
+  stage: check-style
+  script:
+    - make check-style
+  only:
+    refs:
+      - merge_requests
+
+# 格式检查
 check-style:
   stage: check-style
   script:
     - make check-style
+  only:
+    - master
+    
 
