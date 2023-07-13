@@ -331,6 +331,9 @@ int fileStatFd(int fd, u64 pkstat) {
 	int kFd;
 	unwrap(getDirentByFd(fd, NULL, &kFd));
 	Fd *kernFd = &fds[kFd];
+
+	mtx_lock_sleep(&kernFd->lock);
 	unwrap(kernFd->fd_dev->dev_stat(kernFd, pkstat));
+	mtx_unlock_sleep(&kernFd->lock);
 	return 0;
 }

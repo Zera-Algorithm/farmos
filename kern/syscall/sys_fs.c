@@ -5,6 +5,8 @@
 #include <sys/syscall_fs.h>
 #include <mm/vmm.h>
 #include <mm/memlayout.h>
+#include <lib/log.h>
+#include <lib/error.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <fs/thread_fs.h>
@@ -28,6 +30,7 @@ int sys_openat(int fd, u64 filename, int flags, mode_t mode) {
  * @todo 实现匿名映射（由flags的MAP_ANONYMOUS标志决定），即不映射到文件
  */
 // TODO: 需要考虑flags的其他字段，但暂未考虑
+// TODO: 实现将映射地址区域与文件结合，实现msync同步内存到文件
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	int r = 0, perm = 0;
 	Dirent *file;
@@ -72,8 +75,10 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 			return MAP_FAILED;
 		}
 
-		return file_map(myProc(), file, start, len, perm, off);
+		return file_map(cpu_this()->cpu_running, file, start, len, perm, off);
 	}
 }
 
-
+int sys_fstat(int fd, u64 pkstat) {
+	return fileStatFd(fd, pkstat);
+}

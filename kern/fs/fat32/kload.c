@@ -1,6 +1,7 @@
 #include <fs/fs.h>
 #include <fs/vfs.h>
 #include <lib/error.h>
+#include <lib/log.h>
 #include <lib/printf.h>
 #include <lock/mutex.h>
 #include <mm/vmm.h>
@@ -22,10 +23,12 @@ static Dirent *file = NULL;
 static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 	mtx_lock_sleep(&mtx_file_load);
 
+	file = dirent;
+
 	int _size;
 	void *_binary;
 
-	*size = _size = file->file_size;
+	*size = _size = dirent->file_size;
 	*bin = _binary = (void *)KERNEL_TEMP;
 
 	// 1. 分配足够的页
@@ -77,7 +80,7 @@ void file_unload(fileid_t fileid) {
  * @return 如果映射成功，返回映射位置的指针，否则返回-1
  */
 void *file_map(thread_t *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
-	int size;
+	size_t size;
 	void *binary;
 
 	// 1. 将文件加载到内核中，位置位于binary，内容大小为size

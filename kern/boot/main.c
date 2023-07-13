@@ -101,7 +101,8 @@ void main() {
 		// TD_CREATE(test_printf, "test2");
 		// TD_CREATE(test_printf, "test3");
 		// TD_CREATE(test_clone, "test_clone");
-		TD_CREATE(test_execve, "test_execve");
+		TD_CREATE(test_mmap, "test_mmap");
+		// TD_CREATE(test_execve, "test_execve");
 		// TD_CREATE(test_while, "test_while");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());

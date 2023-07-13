@@ -30,5 +30,7 @@ u64 sys_nanosleep(u64 pTimeSpec);
 int sys_write(int fd, u64 buf, size_t count);
 int sys_read(int fd, u64 buf, size_t count);
 int sys_openat(int fd, u64 filename, int flags, mode_t mode);
+void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
+int sys_fstat(int fd, u64 pkstat);
 
 #endif // !_SYSCALL_H
