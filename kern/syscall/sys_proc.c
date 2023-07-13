@@ -3,6 +3,7 @@
 #include <lib/transfer.h>
 #include <proc/cpu.h>
 #include <proc/nanosleep.h>
+#include <proc/sched.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
@@ -100,4 +101,22 @@ u64 sys_nanosleep(u64 pTimeSpec) {
 	nanosleep_proc(clocks);
 
 	return 0;
+}
+
+void sys_sched_yield() {
+	yield();
+}
+
+u64 sys_getpid() {
+	return cpu_this()->cpu_running->td_pid; // todo
+}
+
+u64 sys_getppid() {
+	return cpu_this()->cpu_running->td_parent->td_pid; // todo
+}
+
+clock_t sys_times(u64 utms) {
+	thread_t *td = cpu_this()->cpu_running;
+	copy_out(td->td_pt, utms, &td->td_times, sizeof(td->td_times));
+	return ticks;
 }

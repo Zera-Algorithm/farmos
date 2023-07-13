@@ -40,6 +40,10 @@ thread_t *td_alloc() {
 	// 初始化线程 ID
 	td->td_tid = tid_alloc(td);
 
+	// 进程字段 todo
+	memset(&td->td_times, 0, sizeof(td->td_times));
+	td->td_pid = td->td_tid;
+
 	// 初始化线程状态
 	td->td_status = USED;
 

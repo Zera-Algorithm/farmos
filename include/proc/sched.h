@@ -9,4 +9,6 @@ void schedule();
 void yield();
 thread_t *sched_switch(thread_t *old, register_t param);
 
+extern clock_t ticks;
+
 #endif // _SCHED_H_

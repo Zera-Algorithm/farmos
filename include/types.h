@@ -28,6 +28,9 @@ typedef u64 register_t;
 typedef u64 ptr_t;
 typedef u32 mode_t;
 typedef u64 fileid_t;
+typedef i64 clock_t;
+typedef u64 time_t;
+typedef u64 suseconds_t;
 
 // FarmOS 页表项
 typedef pte_t Pte;
