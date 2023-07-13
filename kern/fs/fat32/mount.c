@@ -10,7 +10,6 @@
 
 extern mutex_t mtx_file;
 
-
 // mount之后，目录中原有的文件将被暂时取代为挂载的文件系统内的内容，umount时会重新出现
 int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
 	mtx_lock_sleep(&mtx_file);

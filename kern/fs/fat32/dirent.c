@@ -381,7 +381,7 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 	if (file) {
 		*file = f;
 	}
-	
+
 	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }
