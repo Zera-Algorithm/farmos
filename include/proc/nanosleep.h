@@ -1,7 +1,7 @@
 #ifndef _NANOSLEEP_H
 #define _NANOSLEEP_H
-#include <types.h>
 #include <lib/queue.h>
+#include <types.h>
 
 typedef struct thread thread_t;
 

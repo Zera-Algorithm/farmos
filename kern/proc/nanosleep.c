@@ -1,14 +1,15 @@
-#include <proc/nanosleep.h>
-#include <proc/thread.h>
-#include <lock/mutex.h>
 #include <dev/timer.h>
+#include <lib/error.h>
+#include <lock/mutex.h>
+#include <proc/nanosleep.h>
 #include <proc/sleep.h>
+#include <proc/thread.h>
 
 static nanosleep_t nanosleep_struct[NPROC];
 mutex_t mtx_nanosleep;
-struct nanosleep_list nanosleep_list = { (nanosleep_t *)NULL };
+struct nanosleep_list nanosleep_list = {(nanosleep_t *)NULL};
 
-static nanosleep_t* nanosleep_alloc() {
+static nanosleep_t *nanosleep_alloc() {
 	mtx_lock(&mtx_nanosleep);
 
 	for (int i = 0; i < NPROC; i++) {
@@ -20,6 +21,7 @@ static nanosleep_t* nanosleep_alloc() {
 		}
 	}
 	panic("no more nanosleep struct to alloc");
+	return NULL;
 }
 
 static void nanosleep_dealloc(nanosleep_t *nanosleep) {
@@ -48,7 +50,7 @@ void nanosleep_proc(u64 clocks) {
 	} else {
 		int insert = 0;
 		nanosleep_t *tmp, *last;
-		LIST_FOREACH(tmp, &nanosleep_list, nano_link) {
+		LIST_FOREACH (tmp, &nanosleep_list, nano_link) {
 			last = tmp;
 			if (tmp->end_time > nanosleep->end_time) {
 				LIST_INSERT_BEFORE(tmp, nanosleep, nano_link);
@@ -75,9 +77,12 @@ void nanosleep_check() {
 	u64 curTime = getTime();
 
 	while (1) {
-		if (LIST_EMPTY(&nanosleep_list) || LIST_FIRST(&nanosleep_list)->end_time > curTime) {
+		if (LIST_EMPTY(&nanosleep_list) ||
+		    LIST_FIRST(&nanosleep_list)->end_time > curTime) {
 			break;
 		}
-		wakeup(LIST_FIRST(&nanosleep_list));
+		nanosleep_t *first = LIST_FIRST(&nanosleep_list);
+		wakeup(first);
+		nanosleep_dealloc(first);
 	}
 }

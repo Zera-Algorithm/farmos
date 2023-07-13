@@ -23,6 +23,7 @@ void sys_exit(err_t code) __attribute__((noreturn));
 err_t sys_exec(u64 path, char **argv, u64 envp);
 u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
 u64 sys_wait4(u64 pid, u64 status, u64 options);
+u64 sys_nanosleep(u64 pTimeSpec);
 
 // 文件系统（sys_fs）
 int sys_write(int fd, u64 buf, size_t count);

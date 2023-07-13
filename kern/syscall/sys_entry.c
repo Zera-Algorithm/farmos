@@ -8,7 +8,7 @@
 static void *syscallTable[] = {
     [1023] = NULL,	     [SYS_openat] = sys_openat, [SYS_read] = sys_read,
     [SYS_write] = sys_write, [SYS_exit] = sys_exit,	[SYS_execve] = sys_exec,
-    [SYS_clone] = sys_clone, [SYS_wait4] = sys_wait4,
+    [SYS_clone] = sys_clone, [SYS_wait4] = sys_wait4,	[SYS_nanosleep] = sys_nanosleep,
 };
 
 /**

@@ -1,11 +1,11 @@
+#include <dev/timer.h>
 #include <lib/log.h>
 #include <lib/transfer.h>
 #include <proc/cpu.h>
+#include <proc/nanosleep.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
-#include <dev/timer.h>
-#include <proc/nanosleep.h>
 
 void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;
@@ -89,7 +89,7 @@ u64 sys_wait4(u64 pid, u64 status, u64 options) {
  * @brief 执行线程睡眠
  * @param pTimeSpec 包含秒和微秒两个字段，指明进程要睡眠的时间数
  */
-void sys_nanosleep(u64 pTimeSpec) {
+u64 sys_nanosleep(u64 pTimeSpec) {
 	struct timespec timeSpec;
 	copyIn(pTimeSpec, &timeSpec, sizeof(timeSpec));
 	u64 usec = timeSpec.second * 1000000 + timeSpec.usec;
@@ -101,4 +101,3 @@ void sys_nanosleep(u64 pTimeSpec) {
 
 	return 0;
 }
-
