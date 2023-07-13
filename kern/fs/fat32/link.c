@@ -67,7 +67,7 @@ static int rmfile(struct Dirent *file) {
 	char data = 0xE5;
 
 	if (file->refcnt > 1) {
-		warn("other process uses this file!\n");
+		warn("other process uses this file! refcnt = %d\n", file->refcnt);
 		return -1;
 	}
 

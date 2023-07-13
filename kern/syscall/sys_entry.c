@@ -25,9 +25,18 @@ static void *syscallTable[] = {
     [SYS_chdir] = sys_chdir,
     [SYS_mkdirat] = sys_mkdirat,
     [SYS_mount] = sys_mount,
-    [SYS_mount] = sys_umount,
+    [SYS_umount2] = sys_umount,
     [SYS_linkat] = sys_linkat,
     [SYS_unlinkat] = sys_unlinkat,
+	[SYS_getdents64] = sys_getdents64,
+	[SYS_sched_yield] = sys_sched_yield,
+	[SYS_getpid] = sys_getpid,
+	[SYS_getppid] = sys_getppid,
+	[SYS_times] = sys_times,
+	[SYS_uname] = sys_uname,
+	[SYS_gettimeofday] = sys_gettimeofday,
+	[SYS_munmap] = sys_unmap,
+	[SYS_brk] = sys_brk,
 };
 
 /**

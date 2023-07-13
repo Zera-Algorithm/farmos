@@ -116,6 +116,10 @@ int sys_unlinkat(int dirFd, u64 pPath) {
 	return unLinkAtFd(dirFd, pPath);
 }
 
+int sys_getdents64(int fd, u64 buf, int len) {
+	return getdents64(fd, buf, len);
+}
+
 /**
  * @brief 将文件映射到进程的虚拟内存空间
  * @note 如果start == 0，则由内核指定虚拟地址

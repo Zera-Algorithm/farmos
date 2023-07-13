@@ -25,6 +25,14 @@ err_t sys_exec(u64 path, char **argv, u64 envp);
 u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
 u64 sys_wait4(u64 pid, u64 status, u64 options);
 u64 sys_nanosleep(u64 pTimeSpec);
+void sys_sched_yield();
+u64 sys_getpid();
+u64 sys_getppid();
+clock_t sys_times(u64 utms);
+
+// 系统信息（sys_info）
+void sys_uname(u64 upuname);
+void sys_gettimeofday(u64 uptv, u64 uptz);
 
 // 文件系统（sys_fs）
 int sys_write(int fd, u64 buf, size_t count);
@@ -43,5 +51,6 @@ int sys_linkat(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags);
 int sys_unlinkat(int dirFd, u64 pPath);
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 int sys_fstat(int fd, u64 pkstat);
+int sys_getdents64(int fd, u64 buf, int len);
 
 #endif // !_SYSCALL_H

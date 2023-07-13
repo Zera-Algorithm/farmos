@@ -9,6 +9,9 @@
 #include <lib/printf.h>
 #include <lib/string.h>
 #include <lib/wchar.h>
+#include <lock/mutex.h>
+
+extern mutex_t mtx_file;
 
 /**
  * 概要：专门管理目录相关的底层事务，交互的对象是raw_dirent
@@ -25,6 +28,8 @@
  */
 int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset,
 		   longEntSet *longSet) {
+	mtx_lock_sleep(&mtx_file);
+
 	char direntBuf[DIRENT_SIZE];
 
 	assert(offset % DIR_SIZE == 0);
@@ -100,12 +105,16 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 
 			*file = dirent;
 			*next_offset = j + DIR_SIZE;
+
+			mtx_unlock_sleep(&mtx_file);
 			return DIR_SIZE;
 		}
 	}
 
 	warn("no more dents in dir: %s\n", dir->name);
 	*next_offset = dir->file_size;
+	
+	mtx_unlock_sleep(&mtx_file);
 	return 0; // 读到结尾
 }
 
