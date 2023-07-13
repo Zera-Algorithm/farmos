@@ -1,18 +1,21 @@
 #include <fs/fd.h>
 #include <fs/file.h>
 #include <fs/kload.h>
+#include <fs/pipe.h>
+#include <fs/vfs.h>
 #include <fs/thread_fs.h>
 #include <lib/error.h>
 #include <lib/log.h>
+#include <lib/string.h>
 #include <mm/memlayout.h>
 #include <mm/vmm.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
 #include <sys/syscall_fs.h>
+#include <lib/transfer.h>
 
 int sys_write(int fd, u64 buf, size_t count) {
-	// todo
 	return write(fd, buf, count);
 }
 
@@ -23,6 +26,96 @@ int sys_read(int fd, u64 buf, size_t count) {
 int sys_openat(int fd, u64 filename, int flags, mode_t mode) {
 	return openat(fd, filename, flags, mode);
 }
+
+int sys_close(int fd) {
+	return closeFd(fd);
+}
+
+int sys_dup(int fd) {
+	return dup(fd);
+}
+
+int sys_dup3(int fd_old, int fd_new) {
+	return dup3(fd_old, fd_new);
+}
+
+int sys_getcwd(u64 buf, int size) {
+	void *kptr = cpu_this()->cpu_running->td_fs_struct.cwd;
+	copyOut(buf, kptr, MIN(256, size));
+	return buf;
+}
+
+int sys_pipe2(u64 pfd) {
+	int fd[2];
+	int ret = pipe(fd);
+	if (ret < 0) {
+		return ret;
+	} else {
+		copyOut(pfd, fd, sizeof(fd));
+		return ret;
+	}
+}
+
+int sys_chdir(u64 path) {
+	char kbuf[MAX_NAME_LEN];
+	copyInStr(path, kbuf, MAX_NAME_LEN);
+	thread_t *thread = cpu_this()->cpu_running;
+
+	if (kbuf[0] == '/') {
+		// 绝对路径
+		strncpy(thread->td_fs_struct.cwd, kbuf, MAX_NAME_LEN);
+		assert(strlen(thread->td_fs_struct.cwd) + 3 < MAX_NAME_LEN);
+		strcat(thread->td_fs_struct.cwd, "/"); // 保证cwd是一个目录
+	} else {
+		// 相对路径
+		// 保证操作之前cwd以"/"结尾
+		assert(strlen(thread->td_fs_struct.cwd) + strlen(kbuf) + 3 < MAX_NAME_LEN);
+		strcat(thread->td_fs_struct.cwd, kbuf);
+		strcat(thread->td_fs_struct.cwd, "/");
+	}
+	return 0;
+}
+
+int sys_mkdirat(int dirFd, u64 path, int mode) {
+	return makeDirAtFd(dirFd, path, mode);
+}
+
+int sys_mount(u64 special, u64 dir, u64 fstype, u64 flags, u64 data) {
+	char specialStr[MAX_NAME_LEN];
+	char dirPath[MAX_NAME_LEN];
+
+	// 1. 将special和dir加载到字符串数组中
+	copyInStr(special, specialStr, MAX_NAME_LEN);
+	copyInStr(dir, dirPath, MAX_NAME_LEN);
+
+	// 2. 计算cwd，如果dir不是绝对路径，则是相对于cwd
+	Dirent *cwd = get_cwd_dirent(&(cpu_this()->cpu_running->td_fs_struct));
+
+	// 3. 挂载
+	return mount_fs(specialStr, cwd, dirPath);
+}
+
+int sys_umount(u64 special, u64 flags) {
+	char specialStr[MAX_NAME_LEN];
+
+	// 1. 将special和dir加载到字符串数组中
+	copyInStr(special, specialStr, MAX_NAME_LEN);
+
+	// 2. 计算cwd，如果dir不是绝对路径，则是相对于cwd
+	Dirent *cwd = get_cwd_dirent(&(cpu_this()->cpu_running->td_fs_struct));
+
+	// 3. 解除挂载
+	return umount_fs(specialStr, cwd);
+}
+
+int sys_linkat(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {
+	return linkAtFd(oldFd, pOldPath, newFd, pNewPath, flags);
+}
+
+int sys_unlinkat(int dirFd, u64 pPath) {
+	return unLinkAtFd(dirFd, pPath);
+}
+
 
 /**
  * @brief 将文件映射到进程的虚拟内存空间

@@ -10,6 +10,17 @@ static void *syscallTable[] = {
     [SYS_write] = sys_write, [SYS_exit] = sys_exit,	[SYS_execve] = sys_exec,
     [SYS_clone] = sys_clone, [SYS_wait4] = sys_wait4,	[SYS_nanosleep] = sys_nanosleep,
     [SYS_mmap] = sys_mmap,   [SYS_fstat] = sys_fstat,
+	[SYS_close] = sys_close,
+	[SYS_dup] = sys_dup,
+	[SYS_dup3] = sys_dup3,
+	[SYS_getcwd] = sys_getcwd,
+	[SYS_pipe2] = sys_pipe2,
+	[SYS_chdir] = sys_chdir,
+	[SYS_mkdirat] = sys_mkdirat,
+	[SYS_mount] = sys_mount,
+	[SYS_mount] = sys_umount,
+	[SYS_linkat] = sys_linkat,
+	[SYS_unlinkat] = sys_unlinkat,
 };
 
 /**

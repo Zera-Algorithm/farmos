@@ -30,6 +30,17 @@ u64 sys_nanosleep(u64 pTimeSpec);
 int sys_write(int fd, u64 buf, size_t count);
 int sys_read(int fd, u64 buf, size_t count);
 int sys_openat(int fd, u64 filename, int flags, mode_t mode);
+int sys_close(int fd);
+int sys_dup(int fd);
+int sys_dup3(int fd_old, int fd_new);
+int sys_getcwd(u64 buf, int size);
+int sys_pipe2(u64 pfd);
+int sys_chdir(u64 path);
+int sys_mkdirat(int dirFd, u64 path, int mode);
+int sys_mount(u64 special, u64 dir, u64 fstype, u64 flags, u64 data);
+int sys_umount(u64 special, u64 flags);
+int sys_linkat(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags);
+int sys_unlinkat(int dirFd, u64 pPath);
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 int sys_fstat(int fd, u64 pkstat);
 

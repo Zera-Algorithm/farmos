@@ -6,6 +6,9 @@
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/string.h>
+#include <lock/mutex.h>
+
+extern mutex_t mtx_file;
 
 /**
  * @brief 创建链接
@@ -15,9 +18,13 @@
  * @param newPath 相对于新目录的链接路径
  */
 int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *newPath) {
+	mtx_lock_sleep(&mtx_file);
+
 	Dirent *oldFile, *newFile;
 	if ((oldFile = getFile(oldDir, oldPath)) == NULL) {
 		warn("oldFile %d not found!\n", oldPath);
+
+		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
 
@@ -29,7 +36,10 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 	sync_dirent_rawdata_back(newFile);
 
 	oldFile->linkcnt += 1;
-	return file_write(newFile, 0, (u64)path, 0, strlen(path) + 1);
+	int r = file_write(newFile, 0, (u64)path, 0, strlen(path) + 1);
+
+	mtx_unlock_sleep(&mtx_file);
+	return r;
 }
 
 /**
@@ -99,11 +109,16 @@ static int rmfile(struct Dirent *file) {
  * @brief 撤销链接。即删除(链接)文件
  */
 int unlinkat(struct Dirent *dir, char *path) {
+	mtx_lock_sleep(&mtx_file);
+
 	Dirent *file;
 	if ((file = getFile(dir, path)) == NULL) {
 		warn("file %d not found!\n", path);
+		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
 	rmfile(file);
+
+	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }

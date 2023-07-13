@@ -9,6 +9,7 @@
 #include <proc/cpu.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+
 #define myProc() (cpu_this()->cpu_running)
 
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -27,6 +28,8 @@ struct FdDev fd_dev_pipe = {
     .dev_close = fd_pipe_close,
     .dev_stat = fd_pipe_stat,
 };
+
+extern mutex_t mtx_fd;
 
 int pipe(int fd[2]) {
 	int fd1 = -1, fd2 = -1;
@@ -53,13 +56,13 @@ int pipe(int fd[2]) {
 		kernfd1 = fdAlloc();
 		if (kernfd1 < 0) {
 			warn("no free fd in os\n");
-			return 1;
+			return -1;
 		}
 		kernfd2 = fdAlloc();
 		if (kernfd2 < 0) {
 			warn("no free fd in os\n");
 			freeFd(kernfd1);
-			return 1;
+			return -1;
 		}
 
 		pipeAlloc = kvmAlloc();

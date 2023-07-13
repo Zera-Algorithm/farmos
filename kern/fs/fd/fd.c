@@ -299,13 +299,15 @@ int getdents64(int fd, u64 buf, int len) {
 
 int makeDirAtFd(int dirFd, u64 path, int mode) {
 	Dirent *dir;
+	int ret;
 	char name[MAX_NAME_LEN];
 
 	unwrap(getDirentByFd(dirFd, &dir, NULL));
 	copyInStr(path, name, MAX_NAME_LEN);
 
 	log(LEVEL_GLOBAL, "make dir %s at %s\n", name, dir->name);
-	return makeDirAt(dir, name, mode);
+	ret = makeDirAt(dir, name, mode);
+	return ret;
 }
 
 int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags) {

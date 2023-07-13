@@ -16,6 +16,7 @@
  */
 
 extern FileSystem *fatFs;
+extern mutex_t mtx_file;
 
 // 待分配的dirent
 static Dirent dirents[MAX_DIRENT];
@@ -321,6 +322,8 @@ void dirent_get_path(Dirent *dirent, char *path) {
 }
 
 static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int isDir) {
+	mtx_lock_sleep(&mtx_file);
+
 	char lastElem[MAX_NAME_LEN];
 	Dirent *dir = NULL, *f = NULL;
 	int r;
@@ -338,16 +341,22 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 	if ((r = walk_path(fs, path, baseDir, &dir, &f, lastElem, &longSet)) == 0) {
 		file_close(f);
 		warn("file or directory exists: %s\n", path);
+
+		mtx_unlock_sleep(&mtx_file);
 		return -E_FILE_EXISTS;
 	}
 
 	// 2. 处理错误：当出现其他错误，或者没有找到上一级的目录时，退出
 	if (r != -E_NOT_FOUND || dir == NULL) {
+		mtx_unlock_sleep(&mtx_file);
 		return r;
 	}
 
 	// 3. 分配Dirent并填写信息
-	unwrap(dir_alloc_file(dir, &f, lastElem));
+	if ((r = dir_alloc_file(dir, &f, lastElem)) < 0) {
+		mtx_unlock_sleep(&mtx_file);
+		return r;
+	}
 
 	// 无论如何，创建了的文件或目录至少应当分配一个块
 	f->first_clus = clusterAlloc(dir->file_system, 0); // 在Alloc时即将first_clus清空为全0
@@ -372,6 +381,8 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 	if (file) {
 		*file = f;
 	}
+	
+	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }
 
