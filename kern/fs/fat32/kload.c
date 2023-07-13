@@ -1,13 +1,13 @@
 #include <fs/fs.h>
 #include <fs/vfs.h>
+#include <lib/elf.h>
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lock/mutex.h>
 #include <mm/vmm.h>
-#include <types.h>
-#include <lib/elf.h>
 #include <proc/thread.h>
+#include <types.h>
 
 /**
  * @brief 此文件用于将文件加载到内核
@@ -43,7 +43,6 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 	file_read(file, 0, (u64)_binary, 0, _size);
 	return 0;
 }
-
 
 fileid_t file_load(const char *path, void **bin, size_t *size) {
 	// load时加锁，unload时解锁

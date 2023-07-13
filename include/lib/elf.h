@@ -43,8 +43,7 @@ typedef struct ProgramHeader {
 
 const ElfHeader *getElfFrom(const void *binary, size_t size);
 int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, void *data);
-int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
-			  size_t len);
+int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src, size_t len);
 
 /**
  * @brief 遍历ELF头的每一个段头的ph_off

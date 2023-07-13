@@ -18,7 +18,7 @@ typedef struct thread_fs {
 } thread_fs_t;
 
 #define MMAP_START 0x600000000
-#define MMAP_END   0x800000000
+#define MMAP_END 0x800000000
 
 void init_thread_fs(thread_fs_t *td_fs_struct);
 void fork_thread_fs(thread_fs_t *old, thread_fs_t *new);
