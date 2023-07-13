@@ -41,6 +41,9 @@ static u64 wait_exit(thread_t *curtd, thread_t *child, u64 pstatus) {
 		// 将子进程的退出状态写入父进程的内存空间
 		copy_out(curtd->td_pt, pstatus, &s, sizeof(u32));
 	}
+	// 更新父进程中记录子进程运行时间的字段
+	curtd->td_times.tms_cutime += child->td_times.tms_utime;
+	curtd->td_times.tms_cstime += child->td_times.tms_stime;
 
 	td_free(child);
 

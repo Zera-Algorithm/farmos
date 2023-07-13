@@ -1,6 +1,7 @@
 #include <lib/log.h>
 #include <lib/transfer.h>
 #include <proc/cpu.h>
+#include <proc/sched.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
@@ -81,4 +82,22 @@ u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
 
 u64 sys_wait4(u64 pid, u64 status, u64 options) {
 	return wait(cpu_this()->cpu_running, pid, status, options);
+}
+
+void sys_sched_yield() {
+	yield();
+}
+
+u64 sys_getpid() {
+	return cpu_this()->cpu_running->td_pid; // todo
+}
+
+u64 sys_getppid() {
+	return cpu_this()->cpu_running->td_parent->td_pid; // todo
+}
+
+clock_t sys_times(u64 utms) {
+	thread_t *td = cpu_this()->cpu_running;
+	copy_out(td->td_pt, utms, &td->td_times, sizeof(td->td_times));
+	return ticks;
 }

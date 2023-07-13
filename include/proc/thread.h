@@ -5,6 +5,7 @@
 #include <lib/queue.h>
 #include <lock/mutex.h>
 #include <proc/context.h>
+#include <proc/times.h>
 #include <trap/trapframe.h>
 #include <types.h>
 
@@ -27,7 +28,7 @@ typedef struct thread {
 
 	mutex_t td_lock;		 // 线程锁（已被初始化）
 	thread_state_t td_status;	 // 线程状态（由 td_lock 保护）
-	char td_name[MAX_PROC_NAME_LEN]; // 线程名
+	char td_name[MAX_PROC_NAME_LEN]; // 线程名 todo fork时溢出
 
 	u64 td_tid;	 // 线程id（由 td_lock 保护）
 	u64 td_exitcode; // 线程退出码（由 td_lock 保护）
@@ -37,6 +38,7 @@ typedef struct thread {
 	const char *td_wmesg; // 线程等待的原因（由 td_lock 保护）
 
 	// should in proc
+	times_t td_times; // 线程运行时间，只有自己写入，父进程 wait 时读僵尸子进程，不用保护
 	pte_t *td_pt; // 线程用户态页表
 	u64 td_pid;   // 线程所属进程(todo)
 

@@ -5,6 +5,8 @@
 #include <proc/thread.h>
 #include <riscv.h>
 
+clock_t ticks = 0; // 总时间片数（由 thread_runq.tq_lock 保护）
+
 /**
  * @brief 进程放弃 CPU，调度器选择新线程运行
  * @note 调用和离开该函数时，需要处在临界区内，持有对应线程的锁并且中断被关闭
@@ -33,12 +35,17 @@ void yield() {
 }
 
 /**
- * @brief 从可执行队列中选出一个线程，从队列中移除并加锁返回
+ * @brief 从可执行队列中选出一个线程，从队列中移除并加锁返回，是每次调度的核心
  */
 static thread_t *sched_runnable(thread_t *old) {
 	tdq_critical_enter(&thread_runq);
 	// 将旧线程放回队列
 	if (old != NULL) {
+		// 更新旧线程运行时间（粗略）
+		ticks += 2;
+		old->td_times.tms_utime += 1;
+		old->td_times.tms_stime += 1;
+		// 如果旧线程仍然可运行，放回队列
 		if (old->td_status == RUNNABLE) {
 			TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
 		}
