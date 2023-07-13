@@ -78,7 +78,7 @@ void utrap_entry() {
 			// 时钟中断
 			log(LEVEL_GLOBAL, "Timer Int On Hart %d\n", cpu_this_id());
 			// 先设置下次时钟中断的触发时间，再进行调度
-			timerSetNextTick();
+			handler_timer_int();
 			yield();
 		} else if (exc_code == INTERRUPT_EXTERNEL) {
 			log(DEFAULT, "externel interrupt on CPU %d!\n", cpu_this_id());

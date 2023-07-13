@@ -12,6 +12,6 @@
 uint64 getTime();
 u64 getUSecs();
 void timerInit();
-void timerSetNextTick();
+void handler_timer_int();
 
 #endif

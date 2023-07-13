@@ -5,6 +5,11 @@
 
 #define SYSCALL_ERROR -1
 
+struct timespec {
+	uint64 second;
+	long usec;
+};
+
 // 系统调用入口
 typedef struct trapframe trapframe_t;
 void syscall_entry(trapframe_t *tf);

@@ -62,7 +62,7 @@ void kerneltrap(RawTrapFrame *tf) {
 	if (type == SCAUSE_INTERRUPT) {
 		if (excCode == INTERRUPT_TIMER) {
 			log(DEFAULT, "timer interrupt on CPU %d!\n", cpuid());
-			timerSetNextTick();
+			handler_timer_int();
 		} else if (excCode == INTERRUPT_EXTERNEL) {
 			log(DEFAULT, "externel interrupt on CPU %d!\n", cpuid());
 			int irq = plicClaim();
