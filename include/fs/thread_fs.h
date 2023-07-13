@@ -14,7 +14,11 @@ typedef struct thread_fs {
 	int fdList[MAX_FD_COUNT];
 	char cwd[MAX_NAME_LEN];
 	Dirent *cwd_dirent;
+	u64 mmap_addr; // mmap用到的地址位置
 } thread_fs_t;
+
+#define MMAP_START 0x600000000
+#define MMAP_END   0x800000000
 
 void init_thread_fs(thread_fs_t *td_fs_struct);
 void fork_thread_fs(thread_fs_t *old, thread_fs_t *new);

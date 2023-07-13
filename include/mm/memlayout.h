@@ -21,6 +21,8 @@
 // FarmOS 物理页说明
 #define PAGE_SHIFT (12ull)	    // 基页大小为 4KB
 #define PAGE_SIZE (1 << PAGE_SHIFT) // 基页大小为 4KB
+
+// 舍入到更大的页对齐地址
 #define PGROUNDUP(a) (((a) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
 #define PGROUNDDOWN(a) (((a)) & ~(PAGE_SIZE - 1))
 

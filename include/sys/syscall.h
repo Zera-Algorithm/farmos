@@ -15,6 +15,7 @@ typedef struct trapframe trapframe_t;
 void syscall_entry(trapframe_t *tf);
 
 // 内存管理（sys_mem）
+err_t sys_map(u64 start, u64 len, u64 perm);
 err_t sys_unmap(u64 start, u64 len);
 err_t sys_brk(u64 addr);
 

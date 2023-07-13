@@ -14,7 +14,7 @@ err_t sys_unmap(u64 start, u64 len) {
 	return 0;
 }
 
-static err_t sys_map(u64 start, u64 len, u64 perm) {
+err_t sys_map(u64 start, u64 len, u64 perm) {
 	u64 from = PGROUNDDOWN(start);
 	u64 to = PGROUNDUP(start + len);
 	pte_t *pt = cpu_this()->cpu_running->td_pt;

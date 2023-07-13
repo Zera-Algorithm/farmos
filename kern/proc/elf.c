@@ -9,7 +9,7 @@
  * @brief 加载一页数据，并映射到进程的地址空间
  * @param offset 相对内存va的偏移
  */
-static int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
+int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
 			  size_t len) {
 
 	// Step1: 分配一个页
