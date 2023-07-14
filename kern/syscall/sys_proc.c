@@ -1,5 +1,6 @@
 #include <dev/timer.h>
 #include <lib/log.h>
+#include <lib/string.h>
 #include <lib/transfer.h>
 #include <proc/cpu.h>
 #include <proc/nanosleep.h>
@@ -7,7 +8,6 @@
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
-#include <lib/string.h>
 
 void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;

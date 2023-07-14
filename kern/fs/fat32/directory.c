@@ -113,7 +113,7 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 
 	warn("no more dents in dir: %s\n", dir->name);
 	*next_offset = dir->file_size;
-	
+
 	mtx_unlock_sleep(&mtx_file);
 	return 0; // 读到结尾
 }
