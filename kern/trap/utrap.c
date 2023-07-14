@@ -125,6 +125,7 @@ void utrap_entry() {
 	}
 
 	// 中断或异常处理完毕，从现场恢复用户态
+	log(LEVEL_GLOBAL, "before %s return to user\n", td->td_name);
 	utrap_return();
 }
 

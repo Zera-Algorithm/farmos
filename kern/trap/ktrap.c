@@ -57,8 +57,8 @@ void kerneltrap(RawTrapFrame *tf) {
 	uint64 type = (scause >> 63ul);
 	uint64 excCode = (scause & ((1ul << 63) - 1));
 
-	log(LEVEL_GLOBAL, "kernel trap: cpu = %d, type = %ld, excCode = %ld\n", cpuid(), type,
-	    excCode);
+	// log(LEVEL_GLOBAL, "kernel trap: cpu = %d, type = %ld, excCode = %ld\n", cpuid(), type,
+	//     excCode);
 	if (type == SCAUSE_INTERRUPT) {
 		if (excCode == INTERRUPT_TIMER) {
 			log(DEFAULT, "timer interrupt on CPU %d!\n", cpuid());

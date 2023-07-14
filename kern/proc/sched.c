@@ -55,7 +55,7 @@ static thread_t *sched_runnable(thread_t *old) {
 	while (TAILQ_EMPTY(&thread_runq.tq_head)) {
 		// 等待新线程加入队列
 		tdq_critical_exit(&thread_runq);
-		log(LEVEL_GLOBAL, "No thread runnable, idle\n");
+		// log(LEVEL_GLOBAL, "No thread runnable, idle\n");
 		cpu_idle();
 		tdq_critical_enter(&thread_runq);
 	}

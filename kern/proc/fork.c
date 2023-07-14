@@ -51,7 +51,7 @@ u64 td_fork(thread_t *td, u64 childsp) {
 	LIST_INSERT_HEAD(&td->td_childlist, child, td_childentry);
 
 	safestrcpy(child->td_name, td->td_name, MAX_PROC_NAME_LEN);
-	// strcat(child->td_name, "_fork");
+	strcat(child->td_name, "_fork");
 
 	// 复制父线程的文件信息
 	fork_thread_fs(&td->td_fs_struct, &child->td_fs_struct);

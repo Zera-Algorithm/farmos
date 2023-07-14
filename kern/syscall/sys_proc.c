@@ -7,6 +7,7 @@
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
+#include <lib/string.h>
 
 void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;
@@ -33,6 +34,8 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	thread_t *td = cpu_this()->cpu_running;
 	char buf[MAX_PROC_NAME_LEN];
 	copy_in_str(td->td_pt, path, buf, MAX_PROC_NAME_LEN);
+
+	strncpy(td->td_name, buf, MAX_PROC_NAME_LEN);
 
 	// 从旧的用户栈拷贝参数到新的用户栈
 	td_initustack(td, TD_TEMPUSTACK);
