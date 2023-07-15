@@ -9,6 +9,7 @@
 #include <proc/cpu.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+
 #define myProc() (cpu_this()->cpu_running)
 
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -27,6 +28,8 @@ struct FdDev fd_dev_pipe = {
     .dev_close = fd_pipe_close,
     .dev_stat = fd_pipe_stat,
 };
+
+extern mutex_t mtx_fd;
 
 int pipe(int fd[2]) {
 	int fd1 = -1, fd2 = -1;
@@ -53,13 +56,13 @@ int pipe(int fd[2]) {
 		kernfd1 = fdAlloc();
 		if (kernfd1 < 0) {
 			warn("no free fd in os\n");
-			return 1;
+			return -1;
 		}
 		kernfd2 = fdAlloc();
 		if (kernfd2 < 0) {
 			warn("no free fd in os\n");
 			freeFd(kernfd1);
-			return 1;
+			return -1;
 		}
 
 		pipeAlloc = kvmAlloc();
@@ -158,16 +161,19 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 	// 唤醒读者
 	wakeup(&p->pipeReadPos);
+	mtx_unlock(&p->lock);
 	return i;
 }
 
 static int fd_pipe_close(struct Fd *fd) {
 	struct Pipe *p = fd->pipe;
+	mtx_lock(&p->lock);
 	p->count -= 1;
 
 	// 唤醒读写端的程序。这里不需要考虑当前是读端还是写端，直接全部唤醒就可
 	wakeup(&p->pipeReadPos);
 	wakeup(&p->pipeWritePos);
+	mtx_unlock(&p->lock);
 
 	if (p && p->count == 0) {
 		// 这里每个pipe占据一个页的空间？

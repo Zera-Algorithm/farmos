@@ -13,7 +13,7 @@ td_switch:
         // 保存旧线程的上下文
         sd ra, CTX_RA_OFF(a0)
         sd sp, CTX_SP_OFF(a0)
-        
+
         sd s0, CTX_S0_OFF(a0)
         sd s1, CTX_S1_OFF(a0)
         sd s2, CTX_S2_OFF(a0)
@@ -56,10 +56,10 @@ td_switch:
 
         ld ra, CTX_RA_OFF(a0)
         ld sp, CTX_SP_OFF(a0)
-       
+
         ret
 
-	
+
 .globl td_initentry
 td_initentry:
         // 加载第一个线程的的上下文
@@ -78,5 +78,5 @@ td_initentry:
 
         ld ra, CTX_RA_OFF(a0)
         ld sp, CTX_SP_OFF(a0)
-       
+
         ret

@@ -16,6 +16,7 @@ struct Page {
 	LIST_ENTRY(Page) link;
 };
 
+static u64 pageleft = 0;
 u64 npage = 0;
 Page *pages = NULL;
 PageList pageFreeList;
@@ -64,6 +65,7 @@ void pmmInit() {
 	for (u64 i = pageused; i < npage; i++) {
 		LIST_INSERT_HEAD(&pageFreeList, &pages[i], link);
 	}
+	pageleft = npage - pageused;
 	log(MM_GLOBAL, "\tFrom pages[%d:%d) free\n", pageused, npage);
 
 	log(MM_GLOBAL, "Physical Memory Init Finished, `pm` Functions Available!\n");
@@ -94,9 +96,10 @@ Page *__attribute__((warn_unused_result)) pmAlloc() {
 	panic_on(pp == NULL);
 	// 从空闲页链表中移除该页
 	LIST_REMOVE(pp, link);
+	pageleft--;
 	// 清空页面内容并返回
 	memset((void *)pageToPa(pp), 0, PAGE_SIZE);
-	log(LEVEL_MODULE, "\tAlloc pm-page: %d\n", pageToPpn(pp));
+	log(DEBUG, "\tAlloc pm-page: %d(%d)\n", pageToPpn(pp), pageleft);
 	return pp;
 }
 
@@ -110,5 +113,7 @@ void pmPageDecRef(Page *pp) {
 	pp->ref--;
 	if (pp->ref == 0) {
 		LIST_INSERT_HEAD(&pageFreeList, pp, link);
+		pageleft++;
+		log(DEBUG, "\tFree pm-page: %d(%d)\n", pageToPpn(pp), pageleft);
 	}
 }

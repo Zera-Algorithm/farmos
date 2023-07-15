@@ -8,10 +8,10 @@
 int main() {
 	int cnt = 0;
 	while (1) {
-		// sleep(1);
+		sleep(1);
 		++cnt;
 		printf("time: %ds\n", cnt);
-		if (cnt == 3)
+		if (cnt == 10)
 			break;
 	}
 	// *(int *)TRAMPOLINE = 0;

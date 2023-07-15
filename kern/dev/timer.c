@@ -5,6 +5,7 @@
 #include "riscv.h"
 #include "types.h"
 #include <dev/timer.h>
+#include <proc/nanosleep.h>
 
 /**
  * @brief 获取当前的时间（以Cycles为单位）
@@ -34,6 +35,14 @@ void timerInit() {
 /**
  * @brief 用于在发生时钟中断时设置下一个Tick的时间
  */
-void timerSetNextTick() {
+static void timer_set_next_tick() {
 	SBI_SET_TIMER(getTime() + INTERVAL);
+}
+
+/**
+ * @brief 处理时钟中断：设置下一个tick的时间，并尝试唤醒nanosleep
+ */
+void handler_timer_int() {
+	timer_set_next_tick();
+	nanosleep_check();
 }

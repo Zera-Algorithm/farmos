@@ -268,7 +268,7 @@ void virtio_disk_rw(Buffer *b, int write) {
 	// printf("rw: Buffer = %lx\n", b);
 
 	while (b->disk == 1) {
-		sleep(b, &mtx_virtio, "sleep waiting for virtio...\n");
+		sleep(b, &mtx_virtio, "sleep waiting for virtio...");
 	}
 
 	log(LEVEL_MODULE, "exit virtio wait!\n");

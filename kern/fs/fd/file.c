@@ -136,8 +136,11 @@ static int fd_file_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	return n;
 }
 
-// 文件关闭暂不需要额外动作
+// 文件关闭：关闭对应的dirent
 int fd_file_close(struct Fd *fd) {
+	if (fd->dirent != NULL) {
+		file_close(fd->dirent);
+	}
 	return 0;
 }
 

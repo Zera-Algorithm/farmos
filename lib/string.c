@@ -145,3 +145,14 @@ int strlen(const char *s) {
 	}
 	return n;
 }
+
+// strchr
+// Path: lib/string.c
+const char *strchr(const char *s, int c) {
+	for (; *s; s++) {
+		if (*s == c) {
+			return s;
+		}
+	}
+	return 0;
+}

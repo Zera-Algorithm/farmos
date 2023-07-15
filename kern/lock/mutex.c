@@ -1,4 +1,5 @@
 #include <lib/log.h>
+#include <lib/printf.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
 #include <proc/sleep.h>
@@ -151,7 +152,8 @@ void mtx_lock_sleep(mutex_t *m) {
 		m->mtx_owner = cpu_this()->cpu_running;
 		m->mtx_depth = 1;
 
-		mtx_sleep_debug("lock[%s] acquired!\n", m->mtx_lock_object.lo_name);
+		mtx_sleep_debug("lock[%s] acquired by %s!\n", m->mtx_lock_object.lo_name,
+				m->mtx_owner->td_name);
 	}
 
 	// 认领完毕，释放互斥量
@@ -174,10 +176,12 @@ void mtx_unlock_sleep(mutex_t *m) {
 		mtx_sleep_debug("lock[%s] re-leave! (depth:%d)\n", m->mtx_lock_object.lo_name,
 				m->mtx_depth);
 	} else {
+		mtx_sleep_debug("lock[%s] released by %s!\n", m->mtx_lock_object.lo_name,
+				m->mtx_owner->td_name);
+
 		// 非重入，释放所有权，重入深度置零，唤醒所有等待该锁的进程
 		m->mtx_owner = 0;
 		m->mtx_depth = 0;
-		mtx_sleep_debug("lock[%s] released!\n", m->mtx_lock_object.lo_name);
 		// 唤醒所有等待该锁的进程
 		wakeup(m);
 	}

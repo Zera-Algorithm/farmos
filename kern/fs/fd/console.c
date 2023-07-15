@@ -1,6 +1,8 @@
 #include <dev/sbi.h>
 #include <fs/fd.h>
 #include <fs/fd_device.h>
+#include <lib/error.h>
+#include <lib/printf.h>
 #include <lib/transfer.h>
 #include <lock/mutex.h>
 
@@ -74,17 +76,16 @@ static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
-	extern mutex_t pr_lock;
-	mtx_lock(&pr_lock);
+	assert(n < 1024);
 
-	char ch;
-	for (int i = 0; i < n; i++) {
-		copyIn((buf + i), &ch, 1);
-		SBI_PUTCHAR(ch);
-	}
+	char s[1024];
+	copyIn(buf, s, n);
+	s[n] = 0;
+
+	// 需要在copyIn之后再printf输出，防止先获取pr_lock造成死锁
+	printf("%s", s);
+
 	fd->offset += n;
-
-	mtx_unlock(&pr_lock);
 	return n;
 }
 

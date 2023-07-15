@@ -65,9 +65,7 @@ void main() {
 		// 内存管理机制初始化
 		pmmInit();
 		vmmInit();
-		// bufInit();
 
-		// initKernelMemory(); // 初始化内核页表
 		vmEnable(); // 开启分页
 		thread_init();
 		trapInitHart(); // install kernel trap vector
@@ -75,9 +73,6 @@ void main() {
 		plicInit();	// 设置中断控制器
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
-		// virtio_disk_init(); // emulated hard disk
-		// userinit();      // first user process
-		// *(char *)0 = 0;  // 尝试触发异常
 
 #ifndef SINGLE
 		hartInit(); // 启动其他Hart（成功分页后再启动其他核）
@@ -100,7 +95,10 @@ void main() {
 		// TD_CREATE(test_printf, "test1");
 		// TD_CREATE(test_printf, "test2");
 		// TD_CREATE(test_printf, "test3");
-		TD_CREATE(test_clone, "test_clone");
+		// TD_CREATE(test_clone, "test_clone");
+		// TD_CREATE(test_mmap, "test_mmap");
+		TD_CREATE(test_init, "test_init");
+		// TD_CREATE(test_execve, "test_execve");
 		// TD_CREATE(test_while, "test_while");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());

@@ -29,7 +29,7 @@ static void build_dirent_tree(Dirent *parent) {
 			// 读到末尾
 			break;
 		}
-		printf("get child: %s, parent: %s\n", child->name, parent->name);
+		// printf("get child: %s, parent: %s\n", child->name, parent->name);
 
 		// 跳过.和..
 		if (strncmp(child->name, ".          ", 11) == 0 ||
@@ -82,6 +82,7 @@ void fat32_init(FileSystem *fs) {
 
 	// 3. 递归建立Dirent树
 	build_dirent_tree(fs->root);
+	printf("build dirent tree succeed!\n");
 	log(LEVEL_GLOBAL, "fat32 init finished!\n");
 }
 

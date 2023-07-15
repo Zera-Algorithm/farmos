@@ -1,3 +1,4 @@
+#include <dev/sbi.h>
 #include <lib/log.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
@@ -5,10 +6,43 @@
 #include <sys/syscall_ids.h>
 #include <types.h>
 
-static void *syscallTable[] = {
-    [1023] = NULL,	     [SYS_openat] = sys_openat, [SYS_read] = sys_read,
-    [SYS_write] = sys_write, [SYS_exit] = sys_exit,	[SYS_execve] = sys_exec,
-    [SYS_clone] = sys_clone, [SYS_wait4] = sys_wait4,
+typedef struct syscall_function {
+	void *func;
+	const char *name;
+} syscall_function_t;
+
+static syscall_function_t sys_table[] = {
+    [1023] = {NULL, NULL},
+    [SYS_openat] = {sys_openat, "openat"},
+    [SYS_read] = {sys_read, "read"},
+    [SYS_write] = {sys_write, "write"},
+    [SYS_exit] = {sys_exit, "exit"},
+    [SYS_execve] = {sys_exec, "execve"},
+    [SYS_clone] = {sys_clone, "clone"},
+    [SYS_wait4] = {sys_wait4, "wait4"},
+    [SYS_nanosleep] = {sys_nanosleep, "nanosleep"},
+    [SYS_mmap] = {sys_mmap, "mmap"},
+    [SYS_fstat] = {sys_fstat, "fstat"},
+    [SYS_close] = {sys_close, "close"},
+    [SYS_dup] = {sys_dup, "dup"},
+    [SYS_dup3] = {sys_dup3, "dup3"},
+    [SYS_getcwd] = {sys_getcwd, "getcwd"},
+    [SYS_pipe2] = {sys_pipe2, "pipe2"},
+    [SYS_chdir] = {sys_chdir, "chdir"},
+    [SYS_mkdirat] = {sys_mkdirat, "mkdirat"},
+    [SYS_mount] = {sys_mount, "mount"},
+    [SYS_umount2] = {sys_umount, "umount2"},
+    [SYS_linkat] = {sys_linkat, "linkat"},
+    [SYS_unlinkat] = {sys_unlinkat, "unlinkat"},
+    [SYS_getdents64] = {sys_getdents64, "getdents64"},
+    [SYS_sched_yield] = {sys_sched_yield, "sched_yield"},
+    [SYS_getpid] = {sys_getpid, "getpid"},
+    [SYS_getppid] = {sys_getppid, "getppid"},
+    [SYS_times] = {sys_times, "times"},
+    [SYS_uname] = {sys_uname, "uname"},
+    [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
+    [SYS_munmap] = {sys_unmap, "munmap"},
+    [SYS_brk] = {sys_brk, "brk"},
 };
 
 /**
@@ -17,13 +51,19 @@ static void *syscallTable[] = {
  */
 
 void syscall_entry(Trapframe *tf) {
-	log(LEVEL_GLOBAL, "cpu %d, syscall %d, proc %lx\n", cpu_this_id(), tf->a7,
-	    cpu_this()->cpu_running->td_tid);
+	u64 sysno = tf->a7;
+	syscall_function_t *sys_func = &sys_table[sysno];
+
+	if (sys_func != NULL && sys_func->name != NULL) {
+		log(DEBUG, "Hart %d Thread %s called '%s'\n", cpu_this_id(),
+		    cpu_this()->cpu_running->td_name, sys_func->name);
+	}
 
 	// S态时间审计
 	// u64 startTime = getTime();
-
-	u64 sysno = tf->a7;
+	if (sysno == 210) {
+		SBI_SYSTEM_RESET(0, 0); // todotodo: sys_shutdown
+	}
 	// 系统调用最多6个参数
 	u64 (*func)(u64, u64, u64, u64, u64, u64);
 
@@ -31,7 +71,7 @@ void syscall_entry(Trapframe *tf) {
 	tf->epc += 4;
 
 	// 获取系统调用函数
-	func = (u64(*)(u64, u64, u64, u64, u64, u64))syscallTable[sysno];
+	func = (u64(*)(u64, u64, u64, u64, u64, u64))sys_table[sysno].func;
 	if (func == NULL) {
 		tf->a0 = SYSCALL_ERROR;
 		warn("unimplemented or unknown syscall: %d\n", sysno);

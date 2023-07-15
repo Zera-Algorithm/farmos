@@ -4,7 +4,7 @@
 // 日志级别定义（模块）
 #define DEFAULT 1
 #define LEVEL_MODULE 1
-#define MM_GLOBAL 2
+#define MM_GLOBAL 20
 #define BUF_MODULE 1
 #define FAT_MODULE 4
 
@@ -14,12 +14,14 @@
 #define MUTEX_SPIN 2
 #define MUTEX_SLEEP 10
 
+#define SLEEP_MODULE 10
+
 // 日志级别定义（全局）
 #define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
 #define LOG_LEVEL 999
-#define DEBUG 2
+#define DEBUG 20
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);

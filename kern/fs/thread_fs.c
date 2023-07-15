@@ -23,6 +23,9 @@ void init_thread_fs(thread_fs_t *td_fs_struct) {
 	td_fs_struct->fdList[2] = errorConsoleAlloc();
 
 	td_fs_struct->cwd_dirent = NULL;
+
+	// 初始化MMAP区域的开始位置
+	td_fs_struct->mmap_addr = MMAP_START;
 }
 
 void fork_thread_fs(thread_fs_t *old, thread_fs_t *new) {
@@ -36,6 +39,9 @@ void fork_thread_fs(thread_fs_t *old, thread_fs_t *new) {
 		}
 		new->fdList[i] = kFd;
 	}
+
+	// fork时子进程继承父进程的MMAP
+	new->mmap_addr = old->mmap_addr;
 }
 
 void recycle_thread_fs(thread_fs_t *td_fs_struct) {

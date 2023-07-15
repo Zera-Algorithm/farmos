@@ -51,7 +51,34 @@ u64 td_fork(thread_t *td, u64 childsp) {
 	LIST_INSERT_HEAD(&td->td_childlist, child, td_childentry);
 
 	safestrcpy(child->td_name, td->td_name, MAX_PROC_NAME_LEN);
-	strcat(child->td_name, "_fork");
+
+	// FOR DEBUG
+	int len = strlen(child->td_name);
+	if (child->td_name[len - 1] == ']') {
+		const char *pleft = strchr(child->td_name, '[');
+		char *p = (char *)pleft;
+		int sum = 0;
+		while (*++p != ']') {
+			sum = sum * 10 + (*p - '0');
+		}
+		sum++;
+		p = (char *)pleft;
+		*p = '\0';
+		strcat(child->td_name, "[");
+		if (sum >= 100) {
+			int temp = (sum / 100) % 10;
+			strcat(child->td_name, (char[]){'0' + temp, '\0'});
+		}
+		if (sum >= 10) {
+			int temp = (sum / 10) % 10;
+			strcat(child->td_name, (char[]){'0' + temp, '\0'});
+		}
+		int temp = sum % 10;
+		strcat(child->td_name, (char[]){'0' + temp, '\0'});
+		strcat(child->td_name, "]");
+	} else {
+		strcat(child->td_name, "[1]");
+	}
 
 	// 复制父线程的文件信息
 	fork_thread_fs(&td->td_fs_struct, &child->td_fs_struct);

@@ -14,6 +14,7 @@ clock_t ticks = 0; // 总时间片数（由 thread_runq.tq_lock 保护）
 void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
+	assert(cpu_this()->cpu_running->td_lock.mtx_depth == 1);
 	assert(cpu_this()->cpu_lk_depth == 1);
 	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
@@ -48,6 +49,9 @@ static thread_t *sched_runnable(thread_t *old) {
 		// 如果旧线程仍然可运行，放回队列
 		if (old->td_status == RUNNABLE) {
 			TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
+		} else if (old->td_status == SLEEPING) {
+			log(SLEEP_MODULE, "Thread %s(%d) sleeping on %x\n", old->td_name,
+			    old->td_tid, old->td_wchan);
 		}
 		mtx_unlock(&old->td_lock);
 	}
@@ -56,6 +60,7 @@ static thread_t *sched_runnable(thread_t *old) {
 		// 等待新线程加入队列
 		tdq_critical_exit(&thread_runq);
 		log(LEVEL_GLOBAL, "No thread runnable, idle\n");
+		// 等待
 		cpu_idle();
 		tdq_critical_enter(&thread_runq);
 	}
@@ -100,7 +105,8 @@ thread_t *sched_switch(thread_t *old, register_t param) {
 
 	// 选择新线程
 	thread_t *ret = sched_runnable(old);
-	log(LEVEL_GLOBAL, "Hart Sched %s -> %s\n", old->td_name, ret->td_name);
+	log(LEVEL_GLOBAL, "Hart Sched %s(%d) -> %s(%d)\n", old->td_name, old->td_tid, ret->td_name,
+	    ret->td_tid);
 
 	cpu->cpu_running = ret;
 	ret->td_status = RUNNING;

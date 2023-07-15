@@ -6,14 +6,20 @@
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lock/mutex.h>
+
+extern mutex_t mtx_file;
 
 // mount之后，目录中原有的文件将被暂时取代为挂载的文件系统内的内容，umount时会重新出现
 int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
+	mtx_lock_sleep(&mtx_file);
+
 	// 1. 寻找mount的目录
 	Dirent *dir = getFile(baseDir, dirPath);
 
 	if (dir == NULL) {
 		warn("dir %s is not found!\n", dirPath);
+		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
 
@@ -26,7 +32,7 @@ int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
 		image = getFile(baseDir, special);
 		if (image == NULL) {
 			warn("image %s is not found!\n", special);
-			file_close(image);
+			mtx_unlock_sleep(&mtx_file);
 			return -1;
 		}
 	}
@@ -42,14 +48,18 @@ int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
 	fs->mountPoint = dir;
 	fat32_init(fs);
 
+	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }
 
 int umount_fs(char *dirPath, Dirent *baseDir) {
+	mtx_lock_sleep(&mtx_file);
+
 	// 1. 寻找mount的目录
 	Dirent *dir = getFile(baseDir, dirPath);
 	if (dir == NULL) {
 		warn("dir %s is not found!\n", dirPath);
+		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
 
@@ -58,17 +68,26 @@ int umount_fs(char *dirPath, Dirent *baseDir) {
 	Dirent *mntPoint = dir->file_system->mountPoint;
 	if (mntPoint == NULL || dir->parent_dirent != NULL) {
 		warn("unmounted dir!\n");
+		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
 	mntPoint->raw_dirent.DIR_Attr &= (~ATTR_MOUNT);
 	sync_dirent_rawdata_back(mntPoint);
 
-	// 3. 卸载fs
+	// 3. 寻找fs
 	FileSystem *fs = find_fs_by(find_fs_of_dir, mntPoint);
 	if (fs == NULL) {
 		warn("can\'t find fs of dir %s!\n", dirPath);
+		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
+
+	// 4. 关闭fs镜像（如果有），并卸载fs
+	if (fs->image != NULL) {
+		file_close(fs->image);
+	}
 	deAllocFs(fs);
+
+	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }

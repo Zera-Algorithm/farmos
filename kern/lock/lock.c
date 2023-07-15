@@ -31,11 +31,19 @@ inline void lo_critical_leave() {
 	}
 }
 
+#define THRESHOLD_LOCK 100000000ul
+
 // 原子操作接口
 inline void lo_acquire(lock_object_t *lo) {
+	u64 cnt = 0;
 	assert(!lo_acquired(lo));
-	while (atomic_lock(&lo->lo_locked) != 0)
-		;
+	while (atomic_lock(&lo->lo_locked) != 0) {
+		cnt += 1;
+		// 在自旋锁长时间获取不到时，打印信息
+		if (cnt >= THRESHOLD_LOCK && cnt % THRESHOLD_LOCK == 0) {
+			warn("wait too long of spinlock[%s]\n", lo->lo_name);
+		}
+	}
 	atomic_barrier();
 	lo->lo_data = cpu_this();
 }

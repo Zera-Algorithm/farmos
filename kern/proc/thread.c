@@ -136,9 +136,6 @@ static void td_recycle(thread_t *td) {
 
 	// 回收进程描述符 todo
 	td->td_status = ZOMBIE;
-
-	// 回收进程的fs资源
-	recycle_thread_fs(&td->td_fs_struct);
 }
 
 /**
@@ -146,6 +143,11 @@ static void td_recycle(thread_t *td) {
  */
 void td_destroy() {
 	thread_t *td = cpu_this()->cpu_running;
+
+	// 回收进程的fs资源
+	// 需要保证thread里面的fs结构在进程结束时不会被访问，以保证原子性（现状是，只有本进程不处于结束状态时才会通过自己的系统调用访问自己的fs资源）
+	// 放在td_recycle前面是因为要避免因为睡眠唤醒，把进程的td_status改为RUNNABLE，而不是维持ZOMBIE
+	recycle_thread_fs(&td->td_fs_struct);
 
 	// 回收进程资源
 	mtx_lock(&td->td_lock);
