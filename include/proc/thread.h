@@ -18,15 +18,15 @@
 // init进程的tid
 #define TID_INIT (0 | (1 * NPROC))
 
+typedef struct proc proc_t;
 typedef enum thread_state { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE } thread_state_t;
 
 typedef struct thread {
 	// 线程核心属性
-	context_t td_context; // 内核上下文作为第一个成员（由 td_lock 保护）
-	ptr_t td_kstack; // 内核栈所在页的首地址（已被初始化，由 td_lock 保护）
 	trapframe_t *td_trapframe; // 用户态上下文（由 td_lock 保护）
 
-	mutex_t td_lock;		 // 线程锁（已被初始化）
+	context_t td_context; // 内核上下文作为第一个成员（由 td_lock 保护）
+
 	thread_state_t td_status;	 // 线程状态（由 td_lock 保护）
 	char td_name[MAX_PROC_NAME_LEN]; // 线程名 todo fork时溢出
 
@@ -36,6 +36,8 @@ typedef struct thread {
 	// 睡眠相关
 	ptr_t td_wchan;	      // 线程等待的 chan（由 td_lock 保护）
 	const char *td_wmesg; // 线程等待的原因（由 td_lock 保护）
+
+	proc_t *td_proc; // 线程所属进程（由 td_lock 保护）
 
 	// should in proc
 	times_t td_times; // 线程运行时间，只有自己写入，父进程 wait 时读僵尸子进程，不用保护
@@ -55,12 +57,13 @@ typedef struct thread {
 	struct thread *td_parent;	  // 父线程（只会由父进程修改，不加锁）
 	LIST_HEAD(, thread) td_childlist; // 子线程
 	LIST_ENTRY(thread) td_childentry; // 用于将当前线程加入父线程的子线程链表
+
+	// 线程已初始化字段
+	ptr_t td_kstack; // 内核栈所在页的首地址（已被初始化，由 td_lock 保护）
+	mutex_t td_lock; // 线程锁（已被初始化）
 } thread_t;
 
 extern thread_t threads[NPROC];
-
-void td_switch(thread_t *oldtd, register_t param); // switch.S
-void td_initentry(thread_t *inittd);		   // switch.S
 
 thread_t *td_alloc();
 
@@ -94,6 +97,7 @@ void td_recycleupt(thread_t *td);
 void td_create(const char *name, const void *bin, size_t size);
 u64 td_fork(thread_t *td, u64 childsp);
 
+// 相关宏
 #define TD_CREATE(program, name)                                                                   \
 	({                                                                                         \
 		extern char binary_##program[];                                                    \

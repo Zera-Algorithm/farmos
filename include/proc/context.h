@@ -14,4 +14,8 @@ typedef struct context {
 	u64 ctx_s[12];
 } context_t;
 
+// 汇编函数（switch.S）
+void ctx_switch(context_t *oldtd, register_t param);
+void ctx_enter(context_t *inittd) __attribute__((noreturn));
+
 #endif // _CONTEXT_H_

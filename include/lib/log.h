@@ -4,7 +4,10 @@
 // 日志级别定义（模块）
 #define DEFAULT 1
 #define LEVEL_MODULE 1
+
 #define MM_GLOBAL 20
+#define MM_MODULE 1
+
 #define BUF_MODULE 1
 #define FAT_MODULE 4
 

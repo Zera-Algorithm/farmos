@@ -1,15 +1,18 @@
 #include <mm/memlayout.h>
 #include <asm/trapframe.h>
+
+/**
+ * context_t *sched_switch(context_t *old_ctx, register_t param);
+ */
+.globl sched_switch
+
 /*
- * void td_switch(thread_t *old)
- *
- * a0/x10 = old
+ * void ctx_switch(context_t *oldtd, register_t param);
+ * a0/x10 = old.td_context
  * x3 to x7, x16 and x17 are caller saved
  */
-
-.globl sched_switch
-.globl td_switch
-td_switch:
+.globl ctx_switch
+ctx_switch:
         // 保存旧线程的上下文
         sd ra, CTX_RA_OFF(a0)
         sd sp, CTX_SP_OFF(a0)
@@ -36,9 +39,9 @@ td_switch:
         add sp, sp, t0          // sp = stack0 + KSTACKSIZE * (hartid + 1)
         addi sp, sp, -16          // sp = stack0 + KSTACKSIZE * (hartid + 1) - 16
 
-        // 此时旧进程的上下文已经保存完毕，可以认为是无锁临界区
+        // 此时旧进程的上下文已经保存完毕，目前使用内核原生栈，不持有任何锁
         call sched_switch
-        // 函数返回了新进程的指针，保存到 a0 中
+        // 函数在 a0 返回了新进程的内核线程指针
 
         // 恢复新线程的上下文
         ld s0, CTX_S0_OFF(a0)
@@ -59,9 +62,11 @@ td_switch:
 
         ret
 
-
-.globl td_initentry
-td_initentry:
+/**
+ * void ctx_enter(context_t *init_ctx);
+ */
+.globl ctx_enter
+ctx_enter:
         // 加载第一个线程的的上下文
         ld s0, CTX_S0_OFF(a0)
         ld s1, CTX_S1_OFF(a0)

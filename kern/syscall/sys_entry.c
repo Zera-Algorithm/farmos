@@ -55,7 +55,7 @@ void syscall_entry(Trapframe *tf) {
 	syscall_function_t *sys_func = &sys_table[sysno];
 
 	if (sys_func != NULL && sys_func->name != NULL) {
-		log(DEBUG, "Hart %d Thread %s called '%s'\n", cpu_this_id(),
+		log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s'\n", cpu_this_id(),
 		    cpu_this()->cpu_running->td_name, sys_func->name);
 	}
 

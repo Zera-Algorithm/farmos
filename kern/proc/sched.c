@@ -21,9 +21,9 @@ void schedule() {
 	 *     从线程的视角来看，它调用了 td_switch，传入了自己的上下文和一个参数 0。
 	 * 下一次它被调度运行时是从 td_switch 返回。
 	 *     实际调用栈如下：
-	 *     td_switch -> switch.S -> sched_switch -> td_switch -> schedule
+	 *     ctx_switch(switch.S) -> sched_switch -> ctx_switch(switch.S) -> schedule
 	 */
-	td_switch(cpu_this()->cpu_running, 0);
+	ctx_switch(&cpu_this()->cpu_running->td_context, 0);
 	// 此时已经切换到新线程，且新线程已经获取锁
 }
 
@@ -86,7 +86,7 @@ void sched_init() {
 	cpu->cpu_running = ret;
 	ret->td_status = RUNNING;
 	// 运行线程
-	td_initentry(ret);
+	ctx_enter(&ret->td_context);
 }
 
 /**
@@ -95,7 +95,8 @@ void sched_init() {
  * @param param 旧线程请求切换线程时传入的参数
  * @note 进入该函数时，中断需被关闭，旧线程的锁已被获取
  */
-thread_t *sched_switch(thread_t *old, register_t param) {
+context_t *sched_switch(context_t *old_ctx, register_t param) {
+	thread_t *old = container_of(old_ctx, thread_t, td_context);
 	// 释放旧线程的锁
 	assert(mtx_hold(&old->td_lock));
 
@@ -110,5 +111,5 @@ thread_t *sched_switch(thread_t *old, register_t param) {
 
 	cpu->cpu_running = ret;
 	ret->td_status = RUNNING;
-	return ret;
+	return &ret->td_context;
 }

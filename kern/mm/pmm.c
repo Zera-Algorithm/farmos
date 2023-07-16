@@ -99,7 +99,7 @@ Page *__attribute__((warn_unused_result)) pmAlloc() {
 	pageleft--;
 	// 清空页面内容并返回
 	memset((void *)pageToPa(pp), 0, PAGE_SIZE);
-	log(DEBUG, "\tAlloc pm-page: %d(%d)\n", pageToPpn(pp), pageleft);
+	log(MM_MODULE, "\tAlloc pm-page: %d(%d)\n", pageToPpn(pp), pageleft);
 	return pp;
 }
 
@@ -114,6 +114,6 @@ void pmPageDecRef(Page *pp) {
 	if (pp->ref == 0) {
 		LIST_INSERT_HEAD(&pageFreeList, pp, link);
 		pageleft++;
-		log(DEBUG, "\tFree pm-page: %d(%d)\n", pageToPpn(pp), pageleft);
+		log(MM_MODULE, "\tFree pm-page: %d(%d)\n", pageToPpn(pp), pageleft);
 	}
 }

@@ -35,6 +35,16 @@ typedef u64 suseconds_t;
 // FarmOS 页表项
 typedef pte_t Pte;
 
+// FarmOS 结构体宏
+
+#define offsetof(type, member) ((size_t) & ((type *)0)->member)
+
+#define container_of(ptr, type, member)                                                            \
+	({                                                                                         \
+		const typeof(((type *)0)->member) *__mptr = (ptr);                                 \
+		(type *)((char *)__mptr - offsetof(type, member));                                 \
+	})
+
 // Old Defination
 typedef unsigned int uint;
 typedef unsigned short ushort;

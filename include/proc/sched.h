@@ -1,13 +1,13 @@
 #ifndef _SCHED_H_
 #define _SCHED_H_
 
-#include <lib/queue.h>
 #include <proc/thread.h>
 #include <types.h>
-void sched_init();
 void schedule();
 void yield();
-thread_t *sched_switch(thread_t *old, register_t param);
+
+void sched_init() __attribute__((noreturn));
+context_t *sched_switch(context_t *old_ctx, register_t param);
 
 extern clock_t ticks;
 
