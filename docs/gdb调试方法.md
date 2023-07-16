@@ -109,3 +109,6 @@ reference: https://blog.csdn.net/weixin_42158742/article/details/113100151
 
 > Execute debugger commands using "-exec <command>", for example "-exec info registers" will list registers in use (when GDB is the debugger).
 
+## 13 VSCode调试时查看寄存器或者变量的值
+
+原本在“调试控制台”下用命令 “-exec x/8x a "可以查看数组内容，那么在监视(watch)窗口下也可以添加"-exec x/8x a", 调试的时候随着单步F10，可以自动执行这个命令（不需要再调试控制台窗口手动执行命令）。查看寄存器值同理，可以输入 `-exec info reg`。

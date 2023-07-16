@@ -9,6 +9,9 @@ int main() {
 	printf("test_init started!\n");
 	int wstatus = 0;
 
+	// 加载fs.img为sdcard.img来测试busybox
+	// char *test_files[] = {"/busybox_unstripped", NULL};
+
 	char *test_files[] = {
 	    // 以下测试均能通过
 	    "/pipe",	 "/fstat",	  "/mmap",    "/munmap", "/mount",  "/unlink", "/umount",

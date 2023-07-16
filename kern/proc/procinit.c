@@ -96,6 +96,8 @@ void td_setustack(thread_t *td, u64 argc, char **argv) {
 	char buf[MAXARGLEN + 1];
 	char *argvbuf[MAXARG];
 
+	td->td_trapframe->sp -= 64; // 预留一部分空间，防止出现内存越界的错误
+
 	for (int i = argc - 1; i >= 0; i--) {
 		// 指向参数字符串的用户地址空间指针
 		char *arg;
@@ -115,12 +117,13 @@ void td_setustack(thread_t *td, u64 argc, char **argv) {
 		argvbuf[i] = (char *)td->td_trapframe->sp;
 	}
 	argvbuf[argc] = NULL;
+	argvbuf[argc + 1] = NULL; // env数组的第一项
 
-	// 将参数指针压入用户栈
-	td->td_trapframe->sp -= (argc + 1) * sizeof(char *);
+	// 将参数指针压入用户栈（包括env数组）
+	td->td_trapframe->sp -= (argc + 2) * sizeof(char *);
 	// 将指针数组首地址对齐到 16 字节
 	td->td_trapframe->sp -= td->td_trapframe->sp % 16;
-	copy_out(td->td_pt, (u64)td->td_trapframe->sp, argvbuf, (argc + 1) * sizeof(char *));
+	copy_out(td->td_pt, (u64)td->td_trapframe->sp, argvbuf, (argc + 2) * sizeof(char *));
 
 	// 将参数数量压入用户栈
 	td->td_trapframe->sp -= sizeof(u64);

@@ -46,7 +46,7 @@
 #define TD_KSTACK(p) (STACKTOP - ((p) + 1) * (TD_KSTACK_SIZE + PAGE_SIZE))
 
 // 用户页表中，线程的用户栈部分
-#define TD_USTACK_PAGE_NUM 4				// 用户栈占用的页数
+#define TD_USTACK_PAGE_NUM 10				// 用户栈占用的页数
 #define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
 #define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
 #define TD_TEMPUSTACK (TD_USTACK - TD_USTACK_SIZE - PAGE_SIZE)

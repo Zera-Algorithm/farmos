@@ -113,14 +113,19 @@ void utrap_entry() {
 			}
 		} else {
 			printReg(td->td_trapframe);
+
+			printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_pid, td->td_name);
+
+			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
+			// cpu的输出变为乱码，访问excCause数组出现load page fault
+			// 可能与参数的数目过多有关系，因此将输出分拆为两段
 			error("uncaught exception.\n"
 			      "\tcpu: %d\n"
 			      "\tExcCode: %d\n"
 			      "\tCause: %s\n"
 			      "\tSepc: 0x%016lx (kern/kernel.asm)\n"
 			      "\tStval(bad memory address): 0x%016lx\n",
-			      "Curenv: pid = 0x%08lx, name = %s\n", cpu_this_id(), exc_code,
-			      excCause[exc_code], r_sepc(), r_stval(), td->td_pid, td->td_name);
+			      cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
 		}
 	}
 

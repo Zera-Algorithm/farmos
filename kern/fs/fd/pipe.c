@@ -112,7 +112,16 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		// TODO：判断进程是否被kill，如被kill，就释放锁并返回负数
 		// read时的channel是readPos，对方也应该以此方式唤醒
 		// 睡眠时暂时放掉管道的锁
+
+		/**
+		 * 睡眠时也需要暂时放掉fd的锁，因为可能有子进程需要先关闭对端fd，再向管道写入
+		 * 如果不放掉fd的锁，可能会造成死锁
+		 * 此处不涉及丢失唤醒的问题。因为唤醒的主体是读写端共享的pipe锁
+		 */
+
+		mtx_unlock_sleep(&fd->lock);
 		sleep(&p->pipeReadPos, &p->lock, "wait for pipe writer to write");
+		mtx_lock_sleep(&fd->lock);
 	}
 
 	for (i = 0; i < n; i++) {
@@ -147,7 +156,9 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 		if (p->pipeWritePos - p->pipeReadPos == PIPE_BUF_SIZE) {
 			wakeup(&p->pipeReadPos);
+			mtx_unlock_sleep(&fd->lock);
 			sleep(&p->pipeWritePos, &p->lock, "pipe writer wait for pipe reader.\n");
+			mtx_lock_sleep(&fd->lock);
 			// 唤醒之后进入下一个while轮次，继续判断管道是否关闭和进程是否结束
 			// 我们采取的唤醒策略是：尽可能地接受唤醒信号，但唤醒信号不一定对本睡眠进程有效，唤醒后还需要做额外检查，若不满足条件(管道非空)应当继续睡眠
 		} else {

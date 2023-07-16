@@ -17,14 +17,14 @@
 #define MUTEX_SPIN 2
 #define MUTEX_SLEEP 10
 
-#define SLEEP_MODULE 10
+#define SLEEP_MODULE 9
 
 // 日志级别定义（全局）
-#define LEVEL_GLOBAL 10
+#define LEVEL_GLOBAL 20
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 999
-#define DEBUG 20
+#define LOG_LEVEL 11
+#define DEBUG 10
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);
