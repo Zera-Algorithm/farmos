@@ -20,10 +20,10 @@
 #define SLEEP_MODULE 9
 
 // 日志级别定义（全局）
-#define LEVEL_GLOBAL 20
+#define LEVEL_GLOBAL 10
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 11
+#define LOG_LEVEL 999
 #define DEBUG 10
 
 // 日志输出函数

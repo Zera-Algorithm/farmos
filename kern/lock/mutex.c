@@ -45,9 +45,9 @@ void mtx_set(mutex_t *m, const char *td_name, bool debug) {
 bool mtx_hold(mutex_t *m) {
 	lo_critical_enter();
 	bool ret;
-	if (m->mtx_type == MTX_SPIN) {
+	if (m->mtx_type & MTX_SPIN) {
 		ret = lo_acquired(&m->mtx_lock_object);
-	} else if (m->mtx_type == MTX_SLEEP) {
+	} else if (m->mtx_type & MTX_SLEEP) {
 		ret = m->mtx_owner == cpu_this()->cpu_running ? true : false;
 	} else {
 		error("mtx_hold: invalid mtx_type %d\n", m->mtx_type);
@@ -67,6 +67,25 @@ static void __mtx_lo_lock(mutex_t *m, bool need_critical) {
 	// 离开时中断仍然是关闭的
 }
 
+static bool __mtx_lo_try_lock(mutex_t *m, bool need_critical) {
+	// 进入或重入临界区，中断关闭
+	if (need_critical) {
+		lo_critical_enter();
+	}
+	assert(!lo_acquired(&m->mtx_lock_object));
+	if (lo_try_acquire(&m->mtx_lock_object)) {
+		// 成功获取锁
+		return true;
+		// 离开时中断仍然是关闭的
+	} else {
+		// 获取锁失败，离开临界区
+		if (need_critical) {
+			lo_critical_leave();
+		}
+		return false;
+	}
+}
+
 static void __mtx_lo_unlock(mutex_t *m, bool need_critical) {
 	// 进入时中断应该是关闭的
 	assert(intr_get() == 0);
@@ -80,23 +99,30 @@ static void __mtx_lo_unlock(mutex_t *m, bool need_critical) {
 
 // 自旋互斥量接口（不检查自旋锁类型，因为睡眠锁基于自旋锁）
 void mtx_lock(mutex_t *m) {
-	if (m->mtx_type == MTX_SPIN) {
+	if (m->mtx_type & MTX_SPIN) {
 		// 自旋互斥量，判断是否重入
 		lo_critical_enter();
 		if (lo_acquired(&m->mtx_lock_object)) {
-			// 重入，增加重入深度
-			m->mtx_depth++;
-			mtx_spin_debug("lock[%s] re-entered! (depth:%d)\n",
-				       m->mtx_lock_object.lo_name, m->mtx_depth);
-			// 离开临界区（自旋互斥量重入不用再套一层临界区）
-			lo_critical_leave();
+			if (m->mtx_type & MTX_RECURSE) {
+				// 重入，增加重入深度
+				m->mtx_depth++;
+				mtx_spin_debug("lock[%s] re-entered! (depth:%d)\n",
+					       m->mtx_lock_object.lo_name, m->mtx_depth);
+				// 离开临界区（自旋互斥量重入不用再套一层临界区）
+				lo_critical_leave();
+			} else {
+				// 不能重入，离开临界区
+				lo_critical_leave();
+				error("mtx_lock: mtx %s(%d) is not re-entrant\n",
+				      m->mtx_lock_object.lo_name, m->mtx_type);
+			}
 		} else {
 			// 非重入，获取自旋锁
 			__mtx_lo_lock(m, false);
 			m->mtx_depth = 1;
 			mtx_spin_debug("lock[%s] acquired!\n", m->mtx_lock_object.lo_name);
 		}
-	} else if (m->mtx_type == MTX_SLEEP) {
+	} else if (m->mtx_type & MTX_SLEEP) {
 		// 睡眠互斥量，仅用于 sleep 结束后重新获取
 		__mtx_lo_lock(m, true);
 	} else {
@@ -104,11 +130,26 @@ void mtx_lock(mutex_t *m) {
 	}
 }
 
+bool mtx_try_lock(mutex_t *m) {
+	// 目前只支持自旋互斥量
+	assert(m->mtx_type & MTX_SPIN);
+	assert(!(m->mtx_type & MTX_RECURSE));
+	// 获取自旋锁
+	if (__mtx_lo_try_lock(m, true)) {
+		m->mtx_depth = 1;
+		mtx_spin_debug("lock[%s] acquired!\n", m->mtx_lock_object.lo_name);
+		return true;
+	} else {
+		return false;
+	}
+}
+
 void mtx_unlock(mutex_t *m) {
 	// 无论哪种类型的互斥量，都需要已经获取锁
 	assert(lo_acquired(&m->mtx_lock_object));
-	if (m->mtx_type == MTX_SPIN) {
+	if (m->mtx_type & MTX_SPIN) {
 		if (m->mtx_depth > 1) {
+			assert(m->mtx_type & MTX_RECURSE);
 			// 自旋互斥量，离开重入，减少重入深度（不退出临界区，因为重入获取锁时没套临界区）
 			m->mtx_depth--;
 			mtx_spin_debug("lock[%s] re-leave! (depth:%d)\n",
@@ -119,7 +160,7 @@ void mtx_unlock(mutex_t *m) {
 			m->mtx_depth = 0;
 			__mtx_lo_unlock(m, true);
 		}
-	} else if (m->mtx_type == MTX_SLEEP) {
+	} else if (m->mtx_type & MTX_SLEEP) {
 		// 睡眠互斥量，仅用于 sleep 开始时释放
 		__mtx_lo_unlock(m, true);
 	} else {
@@ -130,14 +171,25 @@ void mtx_unlock(mutex_t *m) {
 // 睡眠互斥量接口
 void mtx_lock_sleep(mutex_t *m) {
 	// 获取自旋锁
-	assert(m->mtx_type == MTX_SLEEP);
+	// if (!(m->mtx_type & MTX_SLEEP)) {
+	// 	error("mtx_lock_sleep: mtx %s(%d) is not sleepable\n", m->mtx_lock_object.lo_name,
+	// m->mtx_type);
+	// }
+	assert(m->mtx_type & MTX_SLEEP);
 	mtx_lock(m);
 	// 已获取自旋锁，检查所有权字段
 	if (m->mtx_owner == cpu_this()->cpu_running) {
-		// 若睡眠锁已被自己认领，加一层嵌套，直接返回
-		m->mtx_depth++;
-		mtx_sleep_debug("lock[%s] already hold! (depth:%d)\n", m->mtx_lock_object.lo_name,
-				m->mtx_depth);
+		if (m->mtx_type & MTX_RECURSE) {
+			// 重入，增加重入深度
+			m->mtx_depth++;
+			mtx_sleep_debug("lock[%s] re-entered! (depth:%d)\n",
+					m->mtx_lock_object.lo_name, m->mtx_depth);
+		} else {
+			// 非重入，报错
+			error("mtx_lock_sleep: lock[%s] already hold by %s, %s go sleeping\n",
+			      m->mtx_lock_object.lo_name, m->mtx_owner->td_name,
+			      cpu_this()->cpu_running->td_name);
+		}
 	} else {
 		// 睡眠锁未被自己认领，检查所有权字段
 		while (m->mtx_owner != 0) {
@@ -162,7 +214,7 @@ void mtx_lock_sleep(mutex_t *m) {
 
 void mtx_unlock_sleep(mutex_t *m) {
 	// 获取自旋锁
-	assert(m->mtx_type == MTX_SLEEP);
+	assert(m->mtx_type & MTX_SLEEP);
 	mtx_lock(m);
 	// 检查所有权字段
 	if (m->mtx_owner != cpu_this()->cpu_running) {
@@ -171,6 +223,7 @@ void mtx_unlock_sleep(mutex_t *m) {
 	assert(m->mtx_depth > 0);
 	// 检查重入深度
 	if (m->mtx_depth > 1) {
+		assert(m->mtx_type & MTX_RECURSE);
 		// 重入，减少重入深度，不唤醒
 		m->mtx_depth--;
 		mtx_sleep_debug("lock[%s] re-leave! (depth:%d)\n", m->mtx_lock_object.lo_name,

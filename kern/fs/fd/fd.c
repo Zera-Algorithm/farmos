@@ -31,7 +31,7 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
 
 // TODO: 实现初始化
 void fd_init() {
-	mtx_init(&mtx_fd, "sys_fdtable", 1, MTX_SPIN);
+	mtx_init(&mtx_fd, "sys_fdtable", 1, MTX_SPIN | MTX_RECURSE);
 }
 
 void freeFd(uint i);

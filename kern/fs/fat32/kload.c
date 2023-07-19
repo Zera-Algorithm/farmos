@@ -82,7 +82,7 @@ void file_unload(fileid_t fileid) {
  * @param offset 开始读取的文件偏移
  * @return 如果映射成功，返回映射位置的指针，否则返回-1
  */
-void *file_map(thread_t *proc, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
+void *file_map(pte_t *pt, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
 	size_t size;
 	void *binary;
 
@@ -104,7 +104,7 @@ void *file_map(thread_t *proc, Dirent *file, u64 va, size_t len, int perm, int f
 	size_t i;
 	u64 offset = va - PGROUNDDOWN(va);
 	if (offset != 0) {
-		if ((r = loadDataMapper(proc->td_pt, va, offset, perm, binary,
+		if ((r = loadDataMapper(pt, va, offset, perm, binary,
 					MIN(len, PAGE_SIZE - offset))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
@@ -114,7 +114,7 @@ void *file_map(thread_t *proc, Dirent *file, u64 va, size_t len, int perm, int f
 	// 4.2 把剩余的binary内容（文件内的）加载进内存
 	// i = 已写入的长度
 	for (i = offset ? MIN(len, PAGE_SIZE - offset) : 0; i < len; i += PAGE_SIZE) {
-		if ((r = loadDataMapper(proc->td_pt, va + i, 0, perm, binary + i,
+		if ((r = loadDataMapper(pt, va + i, 0, perm, binary + i,
 					MIN(len - i, PAGE_SIZE))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;

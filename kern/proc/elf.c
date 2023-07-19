@@ -3,6 +3,7 @@
 #include <lib/string.h>
 #include <lib/transfer.h>
 #include <mm/vmm.h>
+#include <proc/proc.h>
 #include <proc/thread.h>
 
 /**
@@ -44,7 +45,8 @@ static int loadCode(thread_t *td, const void *binary, size_t size, u64 *maxva) {
 		ProgramHeader *ph = (ProgramHeader *)(binary + phOff);
 		// 只加载能加载的段
 		if (ph->p_type == ELF_PROG_LOAD) {
-			panic_on(loadElfSegment(ph, binary + ph->p_off, loadDataMapper, td->td_pt));
+			panic_on(loadElfSegment(ph, binary + ph->p_off, loadDataMapper,
+						td->td_proc->p_pt));
 			*maxva = MAX(*maxva, ph->p_vaddr + ph->p_memsz - 1);
 		}
 	}
@@ -52,13 +54,10 @@ static int loadCode(thread_t *td, const void *binary, size_t size, u64 *maxva) {
 	*maxva = PGROUNDUP(*maxva);
 
 	// 设置代码入口点
-	td->td_trapframe->epc = elfHeader->e_entry;
+	td->td_trapframe.epc = elfHeader->e_entry;
 	return 0;
 }
 
-/**
- * @brief 加载用户程序，设置 Trapframe 中的程序入口（epc）。
- */
-void td_initucode(thread_t *td, const void *binary, size_t size) {
-	panic_on(loadCode(td, binary, size, &td->td_brk));
+void proc_initucode(proc_t *p, thread_t *inittd, const void *bin, size_t size) {
+	panic_on(loadCode(inittd, bin, size, &p->p_brk));
 }

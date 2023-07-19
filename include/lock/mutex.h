@@ -16,12 +16,13 @@ typedef struct mutex {
 
 #define MTX_SPIN 0x01
 #define MTX_SLEEP 0x02
-#define MTX_PRLK 0x04
+#define MTX_RECURSE 0x04
 
 void mtx_init(mutex_t *m, const char *name, bool debug, u8 type);
 void mtx_set(mutex_t *m, const char *name, bool debug);
 
 void mtx_lock(mutex_t *mtx);
+bool mtx_try_lock(mutex_t *mtx);
 void mtx_unlock(mutex_t *mtx);
 
 void mtx_lock_sleep(mutex_t *m);

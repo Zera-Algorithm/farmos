@@ -32,42 +32,45 @@ typedef union wstatus {
 mutex_t wait_lock;
 
 /**
- * @brief 将传入的僵尸子进程回收，需要已持有子进程的锁。
+ * @brief 将传入的僵尸子进程回收，需要已持有当前进程锁和子进程的锁。
  */
-static u64 wait_exit(thread_t *curtd, thread_t *child, u64 pstatus) {
-	u64 tid = child->td_tid;
-	wstatus_t s = {.bits.high8 = child->td_exitcode};
+static u64 wait_exit(thread_t *curtd, proc_t *childp, u64 pstatus) {
+	u64 pid = childp->p_pid;
+	wstatus_t s = {.bits.high8 = childp->p_exitcode};
 	if (pstatus != 0) {
 		// 将子进程的退出状态写入父进程的内存空间
 		copy_out(curtd->td_pt, pstatus, &s, sizeof(u32));
 	}
 	// 更新父进程中记录子进程运行时间的字段
-	curtd->td_times.tms_cutime += child->td_times.tms_utime;
-	curtd->td_times.tms_cstime += child->td_times.tms_stime;
+	curtd->td_proc->p_times.tms_cutime += childp->p_times.tms_utime;
+	curtd->td_proc->p_times.tms_cstime += childp->p_times.tms_stime;
 
-	td_free(child);
+	proc_free(childp);
+	LIST_REMOVE(childp, p_sibling); // p_children 中删除，已持有父进程的锁
 
-	LIST_REMOVE(child, td_childentry);
-
-	mtx_unlock(&child->td_lock);
+	proc_unlock(childp);
+	proc_unlock(curtd->td_proc);
 	mtx_unlock(&wait_lock);
-	return tid;
+	return pid;
 }
 
-static u64 wait_til_exit(thread_t *curtd, thread_t *child, u64 pstatus, int options) {
+static u64 wait_til_exit(thread_t *curtd, proc_t *childp, u64 pstatus, int options) {
 	if (options & WNOHANG) {
 		// 若设置了 WNOHANG，直接返回
-		mtx_unlock(&child->td_lock);
+		proc_unlock(childp);
+		proc_unlock(curtd->td_proc);
 		mtx_unlock(&wait_lock);
 		return WAIT_NOHANG_EXIT;
 	}
 	// 进入时已持有子进程的锁
-	while (child->td_status != ZOMBIE) {
-		mtx_unlock(&child->td_lock);
-		sleep(curtd, &wait_lock, "waiting for child to exit");
-		mtx_lock(&child->td_lock);
+	while (childp->p_status != ZOMBIE) {
+		proc_unlock(childp);
+		proc_unlock(curtd->td_proc);
+		sleep(curtd->td_proc, &wait_lock, "waiting for child to exit");
+		proc_lock(curtd->td_proc);
+		proc_lock(childp);
 	}
-	return wait_exit(curtd, child, pstatus);
+	return wait_exit(curtd, childp, pstatus);
 }
 
 u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
@@ -76,28 +79,30 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 	mtx_lock(&wait_lock);
 
 	// 检查是否有能够等待的子进程
-	if (LIST_EMPTY(&curtd->td_childlist)) {
+	if (LIST_EMPTY(&curtd->td_proc->p_children)) {
 		mtx_unlock(&wait_lock);
 		return -1;
 	}
 
 	// 有子进程，需要等待并释放一个子进程再返回
 	while (1) {
-		thread_t *child;
-		LIST_FOREACH (child, &curtd->td_childlist, td_childentry) {
-			mtx_lock(&child->td_lock);
-			if (pid != -1 && pid == child->td_tid) {
+		proc_t *childp;
+		proc_lock(curtd->td_proc);
+		LIST_FOREACH (childp, &curtd->td_proc->p_children, p_sibling) {
+			proc_lock(childp);
+			if (pid != -1 && pid == childp->p_pid) {
 				// 若找到了目标进程，等待其结束后回收
-				assert(child->td_status != UNUSED);
-				return wait_til_exit(curtd, child, pstatus, options);
-			} else if (pid == -1 && child->td_status == ZOMBIE) {
-				return wait_exit(curtd, child, pstatus);
+				assert(childp->p_status != UNUSED);
+				return wait_til_exit(curtd, childp, pstatus, options);
+			} else if (pid == -1 && childp->p_status == ZOMBIE) {
+				return wait_exit(curtd, childp, pstatus);
 			}
 			// 余下情况为：
 			// 1. pid != -1 且 pid != child->td_tid，继续检查下一个子进程
 			// 2. pid == -1 且 child->td_status != ZOMBIE，继续检查下一个子进程
-			mtx_unlock(&child->td_lock);
+			proc_unlock(childp);
 		}
+		proc_unlock(curtd->td_proc);
 
 		if (pid != -1) {
 			// 此时如果没有找到目标进程，说明目标进程不在子进程列表中，返回
@@ -109,7 +114,7 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 			return WAIT_NOHANG_EXIT;
 		} else {
 			// 未指定目标进程，且未设置 WNOHANG，等待子进程退出
-			sleep(curtd, &wait_lock, "waiting for child to exit");
+			sleep(curtd->td_proc, &wait_lock, "waiting for child to exit");
 		}
 	}
 }

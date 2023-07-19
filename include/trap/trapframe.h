@@ -76,8 +76,8 @@ typedef struct ktrapframe {
 	u64 t6;
 } ktrapframe_t;
 
-// for old
-typedef trapframe_t Trapframe;
-typedef ktrapframe_t RawTrapFrame;
+// 注意：Trapframe 页必须能容纳所有核心的 Trapframe
+// 即 TRAPFRAME_SIZE * NCPU <= PAGE_SIZE
+#define TRAPFRAME_SIZE sizeof(trapframe_t)
 
-#endif
+#endif // _TRAPFRAME_H

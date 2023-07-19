@@ -29,6 +29,7 @@ void sleep(void *chan, mutex_t *mtx, const char *msg) {
 
 	// 释放进程锁，重新获取传入的另一个锁
 	mtx_unlock(&td->td_lock);
+	// 当前不持有任何锁
 	mtx_lock(mtx);
 }
 
@@ -42,7 +43,8 @@ void wakeup(void *chan) {
 	TAILQ_FOREACH (td, &thread_sleepq.tq_head, td_sleepq) {
 		mtx_lock(&td->td_lock);
 		log(SLEEP_MODULE, "check %s(wait %x, now %x)\n", td->td_name, td->td_wchan, chan);
-		if (td->td_status == SLEEPING && td->td_wchan == (ptr_t)chan) {
+		assert(td->td_status == SLEEPING);
+		if (td->td_wchan == (ptr_t)chan) {
 			log(SLEEP_MODULE, "wakeup %s\n", td->td_name);
 			td->td_status = RUNNABLE;
 			TAILQ_REMOVE(&thread_sleepq.tq_head, td, td_sleepq);
@@ -50,10 +52,12 @@ void wakeup(void *chan) {
 		}
 		mtx_unlock(&td->td_lock);
 	}
+
+	// 防止丢失唤醒的进程，先获取就绪队列锁，再获取睡眠队列锁
+	tdq_critical_enter(&thread_runq);
 	tdq_critical_exit(&thread_sleepq);
 
 	// 将唤醒的进程加入就绪队列
-	tdq_critical_enter(&thread_runq);
 	TAILQ_CONCAT(&thread_runq.tq_head, &readyq.tq_head, td_runq);
 	tdq_critical_exit(&thread_runq);
 }

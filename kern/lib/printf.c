@@ -105,7 +105,7 @@ void _error(const char *file, int line, const char *func, const char *fmt, ...) 
 
 	va_end(ap);
 
-	SBI_SYSTEM_RESET(0, 0);
+	cpu_halt();
 
 	while (1)
 		;

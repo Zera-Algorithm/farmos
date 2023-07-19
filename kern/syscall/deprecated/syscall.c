@@ -413,7 +413,7 @@ static void *syscallTable[] = {
  * @brief 系统调用入口。会按照tf中传的参数信息（a0~a7）调用相应的系统调用函数，并将返回值保存在a0中
  *
  */
-void syscallEntry(Trapframe *tf) {
+void syscallEntry(trapframe_t *tf) {
 	log(LEVEL_GLOBAL, "cpu %d, syscall %d, proc %lx\n", cpu_this_id(), tf->a7, myProc());
 
 	// S态时间审计

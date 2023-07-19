@@ -6,7 +6,10 @@
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <mm/memlayout.h>
+#include <mm/vmm.h>
 #include <proc/cpu.h>
+#include <proc/proc.h>
+#include <proc/sleep.h>
 #include <proc/thread.h>
 #include <riscv.h>
 #include <sys/syscall.h>
@@ -44,7 +47,10 @@ static char *excCause[] = {"Instruction address misaligned",
 			   "Undefined Exception",
 			   "Store page fault"};
 
-#define entry_user_ret ((void (*)(u64))(TRAMPOLINE + (userRet - trampoline)))
+#define hart_tf_uva(hartid) (((trapframe_t *)TRAPFRAME) + (hartid))
+
+#define entry_user_ret(tf, satp)                                                                   \
+	(((void (*)(trapframe_t *, u64))(TRAMPOLINE + (userRet - trampoline)))(tf, (satp)))
 
 static register_t utrap_info() {
 	// 获取中断或异常的原因并输出
@@ -63,11 +69,12 @@ static register_t utrap_info() {
  * 调用本函数之前已存储了用户态下的所有寄存器现场，并已加载内核页表并切换到对应内核线程的内核栈。
  */
 void utrap_entry() {
+	// 保存 TRAPFRAME 至线程控制块
+	thread_t *td = cpu_this()->cpu_running;
+	td->td_trapframe = td->td_proc->p_trapframe[cpu_this_id()];
 	// 获取中断或异常的原因并输出
 	register_t cause = utrap_info();
 	register_t exc_code = (cause & SCAUSE_EXC_MASK);
-	thread_t *td = cpu_this()->cpu_running;
-
 	// 切换内核异常入口
 	w_stvec((uint64)kernelvec);
 
@@ -103,18 +110,18 @@ void utrap_entry() {
 		// 用户态异常
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
-			syscall_entry(td->td_trapframe);
+			syscall_entry(&td->td_trapframe);
 		} else if (exc_code == EXCCODE_PAGE_FAULT) {
 			// 页错误，属于内核线程范畴，允许中断 todo
 			if (page_fault_handler(r_stval() & ~(PAGE_SIZE - 1))) {
 				// 页错误处理失败，杀死进程
-				warn("page fault on pid = %d, kill it.\n", td->td_pid);
+				warn("page fault on pid = %d, kill it.\n", td->td_tid);
 				sys_exit(-1); // errcode todo
 			}
 		} else {
-			printReg(td->td_trapframe);
+			printReg(&td->td_trapframe);
 
-			printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_pid, td->td_name);
+			printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
 
 			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
 			// cpu的输出变为乱码，访问excCause数组出现load page fault
@@ -146,14 +153,17 @@ void utrap_return() {
 	thread_t *td = cpu_this()->cpu_running;
 
 	// ue5: 将内核页表地址存入 TRAPFRAME
-	td->td_trapframe->kernel_satp = r_satp();
+	td->td_trapframe.kernel_satp = r_satp();
 
 	// ue4: 将内核号存入 TRAPFRAME
-	td->td_trapframe->hartid = cpu_this_id();
+	td->td_trapframe.hartid = cpu_this_id();
 
 	// ue3: 将内核线程入口、内核栈地址、内核号存入 TRAPFRAME
-	td->td_trapframe->trap_handler = (u64)utrap_entry;
-	td->td_trapframe->kernel_sp = td->td_kstack + TD_KSTACK_SIZE;
+	td->td_trapframe.trap_handler = (u64)utrap_entry;
+	td->td_trapframe.kernel_sp = td->td_kstack + TD_KSTACK_SIZE;
+	// ue3+: 拷贝 TRAPFRAME 至用户空间
+	trapframe_t *harttf = &td->td_proc->p_trapframe[cpu_this_id()];
+	*harttf = td->td_trapframe;
 
 	// ue0: 为硬件行为做好准备，切换用户异常入口
 	u64 trampolineUserVec = TRAMPOLINE + (userVec - trampoline);
@@ -166,28 +176,34 @@ void utrap_return() {
 	w_sstatus(sstatus);
 
 	// ue5: 计算用户页表 SATP 并跳转至汇编用户态异常出口
-	u64 user_satp = MAKE_SATP(td->td_pt);
-	entry_user_ret(user_satp);
+	u64 user_satp = MAKE_SATP(td->td_proc->p_pt);
+	entry_user_ret(hart_tf_uva(cpu_this_id()), user_satp);
 }
 
 int is_first_thread = 1;
+mutex_t first_thread_lock;
 
 void utrap_firstsched() {
 	mtx_unlock(&cpu_this()->cpu_running->td_lock);
+	assert(cpu_this()->cpu_lk_depth == 0);
 
-	extern mutex_t pr_lock;
-	mtx_lock(&pr_lock);
+	mtx_lock(&first_thread_lock);
 	if (is_first_thread == 1) {
 		is_first_thread = 0;
-		mtx_unlock(&pr_lock);
+		mtx_unlock(&first_thread_lock);
 
 		// 初始化文件系统（需要持有自旋锁）
 		virtio_disk_init();
 		bufInit();
 		dirent_init();
 		init_root_fs();
+		is_first_thread = 2;
+		wakeup(&is_first_thread);
+	} else if (is_first_thread == 0) {
+		sleep(&is_first_thread, &first_thread_lock, "utrap_firstsched");
+		mtx_unlock(&first_thread_lock);
 	} else {
-		mtx_unlock(&pr_lock);
+		mtx_unlock(&first_thread_lock);
 	}
 
 	utrap_return();

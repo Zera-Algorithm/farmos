@@ -51,7 +51,7 @@ static char *excCause[] = {"Instruction address misaligned",
  * @note 异常：直接panic
  * @note 内核态中断直接返回即可，不需要切换页表，所以也不需要实现在trampoline中
  */
-void kerneltrap(RawTrapFrame *tf) {
+void kerneltrap(ktrapframe_t *tf) {
 	// 获取陷入中断的原因
 	uint64 scause = r_scause();
 	uint64 type = (scause >> 63ul);

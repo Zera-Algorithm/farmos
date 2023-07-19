@@ -153,6 +153,9 @@ static Dirent *try_enter_mount_dir(Dirent *dir) {
  * @note 保证路径上的引用一定全不为0，因此无需顺序获取
  */
 void dget_path(Dirent *file) {
+	if (file == NULL) {
+		panic("dget_path: file is NULL!\n");
+	}
 	while (1) {
 		dget(file);
 		if (file == file->file_system->root) {

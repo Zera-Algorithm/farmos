@@ -90,7 +90,7 @@ void init_root_fs() {
 	extern FileSystem *fatFs;
 	extern mutex_t mtx_fs;
 	mtx_init(&mtx_fs, "fs", false, MTX_SPIN);
-	mtx_init(&mtx_file, "mtx_file", false, MTX_SLEEP);
+	mtx_init(&mtx_file, "mtx_file", false, MTX_SLEEP | MTX_RECURSE);
 
 	allocFs(&fatFs);
 

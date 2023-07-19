@@ -14,8 +14,9 @@ void lo_critical_enter();
 void lo_critical_leave();
 
 // 原子操作接口
-void lo_acquire(lock_object_t *m);
-void lo_release(lock_object_t *m);
-bool lo_acquired(lock_object_t *m) __attribute__((warn_unused_result));
+void lo_acquire(lock_object_t *lo);
+bool lo_try_acquire(lock_object_t *lo);
+void lo_release(lock_object_t *lo);
+bool lo_acquired(lock_object_t *lo) __attribute__((warn_unused_result));
 
 #endif // _LOCK_H_

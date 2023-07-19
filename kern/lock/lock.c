@@ -48,6 +48,16 @@ inline void lo_acquire(lock_object_t *lo) {
 	lo->lo_data = cpu_this();
 }
 
+inline bool lo_try_acquire(lock_object_t *lo) {
+	assert(!lo_acquired(lo));
+	if (atomic_lock(&lo->lo_locked) != 0) {
+		return false;
+	}
+	atomic_barrier();
+	lo->lo_data = cpu_this();
+	return true;
+}
+
 inline void lo_release(lock_object_t *lo) {
 	assert(lo_acquired(lo));
 	lo->lo_data = NULL;

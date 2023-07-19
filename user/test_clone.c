@@ -8,7 +8,7 @@
 __attribute__((aligned(4096))) char stack[4096];
 
 int child_func() {
-	for (int i = 1; i <= 100000000; i++) {
+	for (int i = 1; i <= 1000000; i++) {
 		for (int j = 1; j <= 20; j++) {
 			;
 		}

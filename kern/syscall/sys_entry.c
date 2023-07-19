@@ -21,7 +21,7 @@ static syscall_function_t sys_table[] = {
     [SYS_clone] = {sys_clone, "clone"},
     [SYS_wait4] = {sys_wait4, "wait4"},
     [SYS_nanosleep] = {sys_nanosleep, "nanosleep"},
-    [SYS_mmap] = {sys_mmap, "mmap"},
+    // [SYS_mmap] = {sys_mmap, "mmap"},
     [SYS_fstat] = {sys_fstat, "fstat"},
     [SYS_close] = {sys_close, "close"},
     [SYS_dup] = {sys_dup, "dup"},
@@ -41,8 +41,8 @@ static syscall_function_t sys_table[] = {
     [SYS_times] = {sys_times, "times"},
     [SYS_uname] = {sys_uname, "uname"},
     [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
-    [SYS_munmap] = {sys_unmap, "munmap"},
-    [SYS_brk] = {sys_brk, "brk"},
+    // [SYS_munmap] = {sys_unmap, "munmap"},
+    // [SYS_brk] = {sys_brk, "brk"},
 };
 
 /**
@@ -50,7 +50,7 @@ static syscall_function_t sys_table[] = {
  *
  */
 
-void syscall_entry(Trapframe *tf) {
+void syscall_entry(trapframe_t *tf) {
 	u64 sysno = tf->a7;
 	syscall_function_t *sys_func = &sys_table[sysno];
 
@@ -62,7 +62,7 @@ void syscall_entry(Trapframe *tf) {
 	// S态时间审计
 	// u64 startTime = getTime();
 	if (sysno == 210) {
-		SBI_SYSTEM_RESET(0, 0); // todotodo: sys_shutdown
+		cpu_halt(); // todotodo: sys_shutdown
 	}
 	// 系统调用最多6个参数
 	u64 (*func)(u64, u64, u64, u64, u64, u64);

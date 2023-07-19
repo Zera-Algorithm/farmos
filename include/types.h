@@ -31,6 +31,7 @@ typedef u64 fileid_t;
 typedef i64 clock_t;
 typedef u64 time_t;
 typedef u64 suseconds_t;
+typedef u32 pid_t;
 
 // FarmOS 页表项
 typedef pte_t Pte;
@@ -44,6 +45,8 @@ typedef pte_t Pte;
 		const typeof(((type *)0)->member) *__mptr = (ptr);                                 \
 		(type *)((char *)__mptr - offsetof(type, member));                                 \
 	})
+
+#define rangeof(type, start, end) (offsetof(type, end) - offsetof(type, start))
 
 // Old Defination
 typedef unsigned int uint;

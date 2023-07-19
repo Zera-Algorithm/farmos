@@ -23,9 +23,9 @@ trampoline:
 userVec:
 	// e0: 硬件设置好 sepc/scause/stval，屏蔽中断（压入 SPIE 位），进入监管态
 
-	// e1: 借用 sscratch 将所有 31 个寄存器保存到 TRAPFRAME
-	csrw sscratch, a0
-	li a0, TRAPFRAME
+	// e1: 从 sscratch 获取 TRAPFRAME 地址，与 a0 寄存器交换
+	csrrw a0, sscratch, a0
+	// e1: 此时 a0 是本核心的 TRAPFRAME 地址，将所有 31 个寄存器保存到 TRAPFRAME
 	sd  ra,  OFFSET_RA(a0)
 	sd  sp,  OFFSET_SP(a0)
 	sd  gp,  OFFSET_GP(a0)
@@ -82,21 +82,23 @@ userVec:
 .align 4
 .globl userRet
 /*
- * void userRet(u64 user_satp)
+ * void userRet(u64 hart_tf, u64 user_satp)
  * a0/x10 = user_satp
  */
 userRet:
 	
 	// ue5: 内存屏障、切换到用户页表、再次内存屏障
 	sfence.vma zero, zero
-	csrw satp, a0
+	csrw satp, a1
 	sfence.vma zero, zero
 
 	// ue4: 由内核函数存储内核号
 	// ue3: 由内核函数保存内核线程现场（TRAPFRAME->KERNEL_SP/TRAPFRAME->TRAP_HANDLER）
 
-	// ue2: 从 TRAPFRAME 中恢复 sepc
-	li a0, TRAPFRAME
+	// ue2: 加载用户 a0 寄存器到 sscratch 从 TRAPFRAME 中恢复 sepc
+	ld t0, OFFSET_A0(a0)
+    csrw sscratch, t0
+
 	ld t0, OFFSET_EPC(a0)
 	csrw sepc, t0
 
@@ -131,7 +133,7 @@ userRet:
 	ld  t4,  OFFSET_T4(a0)
 	ld  t5,  OFFSET_T5(a0)
 	ld  t6,  OFFSET_T6(a0)
-	ld  a0,  OFFSET_A0(a0)
+	csrrw a0, sscratch, a0
 
 	// ue0: 硬件从 sepc 恢复，开启中断（恢复 SPIE 位），进入用户态
 	sret

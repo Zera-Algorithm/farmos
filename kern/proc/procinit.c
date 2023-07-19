@@ -1,9 +1,11 @@
+#include <lib/elf.h>
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
 #include <mm/vmm.h>
 #include <mm/vmtools.h>
 #include <param.h>
+#include <proc/proc.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 
@@ -11,6 +13,10 @@ threadq_t thread_runq;
 threadq_t thread_freeq;
 threadq_t thread_sleepq;
 thread_t threads[NPROC];
+
+proclist_t proc_freelist;
+proc_t procs[NPROC];
+
 void *kstacks;
 
 void thread_init() {
@@ -31,8 +37,6 @@ void thread_init() {
 		TAILQ_INSERT_HEAD(&thread_freeq.tq_head, td, td_freeq);
 		// 初始化线程锁
 		mtx_init(&td->td_lock, "thread", false, MTX_SPIN);
-		// 初始化子线程队列
-		LIST_INIT(&td->td_childlist);
 		// 初始化线程内核栈
 		td->td_kstack = (u64)kstacks + TD_KSTACK_SIZE * i;
 		// 将内核线程栈映射到内核页表
@@ -45,91 +49,222 @@ void thread_init() {
 	}
 }
 
+void proc_init() {
+	extern mutex_t pid_lock;
+	mtx_init(&pid_lock, "pid_lock", false, MTX_SPIN);
+	mtx_init(&proc_freelist.pl_lock, "proc_freelist", false, MTX_SPIN);
+	LIST_INIT(&proc_freelist.pl_list);
+	for (int i = NPROC - 1; i >= 0; i--) {
+		proc_t *p = &procs[i];
+		// 插入空闲进程队列
+		LIST_INSERT_HEAD(&proc_freelist.pl_list, p, p_list);
+		// 初始化进程锁
+		mtx_init(&p->p_lock, "proc", false, MTX_SPIN);
+		// 初始化进程的线程队列
+		TAILQ_INIT(&p->p_threads);
+		// 初始化进程的子进程队列
+		LIST_INIT(&p->p_children);
+		// 初始化进程的父进程
+		p->p_parent = NULL;
+		// 初始化进程的页表
+		p->p_pt = NULL;
+		// 初始化进程的trapframe
+		p->p_trapframe = NULL;
+		// 初始化进程的用户栈
+		p->p_brk = 0;
+	}
+}
+
 /**
  * @brief 分配并初始化一个新的用户空间页表
- * @note 申请了用户页表、用户栈、用户 Trapframe
+ * @note 申请了用户页表、用户 Trapframe
  */
-void td_initupt(thread_t *td) {
+void proc_initupt(proc_t *p) {
 	// 分配页表
 	pte_t upt = kvmAlloc();
-	td->td_pt = (pte_t *)upt;
+	p->p_pt = (pte_t *)upt;
 
 	// TRAMPOLINE
 	extern char trampoline[];
 	// 由于TRAMPOLINE是用户与内核共享的空间，因此需要赋以 PTE_G 全局位
-	panic_on(ptMap(td->td_pt, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
+	panic_on(ptMap(p->p_pt, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
 
 	// 该进程的trapframe
-	td->td_trapframe = (struct trapframe *)vmAlloc();
-	panic_on(ptMap(td->td_pt, TRAPFRAME, (u64)td->td_trapframe, PTE_R | PTE_W));
+	p->p_trapframe = (trapframe_t *)vmAlloc();
+	panic_on(ptMap(p->p_pt, TRAPFRAME, (u64)p->p_trapframe, PTE_R | PTE_W));
 }
 
 /**
  * @brief 分配并初始化一个新的用户空间栈
  * @note 申请了新的用户栈，并将其映射到用户页表，同时初始化用户栈指针
  */
-void td_initustack(thread_t *td, u64 ustack) {
+void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack) {
 	// 分配用户栈空间
 	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
 		u64 pa = vmAlloc();
 		u64 va = ustack + i * PAGE_SIZE;
-		panic_on(ptMap(td->td_pt, va, pa, PTE_R | PTE_W | PTE_U));
+		panic_on(ptMap(p->p_pt, va, pa, PTE_R | PTE_W | PTE_U));
 	}
 	// 初始化用户栈空间指针
-	td->td_trapframe->sp = ustack + TD_USTACK_SIZE;
-	td->td_brk = 0;
+	inittd->td_trapframe.sp = ustack + TD_USTACK_SIZE;
+	p->p_brk = 0;
 }
 
-void td_recycleupt(thread_t *td) {
+void proc_recycleupt(proc_t *p) {
 	// 解引用全部用户页表
-	pdWalk(td->td_pt, vmUnmapper, kvmUnmapper, NULL);
-	td->td_pt = 0;
+	pdWalk(p->p_pt, vmUnmapper, kvmUnmapper, NULL);
+	p->p_pt = 0;
+	p->p_brk = 0;
+}
+
+// 初始化栈区域
+
+/**
+ * @brief 将内核的数据压到用户栈上
+ * @param align 是否需要对其（16字节对齐）
+ */
+static inline void push_data(pte_t *argpt, u64 *sp, void *data, u64 len, int align) {
+	// 将数据拷贝到用户栈
+	*sp -= len;
+	if (align) {
+		*sp -= *sp % 16;
+	}
+	copy_out(argpt, *sp, data, len);
+}
+
+/**
+ * @brief
+ * 从in_pt对应的页表上取数据（通过arg_array指针），压到out_pt对应的栈上（栈指针为*p_sp）。新的栈上地址存储在arg_buf数组中
+ * @param arg_array 指向参数字符串的用户地址空间指针，若为NULL表示没有参数
+ * @return 返回arg_buf的长度
+ */
+static int copyin_arg_array(pte_t *in_pt, pte_t *out_pt, char **arg_array, u64 *p_sp,
+			    char *arg_buf[]) {
+	char buf[MAXARGLEN + 1];
+	int arg_count = 0;
+
+	if (arg_array != NULL) {
+		while (1) {
+			// 1. 拷贝指向参数字符串的用户地址空间指针
+			char *arg;
+			copy_in(in_pt, (u64)(&arg_array[arg_count]), &arg, sizeof(char *));
+			if (arg == NULL) {
+				break;
+			}
+
+			// 2. 从用户地址空间拷贝参数字符串
+			copy_in_str(in_pt, (u64)arg, buf, MAXARGLEN);
+			buf[MAXARGLEN] = '\0';
+
+			size_t len = strlen(buf) + 1;
+			buf[len - 1] = '\0';
+
+			// 3. 向栈上压入argv字符串
+			push_data(out_pt, p_sp, buf, len, true);
+
+			// 4. 记录参数字符串的用户地址空间指针
+			arg_buf[arg_count] = (char *)*p_sp;
+
+			arg_count += 1;
+			assert(arg_count < MAXARG);
+		}
+	}
+	// 5. 参数数组以NULL表示结束
+	arg_buf[arg_count] = NULL;
+
+	return arg_count + 1;
+}
+
+/**
+ * @brief 拷入额外的参数数组（arg_array来自内核）
+ * @return 返回arg_buf的长度
+ */
+static int copyin_extra_arg_array(pte_t *out_pt, char **arg_array, u64 *p_sp, char *arg_buf[]) {
+	int arg_count = 0;
+	while (arg_buf[arg_count] != NULL) {
+		arg_count += 1;
+		assert(arg_count < MAXARG);
+	}
+
+	// 目前arg_buf[arg_count] == NULL
+	for (int i = 0; arg_array[i] != NULL; i++) {
+		// 1. 从内核拷贝参数字符串
+		char *buf = arg_array[i];
+		size_t len = strlen(buf) + 1;
+
+		// 3. 向栈上压入argv字符串
+		push_data(out_pt, p_sp, buf, len, true);
+
+		// 4. 记录参数字符串的用户地址空间指针
+		arg_buf[arg_count] = (char *)*p_sp;
+
+		arg_count += 1;
+		assert(arg_count < MAXARG);
+	}
+
+	// 5. 参数数组以NULL表示结束
+	arg_buf[arg_count] = NULL;
+	return arg_count + 1;
+}
+
+/**
+ * @param auxiliary_vector 是一个二元组
+ * @param p_len 表示arg_buf的长度
+ */
+static void append_auxiliary_vector(char *arg_buf[], u64 auxiliary_vector[], u64 *p_len) {
+	arg_buf[*p_len] = (char *)auxiliary_vector[0];
+	arg_buf[*p_len + 1] = (char *)auxiliary_vector[1];
+	*p_len += 2;
+}
+
+static void build_auxiliary_vector(char *argvbuf[], u64 *p_len) {
+	/**
+	 * 辅助数组的字段由type和value两个组成，都是u64类型
+	 * 辅助数组以NULL, NULL表示结束
+	 */
+	append_auxiliary_vector(argvbuf, (u64[]){AT_HWCAP, 0}, p_len);
+	append_auxiliary_vector(argvbuf, (u64[]){AT_PAGESZ, PAGE_SIZE}, p_len);
+	append_auxiliary_vector(argvbuf, (u64[]){AT_NULL, AT_NULL}, p_len);
 }
 
 /**
  * @brief 将给定的进程运行参数压入用户栈
+ * @param td 线程指针
+ * @param argpt 存储栈上内容的临时页表指针
  * @param argc 参数数量
  * @param argv 用户空间内的参数指针
+ * @param envp 用户空间内的环境变量指针。为0表示没有环境变量
  */
-void td_setustack(thread_t *td, u64 argc, char **argv) {
-	// 将参数压入用户栈，无参数时跳过
-	char buf[MAXARGLEN + 1];
+void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp) {
+	pte_t *src_pt = td->td_proc->p_pt;
+	// argv和envp需要并列在一个数组里面，以实现头部的对齐
 	char *argvbuf[MAXARG];
 
-	td->td_trapframe->sp -= 64; // 预留一部分空间，防止出现内存越界的错误
+	// 1. 拷入argv数组
+	u64 len_argv = copyin_arg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf);
+	assert(len_argv == argc + 1);
 
-	for (int i = argc - 1; i >= 0; i--) {
-		// 指向参数字符串的用户地址空间指针
-		char *arg;
-		copy_in(td->td_pt, (u64)(&argv[i]), &arg, sizeof(char *));
-		// 从用户地址空间拷贝参数字符串
-		copy_in_str(td->td_pt, (u64)arg, buf, MAXARGLEN);
-		buf[MAXARGLEN] = '\0';
-		// 计算参数字符串长度
-		size_t len = strlen(buf) + 1;
-		buf[len - 1] = '\0';
-		// 将参数字符串压入用户栈
-		td->td_trapframe->sp -= len;
-		// 将字符串首地址对齐到 16 字节
-		td->td_trapframe->sp -= td->td_trapframe->sp % 16;
-		copy_out(td->td_pt, (u64)td->td_trapframe->sp, buf, len);
-		// 记录参数字符串的用户地址空间指针
-		argvbuf[i] = (char *)td->td_trapframe->sp;
-	}
-	argvbuf[argc] = NULL;
-	argvbuf[argc + 1] = NULL; // env数组的第一项
+	// 2. 拷入envp数组
+	copyin_arg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv);
 
-	// 将参数指针压入用户栈（包括env数组）
-	td->td_trapframe->sp -= (argc + 2) * sizeof(char *);
-	// 将指针数组首地址对齐到 16 字节
-	td->td_trapframe->sp -= td->td_trapframe->sp % 16;
-	copy_out(td->td_pt, (u64)td->td_trapframe->sp, argvbuf, (argc + 2) * sizeof(char *));
+	// 测试拷入内核的参数(参数列表需要以NULL结尾)
+	u64 len_envp = copyin_extra_arg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL},
+					      &td->td_trapframe.sp, argvbuf + len_argv);
 
-	// 将参数数量压入用户栈
-	td->td_trapframe->sp -= sizeof(u64);
-	copy_out(td->td_pt, (u64)td->td_trapframe->sp, &argc, sizeof(u64));
+	// 3. 拷入辅助数组
+	u64 total_len = len_argv + len_envp;
+	build_auxiliary_vector(argvbuf, &total_len);
+	// reference: glibc
 
-	// 将参数放入寄存器
+	// 4. 将argvbuf压入用户栈
+	push_data(argpt, &td->td_trapframe.sp, argvbuf, total_len * sizeof(char *), true);
+
+	argc = len_argv - 1;
+	// 5. 将参数数量压入用户栈
+	push_data(argpt, &td->td_trapframe.sp, &argc, sizeof(u64), false);
+
+	// 6. 将参数放入寄存器
 	// 通过 syscall 返回值实现 a0 = argc;
-	td->td_trapframe->a1 = td->td_trapframe->sp;
+	// Note: 其实libc会自动设置a0=argc, a1=argv
+	td->td_trapframe.a1 = td->td_trapframe.sp;
 }

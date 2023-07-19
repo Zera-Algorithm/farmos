@@ -15,6 +15,7 @@
 #include <mm/vmm.h>
 #include <param.h>
 #include <proc/cpu.h>
+#include <proc/proc.h>
 #include <proc/thread.h>
 #include <riscv.h>
 #include <types.h>
@@ -65,14 +66,21 @@ void main() {
 		// 内存管理机制初始化
 		pmmInit();
 		vmmInit();
-
 		vmEnable(); // 开启分页
+
+		// 进程管理机制初始化
 		thread_init();
+		proc_init();
+
+		// 其它
 		trapInitHart(); // install kernel trap vector
 		timerInit();	// 初始化核内时钟
 		plicInit();	// 设置中断控制器
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
+
+		extern mutex_t first_thread_lock;
+		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
 
 #ifndef SINGLE
 		hartInit(); // 启动其他Hart（成功分页后再启动其他核）
@@ -84,23 +92,18 @@ void main() {
 		mtx_init(&mtx_file_load, "kload", 0, MTX_SLEEP);
 
 		assert(intr_get() == 0);
-		// testProcRun(0);
-		// testProcRun(1);
-		// testProcRun(2);
-		// testProcRun(3);
-		// testProcRun(4);
-		// testProcRun(5);
-		// testProcRun(6);
-		// testProcRun(7);
-		// TD_CREATE(test_printf, "test1");
-		// TD_CREATE(test_printf, "test2");
-		// TD_CREATE(test_printf, "test3");
-		// TD_CREATE(test_clone, "test_clone");
-		// TD_CREATE(test_mmap, "test_mmap");
-		// TD_CREATE(test_pipe, "test_pipe");
-		TD_CREATE(test_init, "test_init");
-		// TD_CREATE(test_execve, "test_execve");
-		// TD_CREATE(test_while, "test_while");
+		// PROC_CREATE(test_printf, "test1");
+		// PROC_CREATE(test_printf, "test2");
+		// PROC_CREATE(test_printf, "test3");
+		// PROC_CREATE(test_clone, "test_clone");
+		// PROC_CREATE(test_mmap, "test_mmap");
+		// PROC_CREATE(test_pipe, "test_pipe");
+		PROC_CREATE(test_init, "test_init");
+		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_while, "test_while");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;

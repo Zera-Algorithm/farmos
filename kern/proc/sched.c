@@ -1,6 +1,7 @@
 #include <lib/log.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
+#include <proc/proc.h>
 #include <proc/sched.h>
 #include <proc/thread.h>
 #include <riscv.h>
@@ -15,7 +16,9 @@ void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
 	assert(cpu_this()->cpu_running->td_lock.mtx_depth == 1);
-	assert(cpu_this()->cpu_lk_depth == 1);
+	if (cpu_this()->cpu_lk_depth != 1) {
+		panic("schedule: cpu_lk_depth %d\n", cpu_this()->cpu_lk_depth);
+	}
 	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
 	 *     从线程的视角来看，它调用了 td_switch，传入了自己的上下文和一个参数 0。
@@ -29,10 +32,12 @@ void schedule() {
 
 void yield() {
 	thread_t *td = cpu_this()->cpu_running;
+	// 此时不持有任何锁
 	mtx_lock(&td->td_lock);
 	td->td_status = RUNNABLE;
 	schedule();
 	mtx_unlock(&td->td_lock);
+	// 此时不持有任何锁
 }
 
 /**
@@ -44,8 +49,8 @@ static thread_t *sched_runnable(thread_t *old) {
 	if (old != NULL) {
 		// 更新旧线程运行时间（粗略）
 		ticks += 2;
-		old->td_times.tms_utime += 1;
-		old->td_times.tms_stime += 1;
+		// old->td_proc td_times.tms_utime += 1; // todo
+		// old->td_times.tms_stime += 1;
 		// 如果旧线程仍然可运行，放回队列
 		if (old->td_status == RUNNABLE) {
 			TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
@@ -57,13 +62,24 @@ static thread_t *sched_runnable(thread_t *old) {
 	}
 
 	while (TAILQ_EMPTY(&thread_runq.tq_head)) {
-		// 等待新线程加入队列
+		cpu_this()->cpu_idle = true;
+		// 放锁前尝试查看睡眠队列
+		if (tdq_critical_try_enter(&thread_sleepq)) {
+			// 运行队列为空，睡眠队列为空，关机
+			if (TAILQ_EMPTY(&thread_sleepq.tq_head) && cpu_allidle()) {
+				warn("No thread alive, halt\n");
+				cpu_halt();
+			}
+			// 有进程睡眠，不关机
+			tdq_critical_exit(&thread_sleepq);
+		}
 		tdq_critical_exit(&thread_runq);
-		log(LEVEL_GLOBAL, "No thread runnable, idle\n");
-		// 等待
+		// 等待新线程加入队列
+		// log(LEVEL_GLOBAL, "No thread runnable, idle\n");
 		cpu_idle();
 		tdq_critical_enter(&thread_runq);
 	}
+	cpu_this()->cpu_idle = false;
 
 	// 选择新线程
 	thread_t *ret = TAILQ_FIRST(&thread_runq.tq_head);

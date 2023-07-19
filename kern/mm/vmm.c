@@ -108,7 +108,7 @@ mutex_t kvmlock;
 
 void vmmInit() {
 	// 第零步：初始化模块锁
-	mtx_init(&kvmlock, "kvmlock", false, MTX_SPIN);
+	mtx_init(&kvmlock, "kvmlock", false, MTX_SPIN | MTX_RECURSE);
 
 	// 第一步：初始化内核页目录
 	log(LEVEL_GLOBAL, "Virtual Memory Init Start\n");
