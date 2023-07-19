@@ -110,6 +110,11 @@ struct linux_dirent64 {
 	char d_name[];
 };
 
+struct iovec {
+	void *iov_base;
+	size_t iov_len;
+};
+
 // for mmap
 #define PROT_NONE 0
 #define PROT_READ 1

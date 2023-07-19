@@ -9,13 +9,11 @@
 #include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <lock/sleeplock.h>
-#include <proc/sleep.h>
-
-// DEPRECATED
 #include <proc/cpu.h>
+#include <proc/interface.h>
+#include <proc/sleep.h>
 #include <proc/thread.h>
-#define myProc() (cpu_this()->cpu_running)
-// END DEPRECATED
+#include <sys/syscall_fs.h>
 
 struct mutex mtx_fd;
 
@@ -83,14 +81,14 @@ int closeFd(int fd) {
 		warn("close param fd is wrong, please check\n");
 		return -1;
 	} else {
-		if (myProc()->td_fs_struct.fdList[fd] < 0 ||
-		    myProc()->td_fs_struct.fdList[fd] >= FDNUM) {
+		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
+		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 			warn("kern fd is wrong, please check\n");
 			return -1;
 		} else {
-			kernFd = myProc()->td_fs_struct.fdList[fd];
+			kernFd = cur_proc_fs_struct()->fdList[fd];
 			freeFd(kernFd);
-			myProc()->td_fs_struct.fdList[fd] = -1;
+			cur_proc_fs_struct()->fdList[fd] = -1;
 			return 0;
 		}
 	}
@@ -140,9 +138,7 @@ int read(int fd, u64 buf, size_t count) {
 	Fd *pfd;
 
 	unwrap(getDirentByFd(fd, NULL, &kernFd));
-
 	pfd = &fds[kernFd];
-
 	mtx_lock_sleep(&pfd->lock);
 
 	// 判断是否能读取
@@ -158,6 +154,51 @@ int read(int fd, u64 buf, size_t count) {
 
 	mtx_unlock_sleep(&pfd->lock);
 	return ret;
+}
+
+// readv是一个原子操作，单次调用readv读取内容不会被其他进程打断
+// readv如果中间实际读取的长度小于需要读的长度，则可以中途返回
+size_t readv(int fd, const struct iovec *iov, int iovcnt) {
+	int kernFd;
+	Fd *pfd;
+	int len = 0, total = 0; // total表示总计读取的字节数
+	struct iovec iov_temp;
+
+	unwrap(getDirentByFd(fd, NULL, &kernFd));
+	pfd = &fds[kernFd];
+	mtx_lock_sleep(&pfd->lock);
+
+	// 判断是否能读取
+	if ((pfd->flags & O_ACCMODE) == O_WRONLY) {
+		warn("fd can not be read\n");
+
+		mtx_unlock_sleep(&pfd->lock);
+		return -1;
+	}
+
+	// 处理dev_read
+	for (int i = 0; i < iovcnt; i++) {
+		// iov数组在用户态，需要copyIn读入
+		copy_in(cur_proc_pt(), (u64)(&iov[i]), &iov_temp, sizeof(struct iovec));
+		len = pfd->fd_dev->dev_read(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len,
+					    pfd->offset);
+		if (len < 0) {
+			// 读取出现问题，直接返回错误值
+			mtx_unlock_sleep(&pfd->lock);
+			return len;
+		}
+		total += len;
+		pfd->offset += len;
+
+		if (len < iov_temp.iov_len) {
+			// 读取结束，读不到更多数据，直接返回
+			mtx_unlock_sleep(&pfd->lock);
+			return total;
+		}
+	}
+
+	mtx_unlock_sleep(&pfd->lock);
+	return total;
 }
 
 int write(int fd, u64 buf, size_t count) {
@@ -184,6 +225,51 @@ int write(int fd, u64 buf, size_t count) {
 	return ret;
 }
 
+// writev是一个原子操作，单次调用writev读取内容不会被其他进程打断
+// writev尽力写入所有数据
+size_t writev(int fd, const struct iovec *iov, int iovcnt) {
+	int kernFd;
+	Fd *pfd;
+	int len = 0, total = 0; // total表示总计读取的字节数
+	struct iovec iov_temp;
+
+	unwrap(getDirentByFd(fd, NULL, &kernFd));
+	pfd = &fds[kernFd];
+	mtx_lock_sleep(&pfd->lock);
+
+	// 判断是否能写入
+	if ((pfd->flags & O_ACCMODE) == O_RDONLY) {
+		warn("fd can not be read\n");
+		mtx_unlock_sleep(&pfd->lock);
+		return -1;
+	}
+
+	// 处理dev_write
+	for (int i = 0; i < iovcnt; i++) {
+		copy_in(cur_proc_pt(), (u64)(&iov[i]), &iov_temp, sizeof(struct iovec));
+		len = pfd->fd_dev->dev_write(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len,
+					     pfd->offset);
+		if (len < 0) {
+			// 写入出现问题，直接返回错误值
+			mtx_unlock_sleep(&pfd->lock);
+			return len;
+		}
+		total += len;
+		pfd->offset += len;
+
+		if (len < iov_temp.iov_len) {
+			// 写入结束，写不进更多数据，直接返回
+			// 一般的write会尽力写入所有给定的数据，但是如果是管道关闭，那么可能会只写入部分数据
+			// 此时之后的数据也一定写不进去了，直接返回
+			mtx_unlock_sleep(&pfd->lock);
+			return total;
+		}
+	}
+
+	mtx_unlock_sleep(&pfd->lock);
+	return total;
+}
+
 int dup(int fd) {
 	int newFd = -1;
 	int kernFd;
@@ -191,7 +277,7 @@ int dup(int fd) {
 
 	unwrap(getDirentByFd(fd, NULL, &kernFd));
 	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (myProc()->td_fs_struct.fdList[i] == -1) {
+		if (cur_proc_fs_struct()->fdList[i] == -1) {
 			newFd = i;
 			break;
 		}
@@ -201,7 +287,7 @@ int dup(int fd) {
 		return -1;
 	}
 
-	myProc()->td_fs_struct.fdList[newFd] = kernFd;
+	cur_proc_fs_struct()->fdList[newFd] = kernFd;
 	cloneAddCite(kernFd);
 	return newFd;
 }
@@ -217,18 +303,18 @@ int dup3(int old, int new) {
 		warn("dup param new[] is wrong, please check\n");
 		return -1;
 	}
-	if (myProc()->td_fs_struct.fdList[new] >= 0 && myProc()->td_fs_struct.fdList[new] < FDNUM) {
-		freeFd(myProc()->td_fs_struct.fdList[new]);
-	} else if (myProc()->td_fs_struct.fdList[new] >= FDNUM) {
+	if (cur_proc_fs_struct()->fdList[new] >= 0 && cur_proc_fs_struct()->fdList[new] < FDNUM) {
+		freeFd(cur_proc_fs_struct()->fdList[new]);
+	} else if (cur_proc_fs_struct()->fdList[new] >= FDNUM) {
 		warn("kern fd is wrong, please check\n");
 		return -1;
 	}
-	if (myProc()->td_fs_struct.fdList[old] < 0 || myProc()->td_fs_struct.fdList[old] >= FDNUM) {
+	if (cur_proc_fs_struct()->fdList[old] < 0 || cur_proc_fs_struct()->fdList[old] >= FDNUM) {
 		warn("kern fd is wrong, please check\n");
 		return -1;
 	}
-	copied = myProc()->td_fs_struct.fdList[old];
-	myProc()->td_fs_struct.fdList[new] = copied;
+	copied = cur_proc_fs_struct()->fdList[old];
+	cur_proc_fs_struct()->fdList[new] = copied;
 
 	// kernFd引用计数加1
 	cloneAddCite(copied);
@@ -241,9 +327,9 @@ int dup3(int old, int new) {
 int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 	if (fd == AT_FDCWD) {
 		if (dirent) {
-			*dirent = get_cwd_dirent(&(myProc()->td_fs_struct));
+			*dirent = get_cwd_dirent(cur_proc_fs_struct());
 			if (*dirent == NULL) {
-				warn("cwd fd is invalid: %s\n", myProc()->td_fs_struct.cwd);
+				warn("cwd fd is invalid: %s\n", cur_proc_fs_struct()->cwd);
 			}
 			return 0;
 		}
@@ -254,13 +340,13 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
 		return -1;
 	} else {
-		if (myProc()->td_fs_struct.fdList[fd] < 0 ||
-		    myProc()->td_fs_struct.fdList[fd] >= FDNUM) {
+		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
+		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 			warn("kern fd(%d) is wrong, please check\n",
-			     myProc()->td_fs_struct.fdList[fd]);
+			     cur_proc_fs_struct()->fdList[fd]);
 			return -1;
 		} else {
-			int kFd = myProc()->td_fs_struct.fdList[fd];
+			int kFd = cur_proc_fs_struct()->fdList[fd];
 			if (kernFd)
 				*kernFd = kFd;
 			if (dirent)
@@ -329,6 +415,11 @@ int unLinkAtFd(int dirFd, u64 pPath) {
 	return unlinkat(dir, path);
 }
 
+// 以下两个stat的最终实现位于fat32/file.c的fileStat函数
+
+/**
+ * @brief 以fd为媒介获取文件状态
+ */
 int fileStatFd(int fd, u64 pkstat) {
 	int kFd;
 	unwrap(getDirentByFd(fd, NULL, &kFd));
@@ -337,5 +428,29 @@ int fileStatFd(int fd, u64 pkstat) {
 	mtx_lock_sleep(&kernFd->lock);
 	unwrap(kernFd->fd_dev->dev_stat(kernFd, pkstat));
 	mtx_unlock_sleep(&kernFd->lock);
+	return 0;
+}
+
+/**
+ * @brief 以fd+path为凭证获取文件状态
+ * @note 需要获取和关闭dirent，在fileStat中会对dirent层加锁
+ * @todo 需要处理flags为AT_SYMLINK_NOFOLLOW的情况（不跟随符号链接）
+ */
+int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
+	Dirent *baseDir, *file;
+	char path[MAX_NAME_LEN];
+	unwrap(getDirentByFd(dirFd, &baseDir, NULL));
+	copyInStr(pPath, path, MAX_NAME_LEN);
+
+	file = getFile(baseDir, path);
+	if (file == NULL) {
+		warn("can't find file %s at fd %d\n", path, dirFd);
+		return -1;
+	}
+	struct kstat kstat;
+	fileStat(file, &kstat);
+	copyOut(pkstat, &kstat, sizeof(struct kstat));
+
+	file_close(file);
 	return 0;
 }

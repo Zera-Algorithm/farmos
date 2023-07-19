@@ -54,12 +54,16 @@ extern uint citesNum[FDNUM];
 
 #define AT_FDCWD -100
 
+struct iovec;
+
 void fd_init();
 int fdAlloc();
 int closeFd(int fd);
 void cloneAddCite(uint i);
 int read(int fd, u64 buf, size_t count);
 int write(int fd, u64 buf, size_t count);
+size_t readv(int fd, const struct iovec *iov, int iovcnt);
+size_t writev(int fd, const struct iovec *iov, int iovcnt);
 int dup(int fd);
 int dup3(int old, int new);
 void freeFd(uint i);
@@ -69,5 +73,6 @@ int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags);
 int unLinkAtFd(int dirFd, u64 pPath);
 int fileStatFd(int fd, u64 pkstat);
 int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
+int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags);
 
 #endif

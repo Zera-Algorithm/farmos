@@ -29,3 +29,14 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 	copy_out(td->td_pt, uptv, &tv, sizeof(tv));
 	copy_out(td->td_pt, uptz, &tz, sizeof(tz));
 }
+
+// 此处不校验clockid,直接返回cpu时间
+u64 sys_clock_gettime(u64 clockid, u64 tp) {
+	timespec_t ts;
+	ts.tv_sec = getUSecs() / 1e6;
+	ts.tv_nsec = getTime() * NSEC_PER_CLOCK;
+
+	thread_t *td = cpu_this()->cpu_running;
+	copy_out(td->td_pt, tp, &ts, sizeof(ts));
+	return 0;
+}

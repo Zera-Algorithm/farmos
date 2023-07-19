@@ -23,8 +23,11 @@ struct sbiret {
 #define SBI_LEGACY_PUTCHAR_NUM 0x01
 #define SBI_LEGACY_GETCHAR_NUM 0x02
 
+// SBI_PUTCHAR()是一个阻塞的函数，直到字符被成功输出到串口才会返回
 #define SBI_PUTCHAR(ch) SBI_LEGACY_ECALL(SBI_LEGACY_PUTCHAR_NUM, ch, 0, 0)
-// 成功返回读到的字符，失败返回-1
+
+// 成功返回读到的字符，失败返回255
+// SBI_GETCHAR()是非阻塞的，意味着如果没有读到字符，会直接返回255
 #define SBI_GETCHAR() SBI_LEGACY_ECALL(SBI_LEGACY_GETCHAR_NUM, 0, 0, 0)
 
 #define SBI_ECALL(__eid, __fid, __a0, __a1, __a2, __a3, __a4)                                      \

@@ -16,7 +16,6 @@
 #include <types.h>
 
 #include <proc/cpu.h>
-#define myProc() (cpu_this()->cpu_running)
 #define cpuid() (cpu_this_id())
 
 extern void kernelvec();

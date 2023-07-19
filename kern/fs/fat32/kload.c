@@ -6,15 +6,14 @@
 #include <lib/printf.h>
 #include <lock/mutex.h>
 #include <mm/vmm.h>
+#include <proc/interface.h>
+#include <proc/proc.h>
 #include <proc/thread.h>
 #include <types.h>
 
 /**
  * @brief 此文件用于将文件加载到内核
  */
-
-// 内核的一个临时地址，可以用于动态内存分配
-#define KERNEL_TEMP 0x600000000ul
 
 extern Pte *kernPd; // 内核页表
 mutex_t mtx_file_load;
@@ -82,7 +81,7 @@ void file_unload(fileid_t fileid) {
  * @param offset 开始读取的文件偏移
  * @return 如果映射成功，返回映射位置的指针，否则返回-1
  */
-void *file_map(pte_t *pt, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
+void *file_map(thread_t *td, Dirent *file, u64 va, size_t len, int perm, int fileOffset) {
 	size_t size;
 	void *binary;
 
@@ -99,12 +98,15 @@ void *file_map(pte_t *pt, Dirent *file, u64 va, size_t len, int perm, int fileOf
 	len = MIN(len, size - fileOffset);
 	binary += fileOffset; // 将binary移动到可以立即开始读取的位置
 
+	// 映射时对进程加锁
+	mtx_lock(&td->td_proc->p_lock);
+
 	// 4.1 映射第一个页
 	int r;
 	size_t i;
 	u64 offset = va - PGROUNDDOWN(va);
 	if (offset != 0) {
-		if ((r = loadDataMapper(pt, va, offset, perm, binary,
+		if ((r = loadDataMapper(get_proc_pt(td), va, offset, perm, binary,
 					MIN(len, PAGE_SIZE - offset))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
@@ -114,12 +116,14 @@ void *file_map(pte_t *pt, Dirent *file, u64 va, size_t len, int perm, int fileOf
 	// 4.2 把剩余的binary内容（文件内的）加载进内存
 	// i = 已写入的长度
 	for (i = offset ? MIN(len, PAGE_SIZE - offset) : 0; i < len; i += PAGE_SIZE) {
-		if ((r = loadDataMapper(pt, va + i, 0, perm, binary + i,
+		if ((r = loadDataMapper(get_proc_pt(td), va + i, 0, perm, binary + i,
 					MIN(len - i, PAGE_SIZE))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
 		}
 	}
+
+	mtx_unlock(&td->td_proc->p_lock);
 
 	// 5. 释放内核加载的文件
 	file_unload(fileid);

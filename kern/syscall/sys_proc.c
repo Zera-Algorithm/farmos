@@ -143,6 +143,15 @@ u64 sys_getpid() {
 	return cpu_this()->cpu_running->td_proc->p_pid;
 }
 
+u64 sys_getuid() {
+	return 0; // 未实现用户，直接返回0即可
+}
+
+// pTid是int *的指针
+u64 sys_set_tid_address(u64 pTid) {
+	return cpu_this()->cpu_running->td_tid;
+}
+
 u64 sys_getppid() {
 	return cpu_this()->cpu_running->td_proc->p_parent->p_pid;
 }

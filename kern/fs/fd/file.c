@@ -11,7 +11,7 @@
 #include <proc/proc.h>
 #include <proc/thread.h>
 
-#define myProc() (cpu_this()->cpu_running)
+#include <proc/interface.h>
 #define proc_fs_struct (cpu_this()->cpu_running->td_proc->p_fs_struct)
 
 static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -41,7 +41,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 
 	copyInStr(filename, nameBuf, NAME_MAX_LEN);
 	if (fd == AT_FDCWD) {
-		dirent = get_cwd_dirent(&(proc_fs_struct));
+		dirent = get_cwd_dirent(cur_proc_fs_struct());
 		assert(dirent != NULL);
 	} else {
 		// 判断相对路径还是绝对路径
@@ -50,12 +50,12 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 				warn("openat param fd is wrong, please check\n");
 				return -1;
 			} else {
-				if (proc_fs_struct.fdList[fd] < 0 ||
-				    proc_fs_struct.fdList[fd] >= FDNUM) {
+				if (cur_proc_fs_struct()->fdList[fd] < 0 ||
+				    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 					warn("kern fd is wrong, please check\n");
 					return -1;
 				} else {
-					dirent = fds[proc_fs_struct.fdList[fd]].dirent;
+					dirent = fds[cur_proc_fs_struct()->fdList[fd]].dirent;
 				}
 			}
 		}
@@ -66,7 +66,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 
 	// 检查用户可分配的Fd已分配完全
 	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (proc_fs_struct.fdList[i] == -1) {
+		if (cur_proc_fs_struct()->fdList[i] == -1) {
 			userFd = i;
 			break;
 		}
@@ -111,7 +111,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	fds[kernFd].stat.st_mode = mode;
 	fds[kernFd].fd_dev = &fd_dev_file; // 设置dev
 
-	proc_fs_struct.fdList[userFd] = kernFd;
+	cur_proc_fs_struct()->fdList[userFd] = kernFd;
 
 	return userFd;
 }

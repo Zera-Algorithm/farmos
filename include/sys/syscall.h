@@ -24,10 +24,15 @@ void sys_sched_yield();
 u64 sys_getpid();
 u64 sys_getppid();
 clock_t sys_times(u64 utms);
+u64 sys_getuid();
+u64 sys_set_tid_address(u64 pTid);
 
 // 系统信息（sys_info）
 void sys_uname(u64 upuname);
 void sys_gettimeofday(u64 uptv, u64 uptz);
+u64 sys_clock_gettime(u64 clockid, u64 tp);
+
+struct iovec;
 
 // 文件系统（sys_fs）
 int sys_write(int fd, u64 buf, size_t count);
@@ -44,8 +49,13 @@ int sys_mount(u64 special, u64 dir, u64 fstype, u64 flags, u64 data);
 int sys_umount(u64 special, u64 flags);
 int sys_linkat(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags);
 int sys_unlinkat(int dirFd, u64 pPath);
-void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 int sys_fstat(int fd, u64 pkstat);
 int sys_getdents64(int fd, u64 buf, int len);
+int sys_ioctl(int fd, u64 request, u64 data);
+size_t sys_readv(int fd, const struct iovec *iov, int iovcnt);
+size_t sys_writev(int fd, const struct iovec *iov, int iovcnt);
+
+// MMAP(sys_mmap)
+void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 
 #endif // !_SYSCALL_H

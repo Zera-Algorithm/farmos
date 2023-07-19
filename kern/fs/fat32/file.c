@@ -206,6 +206,8 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
  * @param kstat 内核态指针，指向文件信息结构体
  */
 void fileStat(struct Dirent *file, struct kstat *pKStat) {
+	mtx_lock_sleep(&mtx_file);
+
 	memset(pKStat, 0, sizeof(struct kstat));
 	// P262 Linux-Unix系统编程手册
 	pKStat->st_dev = file->file_system->deviceNumber;
@@ -226,4 +228,6 @@ void fileStat(struct Dirent *file, struct kstat *pKStat) {
 	pKStat->st_mtime_nsec = 0;
 	pKStat->st_ctime_sec = 0;
 	pKStat->st_ctime_nsec = 0;
+
+	mtx_unlock_sleep(&mtx_file);
 }

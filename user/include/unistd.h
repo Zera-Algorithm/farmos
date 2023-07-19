@@ -8,8 +8,12 @@ extern int __clone(int (*func)(void *), void *stack, int flags, void *arg, ...);
 int open(const char *, int);
 int openat(int, const char *, int);
 
+struct iovec;
+
 ssize_t read(int, void *, size_t);
 ssize_t write(int, const void *, size_t);
+ssize_t readv(int, const struct iovec *, int);
+ssize_t writev(int, const struct iovec *, int);
 
 int close(int);
 pid_t getpid(void);

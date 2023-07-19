@@ -24,6 +24,14 @@ ssize_t write(int fd, const void *buf, size_t len) {
 	return syscall(SYS_write, fd, buf, len);
 }
 
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
+	return syscall(SYS_readv, fd, iov, iovcnt);
+}
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
+	return syscall(SYS_writev, fd, iov, iovcnt);
+}
+
 pid_t getpid(void) {
 	return syscall(SYS_getpid);
 }

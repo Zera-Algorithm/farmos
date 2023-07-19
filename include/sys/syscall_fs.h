@@ -20,4 +20,9 @@
 #define MAP_FIXED 0x10	   /* Interpret addr exactly.  */
 #define MAP_ANONYMOUS 0x20 /* Don't use a file.  */
 
+typedef struct iovec {
+	void *iov_base; /* Starting address.  */
+	size_t iov_len; /* Number of bytes to transfer.  */
+} iovec_t;
+
 #endif

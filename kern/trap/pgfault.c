@@ -20,7 +20,7 @@ err_t page_fault_handler(u64 badva) {
 		return ptMap(td->td_pt, badva, newpa, newperm);
 	} else {
 		// 不合法的写入请求 todo: signal
-		warn("page fault: badva=%lx, pte=%lx", badva, pte);
+		warn("page fault: badva=%lx, pte=%lx\n", badva, pte);
 		return -1; // todo errcode
 	}
 }
