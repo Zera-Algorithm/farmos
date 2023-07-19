@@ -5,6 +5,7 @@
 #include <lib/printf.h>
 #include <lib/transfer.h>
 #include <lock/mutex.h>
+#include <proc/sched.h>
 
 static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
 static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -66,9 +67,14 @@ int errorConsoleAlloc() {
 static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	char ch;
 	for (int i = 0; i < n; i++) {
-		if ((ch = SBI_GETCHAR()) < 0) {
-			return -1;
+		// 如果没读到字符，sbi_getchar会返回255
+		while ((ch = SBI_GETCHAR()) == 255) {
+			yield();
 		}
+		// if ((ch = SBI_GETCHAR()) == 255) {
+		// 	return -1;
+		// }
+		printf("sbi_getchar: %c\n", ch);
 		copyOut((buf + i), &ch, 1);
 	}
 	fd->offset += n;

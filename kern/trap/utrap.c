@@ -111,31 +111,37 @@ void utrap_entry() {
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
 			syscall_entry(&td->td_trapframe);
+			goto utrap_return;
 		} else if (exc_code == EXCCODE_PAGE_FAULT) {
 			// 页错误，属于内核线程范畴，允许中断 todo
 			if (page_fault_handler(r_stval() & ~(PAGE_SIZE - 1))) {
 				// 页错误处理失败，杀死进程
-				warn("page fault on pid = %d, kill it.\n", td->td_tid);
-				sys_exit(-1); // errcode todo
+				warn("page fault on tid = %d[%s], kill it.\n", td->td_tid,
+				     td->td_name);
+			} else {
+				// 页错误处理成功，继续执行
+				goto utrap_return;
 			}
 		} else {
-			printReg(&td->td_trapframe);
-
-			printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
-
-			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
-			// cpu的输出变为乱码，访问excCause数组出现load page fault
-			// 可能与参数的数目过多有关系，因此将输出分拆为两段
-			error("uncaught exception.\n"
-			      "\tcpu: %d\n"
-			      "\tExcCode: %d\n"
-			      "\tCause: %s\n"
-			      "\tSepc: 0x%016lx (kern/kernel.asm)\n"
-			      "\tStval(bad memory address): 0x%016lx\n",
-			      cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
+			// 其他情况
+			warn("uncaught exception.\n");
 		}
+
+		printReg(&td->td_trapframe);
+		printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
+		// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
+		// cpu的输出变为乱码，访问excCause数组出现load page fault
+		// 可能与参数的数目过多有关系，因此将输出分拆为两段
+		warn("\tcpu: %d\n"
+		     "\tExcCode: %d\n"
+		     "\tCause: %s\n"
+		     "\tSepc: 0x%016lx (kern/kernel.asm)\n"
+		     "\tStval(bad memory address): 0x%016lx\n",
+		     cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
+		sys_exit(-1); // errcode todo
 	}
 
+utrap_return:
 	// 中断或异常处理完毕，从现场恢复用户态
 	log(LEVEL_GLOBAL, "before %s return to user\n", td->td_name);
 	utrap_return();

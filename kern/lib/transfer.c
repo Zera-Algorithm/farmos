@@ -3,6 +3,7 @@
 #include <lib/transfer.h>
 #include <mm/vmm.h>
 #include <proc/cpu.h>
+#include <proc/interface.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
 
@@ -67,7 +68,7 @@ void copyOutOnPageTable(Pte *pgDir, u64 uPtr, void *kPtr, int len) {
  * @brief 将内核的数据拷贝到用户态地址，默认使用当前进程的页表去查询uPtr的物理地址
  */
 void copyOut(u64 uPtr, void *kPtr, int len) {
-	Pte *pgDir = cpu_this()->cpu_running->td_proc->p_pt;
+	Pte *pgDir = cur_proc_pt();
 	copyOutOnPageTable(pgDir, uPtr, kPtr, len);
 }
 
@@ -75,7 +76,7 @@ void copyOut(u64 uPtr, void *kPtr, int len) {
  * @brief 将用户的数据拷贝入内核
  */
 void copyIn(u64 uPtr, void *kPtr, int len) {
-	userToKernel(cpu_this()->cpu_running->td_proc->p_pt, uPtr, kPtr, len, copyInCallback, NULL);
+	userToKernel(cur_proc_pt(), uPtr, kPtr, len, copyInCallback, NULL);
 }
 
 /**
@@ -83,7 +84,7 @@ void copyIn(u64 uPtr, void *kPtr, int len) {
  * @param n 表示传输的最大字符数
  */
 void copyInStr(u64 uPtr, void *kPtr, int n) {
-	Pte *pgDir = cpu_this()->cpu_running->td_proc->p_pt;
+	Pte *pgDir = cur_proc_pt();
 	userToKernel(pgDir, uPtr, kPtr, n, copyInStrCallback, NULL);
 }
 

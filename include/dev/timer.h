@@ -5,6 +5,7 @@
 
 // 每us的时钟数
 #define CLOCK_PER_USEC 10
+#define NSEC_PER_CLOCK 100
 
 // 中断时间间隔为0.05s(20Hz)
 #define INTERVAL 500000

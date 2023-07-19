@@ -98,10 +98,8 @@ void main() {
 		// PROC_CREATE(test_clone, "test_clone");
 		// PROC_CREATE(test_mmap, "test_mmap");
 		// PROC_CREATE(test_pipe, "test_pipe");
-		PROC_CREATE(test_init, "test_init");
-		// PROC_CREATE(test_execve, "test_execve");
-		// PROC_CREATE(test_execve, "test_execve");
-		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_init, "test_init");
+		PROC_CREATE(test_busybox, "test_busybox");
 		// PROC_CREATE(test_execve, "test_execve");
 		// PROC_CREATE(test_while, "test_while");
 

@@ -7,7 +7,7 @@
 #include <proc/thread.h>
 
 /**
- * @brief 加载一页数据，并映射到进程的地址空间
+ * @brief 从src加载数据，填充va指向的页（起始于offset），并映射到进程的地址空间
  * @param offset 相对内存va的偏移
  */
 int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src, size_t len) {

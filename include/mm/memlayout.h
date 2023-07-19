@@ -106,4 +106,9 @@
 #define PLIC_MCLAIM(hart) (PLIC + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC + 0x201004 + (hart)*0x2000)
 
+// 内核的一个临时地址，可以用于动态内存分配
+#define KERNEL_TEMP 0x600000000ul
+// 用于MALLOC
+#define KERNEL_MALLOC 0x700000000ul
+
 #endif // !_MEMLAYOUT_H

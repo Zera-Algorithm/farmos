@@ -10,13 +10,9 @@ mutex_t mtx_nanosleep;
 struct nanosleep_list nanosleep_list = {(nanosleep_t *)NULL};
 
 static nanosleep_t *nanosleep_alloc() {
-	mtx_lock(&mtx_nanosleep);
-
 	for (int i = 0; i < NPROC; i++) {
 		if (nanosleep_struct[i].valid == 0) {
 			nanosleep_struct[i].valid = 1;
-
-			mtx_unlock(&mtx_nanosleep);
 			return &nanosleep_struct[i];
 		}
 	}
@@ -25,21 +21,17 @@ static nanosleep_t *nanosleep_alloc() {
 }
 
 static void nanosleep_dealloc(nanosleep_t *nanosleep) {
-	mtx_lock(&mtx_nanosleep);
-
 	nanosleep->valid = 0;
 	LIST_REMOVE(nanosleep, nano_link);
-
-	mtx_unlock(&mtx_nanosleep);
 }
 
 /**
  * @brief 对当前线程执行线程睡眠
  */
 void nanosleep_proc(u64 clocks) {
+	mtx_lock(&mtx_nanosleep);
 	nanosleep_t *nanosleep = nanosleep_alloc();
 
-	mtx_lock(&mtx_nanosleep);
 	nanosleep->clocks = clocks;
 	nanosleep->start_time = getTime();
 	nanosleep->end_time = nanosleep->start_time + clocks;
@@ -66,7 +58,6 @@ void nanosleep_proc(u64 clocks) {
 	}
 
 	sleep(nanosleep, &mtx_nanosleep, "nanosleep");
-
 	mtx_unlock(&mtx_nanosleep);
 }
 
@@ -74,6 +65,7 @@ void nanosleep_proc(u64 clocks) {
  * @brief 在每次时钟中断时检查是否能唤醒程序。对于不能唤醒的情况，检测速度很快
  */
 void nanosleep_check() {
+	mtx_lock(&mtx_nanosleep);
 	u64 curTime = getTime();
 
 	while (1) {
@@ -85,4 +77,6 @@ void nanosleep_check() {
 		wakeup(first);
 		nanosleep_dealloc(first);
 	}
+
+	mtx_unlock(&mtx_nanosleep);
 }

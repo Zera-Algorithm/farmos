@@ -16,12 +16,14 @@ static syscall_function_t sys_table[] = {
     [SYS_openat] = {sys_openat, "openat"},
     [SYS_read] = {sys_read, "read"},
     [SYS_write] = {sys_write, "write"},
+    [SYS_readv] = {sys_readv, "readv"},
+    [SYS_writev] = {sys_writev, "writev"},
     [SYS_exit] = {sys_exit, "exit"},
     [SYS_execve] = {sys_exec, "execve"},
     [SYS_clone] = {sys_clone, "clone"},
     [SYS_wait4] = {sys_wait4, "wait4"},
     [SYS_nanosleep] = {sys_nanosleep, "nanosleep"},
-    // [SYS_mmap] = {sys_mmap, "mmap"},
+    [SYS_mmap] = {sys_mmap, "mmap"},
     [SYS_fstat] = {sys_fstat, "fstat"},
     [SYS_close] = {sys_close, "close"},
     [SYS_dup] = {sys_dup, "dup"},
@@ -35,14 +37,17 @@ static syscall_function_t sys_table[] = {
     [SYS_linkat] = {sys_linkat, "linkat"},
     [SYS_unlinkat] = {sys_unlinkat, "unlinkat"},
     [SYS_getdents64] = {sys_getdents64, "getdents64"},
+    [SYS_ioctl] = {sys_ioctl, "ioctl"},
     [SYS_sched_yield] = {sys_sched_yield, "sched_yield"},
     [SYS_getpid] = {sys_getpid, "getpid"},
     [SYS_getppid] = {sys_getppid, "getppid"},
+    [SYS_getuid] = {sys_getuid, "getuid"},
+    [SYS_set_tid_address] = {sys_set_tid_address, "set_tid_address"},
     [SYS_times] = {sys_times, "times"},
     [SYS_uname] = {sys_uname, "uname"},
     [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
-    // [SYS_munmap] = {sys_unmap, "munmap"},
-    // [SYS_brk] = {sys_brk, "brk"},
+    [SYS_munmap] = {sys_unmap, "munmap"},
+    [SYS_brk] = {sys_brk, "brk"},
 };
 
 /**
@@ -81,6 +86,8 @@ void syscall_entry(trapframe_t *tf) {
 
 	// 将系统调用返回值放入a0寄存器
 	tf->a0 = func(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4, tf->a5);
+	log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s' return %d\n", cpu_this_id(),
+	    cpu_this()->cpu_running->td_name, sys_func->name, tf->a0);
 
 	// // S态时间审计
 	// u64 endTime = getTime();

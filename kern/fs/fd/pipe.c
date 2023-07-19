@@ -7,11 +7,11 @@
 #include <lock/mutex.h>
 #include <mm/vmm.h>
 #include <proc/cpu.h>
+#include <proc/interface.h>
 #include <proc/proc.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 
-#define myProc() (cpu_this()->cpu_running)
 #define proc_fs_struct (cpu_this()->cpu_running->td_proc->p_fs_struct)
 
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -40,13 +40,13 @@ int pipe(int fd[2]) {
 	u64 pipeAlloc;
 
 	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (proc_fs_struct.fdList[i] == -1) {
+		if (cur_proc_fs_struct()->fdList[i] == -1) {
 			fd1 = i;
 			break;
 		}
 	}
 	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (proc_fs_struct.fdList[i] == -1 && i != fd1) {
+		if (cur_proc_fs_struct()->fdList[i] == -1 && i != fd1) {
 			fd2 = i;
 			break;
 		}
@@ -82,7 +82,7 @@ int pipe(int fd[2]) {
 		fds[kernfd1].flags = O_RDONLY;
 		fds[kernfd1].offset = 0;
 		fds[kernfd1].fd_dev = &fd_dev_pipe;
-		proc_fs_struct.fdList[fd1] = kernfd1;
+		cur_proc_fs_struct()->fdList[fd1] = kernfd1;
 
 		fds[kernfd2].dirent = NULL;
 		fds[kernfd2].pipe = (struct Pipe *)pipeAlloc;
@@ -90,7 +90,7 @@ int pipe(int fd[2]) {
 		fds[kernfd2].flags = O_WRONLY;
 		fds[kernfd2].offset = 0;
 		fds[kernfd2].fd_dev = &fd_dev_pipe;
-		proc_fs_struct.fdList[fd2] = kernfd2;
+		cur_proc_fs_struct()->fdList[fd2] = kernfd2;
 
 		fd[0] = fd1;
 		fd[1] = fd2;

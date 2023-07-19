@@ -10,6 +10,8 @@ void sleep(void *chan, mutex_t *mtx, const char *msg) {
 	tdq_critical_enter(&thread_sleepq);
 	mtx_unlock(mtx);
 
+	assert(td->td_status == RUNNING);
+
 	// 保存睡眠信息
 	mtx_lock(&td->td_lock);
 	td->td_wchan = (ptr_t)chan;
