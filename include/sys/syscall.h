@@ -55,6 +55,12 @@ int sys_ioctl(int fd, u64 request, u64 data);
 size_t sys_readv(int fd, const struct iovec *iov, int iovcnt);
 size_t sys_writev(int fd, const struct iovec *iov, int iovcnt);
 
+// 信号（sys_signal）
+int sys_sigaction(int signum, u64 act, u64 oldact);
+int sys_sigreturn();
+int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize);
+int sys_tkill(int tid, int sig);
+
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 

@@ -48,6 +48,10 @@ static syscall_function_t sys_table[] = {
     [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
     [SYS_munmap] = {sys_unmap, "munmap"},
     [SYS_brk] = {sys_brk, "brk"},
+    [SYS_rt_sigaction] = {sys_sigaction, "sigaction"},
+    [SYS_rt_sigreturn] = {sys_sigreturn, "sigreturn"},
+    [SYS_rt_sigprocmask] = {sys_sigprocmask, "sigprocmask"},
+    [SYS_tkill] = {sys_tkill, "tkill"},
 };
 
 /**
