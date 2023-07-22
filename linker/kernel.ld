@@ -20,6 +20,13 @@ SECTIONS
     *(trampSec)
     . = ALIGN(0x1000);
     ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
+
+	/* 用户信号trampoline，有PTE_U权限 */
+	_sigSec = .;
+	*(sigSec)
+	. = ALIGN(0x1000);
+	ASSERT(. - _sigSec == 0x1000, "error: sigSec larger than one page");
+
     . = ALIGN(0x1000);
     PROVIDE(end_text = .);
   }

@@ -14,7 +14,7 @@ static u64 tid_alloc(thread_t *td) {
 	static u64 cnt = 1; // todo tid lock
 	mtx_lock(&td_tid_lock);
 	cnt += 1;
-	u64 new_tid = (td - threads) | ((cnt % 0x1000 + 0x1000) < 16);
+	u64 new_tid = TID_GENERATE(cnt, td - threads);
 	mtx_unlock(&td_tid_lock);
 	return new_tid;
 }

@@ -4,7 +4,7 @@ ENTRY( _userStart )
 
 SECTIONS
 {
-  . = 0x0;
+  . = 0x10000;
 
   .text : {
     *(.text .text.*)

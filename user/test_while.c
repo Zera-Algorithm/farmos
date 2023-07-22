@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 int main() {
-	int cycles = 2;
+	int cycles = 200;
 	while (cycles--) {
 		for (int i = 1; i <= 10000000; i++) {
 		}

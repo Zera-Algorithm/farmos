@@ -2,6 +2,7 @@
 #define __UNISTD_H__
 
 #include "stddef.h"
+#include <usignal.h>
 
 extern int __clone(int (*func)(void *), void *stack, int flags, void *arg, ...);
 
@@ -55,5 +56,11 @@ int pipe(int[2]);
 int dup(int);
 int dup2(int, int);
 void syscall_shutdown();
+
+// signal
+int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
+int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+int kill(pid_t pid, int sig);
+int tkill(pid_t tid, int sig);
 
 #endif // __UNISTD_H__

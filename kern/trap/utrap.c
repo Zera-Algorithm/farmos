@@ -155,6 +155,9 @@ void utrap_return() {
 	// 当前应关闭中断
 	assert(intr_get() == 0);
 
+	// 先检查信号
+	sig_check();
+
 	// 获取当前应该返回的用户线程
 	thread_t *td = cpu_this()->cpu_running;
 

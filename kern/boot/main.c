@@ -18,6 +18,7 @@
 #include <proc/proc.h>
 #include <proc/thread.h>
 #include <riscv.h>
+#include <signal/signal.h>
 #include <types.h>
 
 volatile static int started = 0;
@@ -71,6 +72,7 @@ void main() {
 		// 进程管理机制初始化
 		thread_init();
 		proc_init();
+		sig_init();
 
 		// 其它
 		trapInitHart(); // install kernel trap vector
@@ -99,9 +101,16 @@ void main() {
 		// PROC_CREATE(test_mmap, "test_mmap");
 		// PROC_CREATE(test_pipe, "test_pipe");
 		// PROC_CREATE(test_init, "test_init");
-		PROC_CREATE(test_busybox, "test_busybox");
+		// PROC_CREATE(test_busybox, "test_busybox");
 		// PROC_CREATE(test_execve, "test_execve");
-		// PROC_CREATE(test_while, "test_while");
+		PROC_CREATE(test_while, "test_while");
+		PROC_CREATE(test_signal1, "test_signal1");
+
+		// thread_t *td = TAILQ_FIRST(&thread_runq.tq_head);
+		// mtx_lock(&td->td_lock);
+		// sigevent_t *se = sigevent_alloc(SIGKILL);
+		// sigeventq_insert(td, se);
+		// mtx_unlock(&td->td_lock);
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;

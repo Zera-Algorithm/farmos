@@ -197,3 +197,19 @@ int mount(const char *special, const char *dir, const char *fstype, unsigned lon
 int umount(const char *special) {
 	return syscall(SYS_umount2, special, 0);
 }
+
+int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
+	return syscall(SYS_rt_sigaction, signum, act, oldact);
+}
+
+int sigprocmask(int how, const sigset_t *set, sigset_t *oldset) {
+	return syscall(SYS_rt_sigprocmask, how, set, oldset, 8);
+}
+
+int kill(pid_t pid, int sig) {
+	return syscall(SYS_kill, pid, sig);
+}
+
+int tkill(pid_t tid, int sig) {
+	return syscall(SYS_tkill, tid, sig);
+}

@@ -26,8 +26,10 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 	tz.tz_dsttime = 0;     // todo
 
 	thread_t *td = cpu_this()->cpu_running;
-	copy_out(td->td_pt, uptv, &tv, sizeof(tv));
-	copy_out(td->td_pt, uptz, &tz, sizeof(tz));
+	if (uptv)
+		copy_out(td->td_pt, uptv, &tv, sizeof(tv));
+	if (uptz)
+		copy_out(td->td_pt, uptz, &tz, sizeof(tz));
 }
 
 // 此处不校验clockid,直接返回cpu时间

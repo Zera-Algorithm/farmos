@@ -134,7 +134,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 		if (child->p_status == ZOMBIE) {
 			proc_free(child);
 		} else {
-			warn("haven't implement init, child %d is still alive", child->p_pid);
+			warn("haven't implement init, child %d is still alive\n", child->p_pid);
 			child->p_parent = 0;
 			// child->td_parent = TID_INIT;
 			// todo: insert to init's childlist and wake up init
