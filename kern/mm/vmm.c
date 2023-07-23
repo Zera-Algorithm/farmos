@@ -142,6 +142,10 @@ void vmmInit() {
 }
 
 // 功能接口函数
+
+/**
+ * @brief 在内核中申请一个物理页，返回其物理地址
+ */
 u64 kvmAlloc() {
 	mtx_lock(&kvmlock);
 	Page *pp = pmAlloc();

@@ -48,6 +48,20 @@ static inline void getIntersection(u64 start1, u64 len1, u64 start2, u64 len2, u
 	}
 }
 
+static inline u64 get_perm_by_prot(int prot) {
+	u64 perm = PTE_U;
+	if (prot & PROT_EXEC) {
+		perm |= PTE_X;
+	}
+	if (prot & PROT_READ) {
+		perm |= PTE_R;
+	}
+	if (prot & PROT_WRITE) {
+		perm |= PTE_W;
+	}
+	return perm;
+}
+
 /**
  * @brief 将文件映射到进程的虚拟内存空间
  * @note 如果start == 0，则由内核指定虚拟地址
@@ -63,7 +77,8 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	    "mmap: start = %lx, len = %lx, prot = %x, flags = %lx, fd = %d, off = %d\n", start, len,
 	    prot, flags, fd, off);
 
-	int r = 0, perm = 0;
+	int r = 0;
+	u64 perm = 0;
 	Dirent *file;
 
 	// 将len向上提升至分页的整数倍
@@ -73,6 +88,7 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 		mtx_unlock(&cur_proc()->p_lock);
 		return MAP_FAILED;
 	}
+	start = PGROUNDUP(start);
 
 	// 1. 当start为0时，由内核指定用户的虚拟地址，记录到start中
 	if (start == 0) {
@@ -90,20 +106,17 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	}
 
 	// 2. 指定权限位
-	perm = PTE_U;
-	if (prot & PROT_EXEC) {
-		perm |= PTE_X;
-	}
-	if (prot & PROT_READ) {
-		perm |= PTE_R;
-	}
-	if (prot & PROT_WRITE) {
-		perm |= PTE_W;
-	}
+	perm = get_perm_by_prot(prot);
 
 	if (flags & MAP_ANONYMOUS) {
 		// A. 匿名映射
-		panic_on(sys_map(start, len, perm));
+		r = sys_map(start, len, perm);
+
+		if (r < 0) {
+			warn("sys_map error!\n");
+			mtx_unlock(&cur_proc()->p_lock);
+			return MAP_FAILED;
+		}
 
 		mtx_unlock(&cur_proc()->p_lock);
 		return (void *)start;
@@ -141,5 +154,24 @@ err_t sys_unmap(u64 start, u64 len) {
 
 // 根据cjy的OS，可以暂不实现
 err_t sys_msync(u64 addr, size_t length, int flags) {
+	return 0;
+}
+
+// 仅仅改变映射了的页的属性
+err_t sys_mprotect(u64 addr, size_t len, int prot) {
+	u64 from = PGROUNDDOWN(addr);
+	u64 to = PGROUNDUP(addr + len);
+	u64 perm = get_perm_by_prot(prot);
+
+	pte_t *pt = cur_proc_pt();
+	for (u64 va = from; va <= to; va += PAGE_SIZE) {
+		// 若虚拟地址对应的物理地址不存在，则跳过
+		u64 pa = pteToPa(ptLookup(pt, va));
+		if (pa == 0)
+			continue;
+
+		// 以新的权限重新映射
+		panic_on(ptMap(pt, va, pa, perm));
+	}
 	return 0;
 }

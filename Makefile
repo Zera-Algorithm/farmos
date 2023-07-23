@@ -47,7 +47,13 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 
 # 可以暂时不需要镜像文件
 # qemu: $(KERNEL_ELF)
-qemu: $(KERNEL_ELF) fs.img
+qemu: $(KERNEL_ELF) backup_fs.img
+	cp backup_fs.img fs.img
+	$(QEMU) $(QEMUOPTS)
+
+# 以sd卡运行
+sdrun: $(KERNEL_ELF)
+	cp sdcard.img fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
@@ -55,7 +61,8 @@ qemu: $(KERNEL_ELF) fs.img
 
 # 可以暂时不需要镜像文件
 # qemu-gdb: $(KERNEL_ELF) .gdbinit
-qemu-gdb: $(KERNEL_ELF) .gdbinit fs.img
+qemu-gdb: $(KERNEL_ELF) .gdbinit
+	cp sdcard.img fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 

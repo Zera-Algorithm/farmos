@@ -39,6 +39,11 @@ static void userToKernel(Pte *upd, u64 uptr, void *kptr, size_t len,
 			urealpa = pteToPa(pte);
 		}
 
+		// for debug
+		if (urealpa < 0x1000 || (u64)kptr < 0x1000) {
+			panic("address too low: urealpa=%lx, kptr=%lx\n", urealpa, (u64)kptr);
+		}
+
 		size_t ulen = MIN(len - i, PAGE_SIZE - uoff);
 		if (callback((void *)(urealpa + uoff), kptr + i, ulen, arg)) {
 			break;

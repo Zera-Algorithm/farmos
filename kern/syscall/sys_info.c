@@ -17,6 +17,9 @@ void sys_uname(u64 upuname) {
 	copy_out(td->td_pt, upuname, &utsname, sizeof(utsname));
 }
 
+/**
+ * @brief 获取当前时间，当uptv和uptz不为0时，将时间和时区写入用户态
+ */
 void sys_gettimeofday(u64 uptv, u64 uptz) {
 	timeval_t tv;
 	timezone_t tz;

@@ -64,7 +64,7 @@ void kmalloc_init() {
 /**
  * @brief 扩展堆，为给定的对象类型扩展一页空间
  */
-void extend_heap(malloc_config_t *config) {
+static void extend_heap(malloc_config_t *config) {
 	// 1. 分配内存
 	kpage_alloc(heap_top);
 

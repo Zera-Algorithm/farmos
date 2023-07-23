@@ -1,3 +1,6 @@
+#ifndef _SYSCALL_MMAP_H
+#define _SYSCALL_MMAP_H
+
 #include <lib/queue.h>
 #include <types.h>
 
@@ -14,3 +17,5 @@ typedef struct mmap_fd_info {
 LIST_HEAD(mmap_fd_info_list, mmap_fd_info);
 
 typedef struct mmap_fd_info_list mmap_fd_info_list_t;
+
+#endif

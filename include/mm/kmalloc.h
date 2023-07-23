@@ -19,4 +19,8 @@ typedef struct malloc_config {
 // malloc最大分配的页数
 #define MAX_MALLOC_NPAGE 720
 
+void kmalloc_init();
+void *kmalloc(size_t size);
+void kfree(void *ptr);
+
 #endif

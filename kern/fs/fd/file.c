@@ -2,16 +2,18 @@
 #include <fs/fd.h>
 #include <fs/fd_device.h>
 #include <fs/file.h>
+#include <fs/file_device.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
+#include <lib/string.h>
 #include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
+#include <proc/interface.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
-
-#include <proc/interface.h>
+#include <sys/errno.h>
 #define proc_fs_struct (cpu_this()->cpu_running->td_proc->p_fs_struct)
 
 static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -40,6 +42,8 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	int kernFd, userFd = -1;
 
 	copyInStr(filename, nameBuf, NAME_MAX_LEN);
+	log(LEVEL_GLOBAL, "openat: filename = %s\n", nameBuf);
+
 	if (fd == AT_FDCWD) {
 		dirent = get_cwd_dirent(cur_proc_fs_struct());
 		assert(dirent != NULL);
@@ -98,8 +102,8 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 			}
 		} else {
 			freeFd(kernFd);
-			warn("get file fail\n");
-			return -1;
+			warn("get file %s fail\n", nameBuf);
+			return -ENOENT;
 		}
 	}
 
@@ -119,7 +123,8 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 // 读一个文件，返回读取的字节数
 static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	Dirent *dirent = fd->dirent;
-	n = file_read(dirent, 1, buf, fd->offset, n);
+	// 向抽象的文件设备写入内容
+	n = dirent->dev->dev_read(dirent, 1, buf, fd->offset, n);
 	if (n < 0) {
 		warn("file read num is below zero\n");
 		return -1;
@@ -130,7 +135,7 @@ static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 static int fd_file_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	Dirent *dirent = fd->dirent;
-	n = file_write(dirent, 1, buf, fd->offset, n);
+	n = dirent->dev->dev_write(dirent, 1, buf, fd->offset, n);
 	if (n < 0) {
 		warn("file read num is below zero\n");
 		return -1;

@@ -52,6 +52,13 @@ SECTIONS
     *(.bss .bss.*)
   }
 
+  .initcall_fs : {
+    . = ALIGN(8);
+    __initcall_fs_start = .;
+    KEEP(*(.initcall_fs))  /* 避免此段被链接器垃圾清理（因为这些符号在代码中没有实际使用到） */
+	__initcall_fs_end = .;
+  }
+
   . = ALIGN(0x1000);
-  PROVIDE(end = .);
+  PROVIDE(end = .); /* PROVIDE的作用是，如果C代码中定义了该符号，那么就使用C中的符号 */
 }

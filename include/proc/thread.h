@@ -20,6 +20,7 @@ typedef struct thread {
 	TAILQ_ENTRY(thread) td_freeq;  // 空闲队列链接（空闲队列锁保护）
 	pid_t td_tid;		       // 线程 id（不保护，线程初始化后只读）
 	state_t td_status;	       // 线程状态（线程锁保护）
+	u64 td_ctid;		       // 清空tid地址标识
 
 #define td_startzero td_name // 清零属性区域开始指针
 	char td_name[MAXPATH + 1]; // 线程名（不保护，线程初始化后只读） todo fork时溢出
