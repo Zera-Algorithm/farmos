@@ -87,7 +87,9 @@ static int rmfile(struct Dirent *file) {
 	// 先递归删除子Dirent（由于存在意向锁，因此这些）
 	if (file->type == DIRENT_DIR) {
 		Dirent *tmp;
-		LIST_FOREACH (tmp, &file->child_list, dirent_link) { rmfile(tmp); }
+		LIST_FOREACH (tmp, &file->child_list, dirent_link) {
+			rmfile(tmp);
+		}
 	}
 	LIST_REMOVE(file, dirent_link); // 从父亲的子Dirent列表删除
 

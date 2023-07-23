@@ -190,7 +190,7 @@ static int fd_pipe_close(struct Fd *fd) {
 
 	if (p && p->count == 0) {
 		// 这里每个pipe占据一个页的空间？
-		kvmFree((u64)p); //释放pipe结构体所在的物理内存
+		kvmFree((u64)p); // 释放pipe结构体所在的物理内存
 	}
 	return 0;
 }
