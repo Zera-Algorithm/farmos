@@ -5,11 +5,11 @@
 #include <signal/signal.h>
 #include <sys/syscall.h>
 
-int sys_sigaction(int signum, u64 act, u64 oldact) {
+int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
 	if (signum < 0 || signum >= SIGNAL_MAX) {
 		return -1;
 	} else {
-		return sigaction_register(signum, act, oldact);
+		return sigaction_register(signum, act, oldact, sigset_size);
 	}
 }
 

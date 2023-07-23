@@ -34,11 +34,11 @@ typedef struct DirentPointer {
 	struct ThirdPointer *third;
 } DirentPointer;
 
+// 用于调试Dirent引用计数次数的开关
+// #define REFCNT_DEBUG
+
 // FarmOS Dirent
 struct Dirent {
-	// 睡眠锁，保证该Dirent同时只执行一个读写操作
-	struct sleeplock lock;
-
 	FAT32Directory raw_dirent; // 原生的dirent项
 	char name[MAX_NAME_LEN];
 
@@ -49,7 +49,8 @@ struct Dirent {
 
 	/* for OS */
 	// 操作系统相关的数据结构
-	FileSystem *head; // 仅用于是挂载点的目录，指向该挂载点所对应的文件系统
+	// 仅用于是挂载点的目录，指向该挂载点所对应的文件系统。用于区分mount目录和非mount目录
+	FileSystem *head;
 
 	DirentPointer pointer;
 
@@ -79,6 +80,11 @@ struct Dirent {
 	// 各种计数
 	u32 linkcnt; // 链接计数
 	u32 refcnt;  // 引用计数
+
+#ifdef REFCNT_DEBUG
+	char *holders[64];
+	int holder_cnt;
+#endif
 };
 
 // 有当前dirent引用时不变的项（只读，无需加锁）：parent_dirent, name, file_system,

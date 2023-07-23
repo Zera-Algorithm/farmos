@@ -71,10 +71,7 @@ static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		while ((ch = SBI_GETCHAR()) == 255) {
 			yield();
 		}
-		// if ((ch = SBI_GETCHAR()) == 255) {
-		// 	return -1;
-		// }
-		printf("sbi_getchar: %c\n", ch);
+		// printf("sbi_getchar: %c\n", ch);
 		copyOut((buf + i), &ch, 1);
 	}
 	fd->offset += n;
@@ -82,7 +79,9 @@ static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
-	assert(n < 1024);
+	if (n >= 1024) {
+		panic("console write too much: n = %ld", n);
+	}
 
 	char s[1024];
 	copyIn(buf, s, n);

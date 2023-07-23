@@ -24,7 +24,11 @@ static syscall_function_t sys_table[] = {
     [SYS_wait4] = {sys_wait4, "wait4"},
     [SYS_nanosleep] = {sys_nanosleep, "nanosleep"},
     [SYS_mmap] = {sys_mmap, "mmap"},
+    [SYS_mprotect] = {sys_mprotect, "mprotect"},
+    [SYS_msync] = {sys_msync, "msync"},
     [SYS_fstat] = {sys_fstat, "fstat"},
+    [SYS_fstatat] = {sys_fstatat, "fstatat"},
+    [SYS_faccessat] = {sys_faccessat, "faccessat"},
     [SYS_close] = {sys_close, "close"},
     [SYS_dup] = {sys_dup, "dup"},
     [SYS_dup3] = {sys_dup3, "dup3"},
@@ -37,14 +41,21 @@ static syscall_function_t sys_table[] = {
     [SYS_linkat] = {sys_linkat, "linkat"},
     [SYS_unlinkat] = {sys_unlinkat, "unlinkat"},
     [SYS_getdents64] = {sys_getdents64, "getdents64"},
+    [SYS_utimensat] = {sys_utimensat, "utimensat"},
+    [SYS_renameat2] = {sys_renameat2, "renameat2"},
     [SYS_ioctl] = {sys_ioctl, "ioctl"},
+    [SYS_ppoll] = {sys_ppoll, "ppoll"},
+    [SYS_fcntl] = {sys_fcntl, "fcntl"},
+    [SYS_lseek] = {sys_lseek, "lseek"},
     [SYS_sched_yield] = {sys_sched_yield, "sched_yield"},
+    [SYS_gettid] = {sys_gettid, "gettid"},
     [SYS_getpid] = {sys_getpid, "getpid"},
     [SYS_getppid] = {sys_getppid, "getppid"},
     [SYS_getuid] = {sys_getuid, "getuid"},
     [SYS_set_tid_address] = {sys_set_tid_address, "set_tid_address"},
     [SYS_times] = {sys_times, "times"},
     [SYS_uname] = {sys_uname, "uname"},
+    [SYS_clock_gettime] = {sys_clock_gettime, "clock_gettime"},
     [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
     [SYS_munmap] = {sys_unmap, "munmap"},
     [SYS_brk] = {sys_brk, "brk"},
@@ -58,6 +69,7 @@ static syscall_function_t sys_table[] = {
  * @brief 系统调用入口。会按照tf中传的参数信息（a0~a7）调用相应的系统调用函数，并将返回值保存在a0中
  *
  */
+extern char *sys_names[];
 
 void syscall_entry(trapframe_t *tf) {
 	u64 sysno = tf->a7;
@@ -82,15 +94,16 @@ void syscall_entry(trapframe_t *tf) {
 	// 获取系统调用函数
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))sys_table[sysno].func;
 	if (func == NULL) {
-		tf->a0 = SYSCALL_ERROR;
-		warn("unimplemented or unknown syscall: %d\n", sysno);
+		// TODO: 未实现的syscall应当默认返回-1
+		tf->a0 = -1;
+		warn("unimplemented or unknown syscall: %s(%d)\n", sys_names[sysno], sysno);
 		return;
 		// sys_exit(SYSCALL_ERROR);
 	}
 
 	// 将系统调用返回值放入a0寄存器
 	tf->a0 = func(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4, tf->a5);
-	log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s' return %d\n", cpu_this_id(),
+	log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s' return 0x%lx\n", cpu_this_id(),
 	    cpu_this()->cpu_running->td_name, sys_func->name, tf->a0);
 
 	// // S态时间审计

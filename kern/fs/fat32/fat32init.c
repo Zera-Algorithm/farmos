@@ -3,6 +3,7 @@
 #include <fs/dirent.h>
 #include <fs/fat32.h>
 #include <fs/fs.h>
+#include <fs/initcall.h>
 #include <fs/vfs.h>
 #include <lib/error.h>
 #include <lib/log.h>
@@ -68,6 +69,8 @@ void fat32_init(FileSystem *fs) {
 	fs->root->raw_dirent.DIR_FileSize = 0; // 目录的Dirent的size都是0
 	fs->root->type = DIRENT_DIR;
 	fs->root->file_size = countClusters(fs->root) * CLUS_SIZE(fs);
+	extern struct FileDev file_dev_file;
+	fs->root->dev = &file_dev_file;
 
 	// 设置树状结构
 	fs->root->parent_dirent = NULL; // 父节点为空，表示已经到达根节点
@@ -82,7 +85,7 @@ void fat32_init(FileSystem *fs) {
 
 	// 3. 递归建立Dirent树
 	build_dirent_tree(fs->root);
-	printf("build dirent tree succeed!\n");
+	log(LEVEL_GLOBAL, "build dirent tree succeed!\n");
 	log(LEVEL_GLOBAL, "fat32 init finished!\n");
 }
 
@@ -98,4 +101,46 @@ void init_root_fs() {
 	fatFs->deviceNumber = 0;
 
 	fat32_init(fatFs);
+}
+
+void init_dev_fs() {
+	makeDirAt(fatFs->root, "/dev", 0);
+
+	// 这两个暂时用空文件代替
+	panic_on(create_file_and_close("/dev/random"));
+	panic_on(create_file_and_close("/dev/urandom"));
+	panic_on(create_file_and_close("/dev/rtc"));
+	panic_on(create_file_and_close("/dev/rtc0"));
+	makeDirAt(fatFs->root, "/dev/misc", 0);
+	panic_on(create_file_and_close("/dev/misc/rtc"));
+
+	extern struct FileDev file_dev_null;
+	extern struct FileDev file_dev_zero;
+
+	Dirent *file1, *file2;
+	panic_on(createFile(fatFs->root, "/dev/null", &file1));
+	panic_on(createFile(fatFs->root, "/dev/zero", &file2));
+
+	file1->dev = &file_dev_null;
+	file2->dev = &file_dev_zero;
+	file1->type = DIRENT_DEV;
+	file2->type = DIRENT_DEV;
+
+	file_close(file1);
+	file_close(file2);
+}
+
+void init_proc_fs() {
+	makeDirAt(fatFs->root, "/proc", 0);
+
+	extern initcall_t __initcall_fs_start[], __initcall_fs_end[];
+	initcall_t *fn;
+
+	int count = __initcall_fs_end - __initcall_fs_start;
+	log(LEVEL_GLOBAL, "initcall count: %d\n", count);
+
+	for (fn = __initcall_fs_start; fn < __initcall_fs_end; fn++) {
+		log(LEVEL_GLOBAL, "executing initcall #%d\n", fn - __initcall_fs_start);
+		(*fn)();
+	}
 }

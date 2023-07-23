@@ -10,6 +10,7 @@
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/printf.h>
+#include <mm/kmalloc.h>
 #include <mm/mmu.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
@@ -46,6 +47,7 @@ extern void trapInitHart();
 extern void sched_init();
 
 // #define SINGLE
+// #define LOCALCOMP_TEST
 
 // start() jumps here in supervisor mode on all CPUs.
 void main() {
@@ -80,6 +82,7 @@ void main() {
 		plicInit();	// 设置中断控制器
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
+		kmalloc_init();
 
 		extern mutex_t first_thread_lock;
 		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
@@ -97,14 +100,17 @@ void main() {
 		// PROC_CREATE(test_printf, "test1");
 		// PROC_CREATE(test_printf, "test2");
 		// PROC_CREATE(test_printf, "test3");
+		// PROC_CREATE(test_pthread, "test_pthread");
 		// PROC_CREATE(test_clone, "test_clone");
-		// PROC_CREATE(test_mmap, "test_mmap");
 		// PROC_CREATE(test_pipe, "test_pipe");
-		// PROC_CREATE(test_init, "test_init");
-		// PROC_CREATE(test_busybox, "test_busybox");
+#ifdef LOCALCOMP_TEST
+		PROC_CREATE(test_init, "test_init");
+#else
+		PROC_CREATE(test_busybox, "test_busybox");
+#endif
 		// PROC_CREATE(test_execve, "test_execve");
-		PROC_CREATE(test_while, "test_while");
-		PROC_CREATE(test_signal1, "test_signal1");
+		// PROC_CREATE(test_while, "test_while");
+		// PROC_CREATE(test_signal1, "test_signal1");
 
 		// thread_t *td = TAILQ_FIRST(&thread_runq.tq_head);
 		// mtx_lock(&td->td_lock);

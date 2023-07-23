@@ -8,6 +8,9 @@
 #include <lib/queue.h>
 #include <lib/string.h>
 #include <lock/mutex.h>
+#include <proc/cpu.h>
+#include <proc/thread.h>
+#include <sys/errno.h>
 
 #define MAX_DIRENT 1024
 
@@ -71,7 +74,14 @@ static char *skip_slash(char *p) {
  * @brief 将dirent的引用计数加一
  */
 void dget(Dirent *dirent) {
+#ifdef REFCNT_DEBUG
+	dirent->holders[dirent->holder_cnt++] = cpu_this()->cpu_running->td_name;
 
+	mtx_lock_sleep(&mtx_file);
+	warn("dget: %s, process: %s\n", dirent->name, cpu_this()->cpu_running->td_name);
+	mtx_unlock_sleep(&mtx_file);
+
+#endif
 	dirent->refcnt += 1;
 }
 
@@ -79,7 +89,20 @@ void dget(Dirent *dirent) {
  * @brief 将dirent的引用数减一
  */
 void dput(Dirent *dirent) {
+#ifdef REFCNT_DEBUG
+	char *name = cpu_this()->cpu_running->td_name;
+	for (int i = 0; i < dirent->holder_cnt; i++) {
+		if (dirent->holders[i] == name) {
+			dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
+			dirent->holder_cnt -= 1;
+			break;
+		}
+	}
 
+	mtx_lock_sleep(&mtx_file);
+	warn("dput: %s, process: %s\n", dirent->name, cpu_this()->cpu_running->td_name);
+	mtx_unlock_sleep(&mtx_file);
+#endif
 	dirent->refcnt -= 1;
 }
 
@@ -108,7 +131,7 @@ static Dirent *get_parent_dirent(Dirent *dirent) {
 }
 
 /**
- * @brief 在dir中找一个名字为name的文件，找到后将其引用加一
+ * @brief 在dir中找一个名字为name的文件，找到后获取其引用
  * @note 只需要遍历Dirent树即可，无需实际访问磁盘
  */
 static int dir_lookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **file) {
@@ -117,7 +140,7 @@ static int dir_lookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **f
 	LIST_FOREACH (child, &dir->child_list, dirent_link) {
 
 		if (strncmp(name, child->name, MAX_NAME_LEN) == 0) {
-			child->refcnt += 1;
+			dget(child);
 
 			*file = child;
 			return 0;
@@ -133,7 +156,7 @@ static int dir_lookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **f
 static Dirent *try_enter_mount_dir(Dirent *dir) {
 	// Note: 处理mount的目录
 
-	if (IS_MOUNT_DIR(&dir->raw_dirent)) {
+	if (IS_MOUNT_DIR(dir)) {
 		FileSystem *fs = find_fs_by(find_fs_of_dir, dir);
 		if (fs == NULL) {
 			warn("load mount fs error on dir %s!\n", dir->name);
@@ -186,12 +209,12 @@ void dput_path(Dirent *file) {
 
 /**
  * @brief 遍历路径，找到某个文件。若找到，则获取该文件的引用
+ * @todo 动态根据Dirent识别 fs，以及引入链接和虚拟文件的机制
  * @param baseDir 开始遍历的根，为 NULL 表示忽略。但如果path以'/'开头，则强制使用根目录
  * @param pdir 文件所在的目录
  * @param pfile 文件本身
  * @param lastelem 如果恰好找到了文件的上一级目录的位置，则返回最后未匹配的那个项目的名称(legacy)
  */
-// TODO: 动态根据Dirent识别 fs，以及引入链接和虚拟文件的机制
 int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile,
 	      char *lastelem, longEntSet *longSet) {
 	char *p;
@@ -299,7 +322,7 @@ int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent
 }
 
 /**
- * @brief 传入一个Dirent，获取其路径
+ * @brief 传入一个Dirent，获取其绝对路径
  */
 void dirent_get_path(Dirent *dirent, char *path) {
 	assert(dirent->refcnt > 0);
@@ -346,7 +369,7 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 		warn("file or directory exists: %s\n", path);
 
 		mtx_unlock_sleep(&mtx_file);
-		return -E_FILE_EXISTS;
+		return -EEXIST;
 	}
 
 	// 2. 处理错误：当出现其他错误，或者没有找到上一级的目录时，退出
@@ -361,12 +384,15 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 		return r;
 	}
 
-	// 无论如何，创建了的文件或目录至少应当分配一个块
+	// 4. 无论如何，创建了的文件或目录至少应当分配一个块
 	f->first_clus = clusterAlloc(dir->file_system, 0); // 在Alloc时即将first_clus清空为全0
 	f->parent_dirent = dir;				   // 设置父亲节点，以安排写回
 	f->file_system = dir->file_system;
+	extern struct FileDev file_dev_file;
+	f->dev = &file_dev_file; // 赋值设备指针
+	f->type = (isDir) ? DIRENT_DIR : DIRENT_FILE;
 
-	// 目录应当以其分配了的大小为其文件大小
+	// 5. 目录应当以其分配了的大小为其文件大小
 	if (isDir) {
 		int clusSize = CLUS_SIZE(dir->file_system);
 		f->file_size = clusSize;
@@ -394,7 +420,14 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
  * @return 0成功，-1失败
  */
 int makeDirAt(Dirent *baseDir, char *path, int mode) {
-	return createItemAt(baseDir, path, NULL, 1);
+	Dirent *dir;
+	int ret = createItemAt(baseDir, path, &dir, 1);
+	if (ret < 0) {
+		return ret;
+	} else {
+		file_close(dir);
+		return 0;
+	}
 }
 
 /**
@@ -403,4 +436,15 @@ int makeDirAt(Dirent *baseDir, char *path, int mode) {
 int r;
 int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 	return createItemAt(baseDir, path, file, 0);
+}
+
+int create_file_and_close(char *path) {
+	Dirent *file;
+	r = createFile(NULL, path, &file);
+	if (r < 0) {
+		warn("create file error!\n");
+		return r;
+	}
+	file_close(file);
+	return 0;
 }

@@ -20,11 +20,13 @@
 #define SLEEP_MODULE 9
 
 // 日志级别定义（全局）
-#define LEVEL_GLOBAL 10
+#define LEVEL_GLOBAL 11
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 999
-#define DEBUG 10
+#define LOG_LEVEL 11
+#define DEBUG 11
+
+#define DISABLE_WARN 0
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);
@@ -45,7 +47,7 @@ void _warn(const char *, int, const char *, const char *, ...);
  * @brief 警告日志输出
  */
 #define warn(...)                                                                                  \
-	if (1)                                                                                     \
+	if (!DISABLE_WARN)                                                                         \
 		do {                                                                               \
 			_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                          \
 	} while (0)

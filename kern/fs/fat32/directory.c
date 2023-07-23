@@ -53,8 +53,8 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 		file_read(dir, 0, (u64)direntBuf, j, DIR_SIZE);
 		f = ((FAT32Directory *)direntBuf);
 
-		// 跳过空项（0xE5表示已删除）
-		if (f->DIR_Name[0] == 0 || f->DIR_Name[0] == 0xE5)
+		// 跳过空项（FAT32_INVALID_ENTRY表示已删除）
+		if (f->DIR_Name[0] == 0 || f->DIR_Name[0] == FAT32_INVALID_ENTRY)
 			continue;
 
 		// 是长文件名项（可能属于文件也可能属于目录）
@@ -88,6 +88,10 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 			// 2. 设置找出的dirent的信息（为NULL的无需设置）
 			Dirent *dirent = dirent_alloc();
 			strncpy(dirent->name, tmpName, MAX_NAME_LEN);
+
+			extern struct FileDev file_dev_file;
+			dirent->dev = &file_dev_file; // 赋值设备指针
+
 			dirent->raw_dirent = *f; // 指向根dirent
 			dirent->file_system = fs;
 			dirent->first_clus = f->DIR_FstClusHI * 65536 + f->DIR_FstClusLO;
@@ -148,6 +152,7 @@ void sync_dirent_rawdata_back(Dirent *dirent) {
  */
 static int dir_alloc_entry(Dirent *dir, Dirent **ent, int cnt) {
 	assert(cnt >= 1); // 要求分配的个数不能小于1
+	mtx_lock_sleep(&mtx_file);
 
 	u32 offset = 0;
 	int curN = 0;
@@ -183,7 +188,7 @@ static int dir_alloc_entry(Dirent *dir, Dirent **ent, int cnt) {
 
 	// 3. 将分配的目录项染黑，防止后面的分配使用到该块
 	memset(&fat32_dirent, 0, DIR_SIZE);
-	fat32_dirent.DIR_Name[0] = 1;
+	fat32_dirent.DIR_Name[0] = FAT32_INVALID_ENTRY;
 	for (offset = start_off; offset <= end_off; offset += DIR_SIZE) {
 		file_write(dir, 0, (u64)&fat32_dirent, offset, DIR_SIZE);
 	}
@@ -192,6 +197,8 @@ static int dir_alloc_entry(Dirent *dir, Dirent **ent, int cnt) {
 	Dirent *dirent = dirent_alloc();
 	dirent->parent_dir_off = offset + DIR_SIZE * (cnt - 1);
 	*ent = dirent;
+
+	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }
 

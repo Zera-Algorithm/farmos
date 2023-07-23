@@ -114,9 +114,10 @@ char *strncpy(char *s, const char *t, int n) {
 	while (n-- > 0 && (*s++ = *t++) != 0) {
 		;
 	}
-	while (n-- > 0) {
-		*s++ = 0;
-	}
+	// 清空剩余空间
+	// while (n-- > 0) {
+	// 	*s++ = 0;
+	// }
 	return os;
 }
 

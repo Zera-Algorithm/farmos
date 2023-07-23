@@ -83,7 +83,7 @@ void utrap_entry() {
 		// 用户态中断
 		if (exc_code == INTERRUPT_TIMER) {
 			// 时钟中断
-			log(LEVEL_GLOBAL, "Timer Int On Hart %d\n", cpu_this_id());
+			log(LEVEL_MODULE, "Timer Int On Hart %d\n", cpu_this_id());
 			// 先设置下次时钟中断的触发时间，再进行调度
 			handler_timer_int();
 			yield();
@@ -116,8 +116,8 @@ void utrap_entry() {
 			// 页错误，属于内核线程范畴，允许中断 todo
 			if (page_fault_handler(r_stval() & ~(PAGE_SIZE - 1))) {
 				// 页错误处理失败，杀死进程
-				warn("page fault on tid = %d[%s], kill it.\n", td->td_tid,
-				     td->td_name);
+				warn("(stack: %lx) page fault on tid = %d[%s], kill it.\n",
+				     TD_USTACK, td->td_tid, td->td_name);
 			} else {
 				// 页错误处理成功，继续执行
 				goto utrap_return;
@@ -128,7 +128,7 @@ void utrap_entry() {
 		}
 
 		printReg(&td->td_trapframe);
-		printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
+		warn("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
 		// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
 		// cpu的输出变为乱码，访问excCause数组出现load page fault
 		// 可能与参数的数目过多有关系，因此将输出分拆为两段
@@ -143,7 +143,7 @@ void utrap_entry() {
 
 utrap_return:
 	// 中断或异常处理完毕，从现场恢复用户态
-	log(LEVEL_GLOBAL, "before %s return to user\n", td->td_name);
+	log(LEVEL_MODULE, "before %s return to user\n", td->td_name);
 	utrap_return();
 }
 
@@ -206,6 +206,8 @@ void utrap_firstsched() {
 		bufInit();
 		dirent_init();
 		init_root_fs();
+		init_dev_fs();
+		init_proc_fs();
 		is_first_thread = 2;
 		wakeup(&is_first_thread);
 	} else if (is_first_thread == 0) {
@@ -215,5 +217,8 @@ void utrap_firstsched() {
 		mtx_unlock(&first_thread_lock);
 	}
 
+	warn("proc: %s, epc = %lx, sp = %lx, p_brk = %lx\n", cpu_this()->cpu_running->td_name,
+	     cpu_this()->cpu_running->td_trapframe.epc, cpu_this()->cpu_running->td_trapframe.sp,
+	     cpu_this()->cpu_running->td_brk);
 	utrap_return();
 }

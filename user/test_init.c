@@ -1,6 +1,7 @@
 #include <mm/memlayout.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 #include <syscall.h>
 #include <syscallDataStruct.h>
 #include <unistd.h>

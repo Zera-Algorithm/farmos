@@ -33,7 +33,7 @@ typedef struct DirentUser {
 	char d_name[];		 //文件名
 } DirentUser;
 
-#define DIRENT_USER_SIZE 32
+#define DIRENT_USER_SIZE 128
 #define DIRENT_USER_OFFSET_NAME ((u64) & (((DirentUser *)0)->d_name))
 #define DIRENT_NAME_LENGTH (DIRENT_USER_SIZE - DIRENT_USER_OFFSET_NAME)
 
@@ -73,6 +73,9 @@ int linkAtFd(int oldFd, u64 pOldPath, int newFd, u64 pNewPath, int flags);
 int unLinkAtFd(int dirFd, u64 pPath);
 int fileStatFd(int fd, u64 pkstat);
 int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
+Fd *get_kfd_by_fd(int fd);
 int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags);
+off_t lseekFd(int fd, off_t offset, int whence);
+int faccessatFd(int dirFd, u64 pPath, int mode, int flags);
 
 #endif

@@ -40,7 +40,7 @@ endif
 LDFLAGS = -z max-page-size=4096
 
 # -bios default: 缺省的SBI实现(OpenSBI)
-QEMUOPTS = -machine virt -bios default -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU) -nographic
+QEMUOPTS = -machine virt -bios default -kernel $(KERNEL_ELF) -m 256M -smp $(NCPU) -nographic
 # 比赛要求virtio legacy驱动
 # QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0

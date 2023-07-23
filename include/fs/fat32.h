@@ -71,6 +71,9 @@ typedef struct FAT32LongDirectory {
 #define BPB_SIZE sizeof(FAT32BootParamBlock)
 #define DIR_SIZE sizeof(FAT32Directory)
 
+// 如果DIR_Name[0] == 0xE5，则表示该目录项已经被删除
+#define FAT32_INVALID_ENTRY 0xE5
+
 // FAT32 文件、目录属性
 #define ATTR_READ_ONLY 0x01
 #define ATTR_HIDDEN 0x02
@@ -94,7 +97,8 @@ typedef struct FAT32LongDirectory {
 
 // 判断是否是目录，需要传入raw_dirent的指针
 #define IS_DIRECTORY(raw_dirent) ((raw_dirent)->DIR_Attr & ATTR_DIRECTORY)
-#define IS_MOUNT_DIR(raw_dirent) ((raw_dirent)->DIR_Attr & ATTR_MOUNT)
+#define IS_LINK(raw_dirent) ((raw_dirent)->DIR_Attr & ATTR_LINK)
+#define IS_MOUNT_DIR(dirent) (dirent->head != NULL)
 
 unsigned char checkSum(unsigned char *pFcbName);
 void fat32Test();
