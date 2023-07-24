@@ -1,8 +1,8 @@
 #include <dev/timer.h>
 #include <lib/error.h>
 #include <lock/mutex.h>
-#include <proc/nanosleep.h>
 #include <proc/cpu.h>
+#include <proc/nanosleep.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 
