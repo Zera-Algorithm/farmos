@@ -48,6 +48,11 @@ static syscall_function_t sys_table[] = {
     [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
     [SYS_munmap] = {sys_unmap, "munmap"},
     [SYS_brk] = {sys_brk, "brk"},
+    [SYS_socket] = {sys_socket, "socket"},
+    [SYS_bind] = {sys_bind, "socket"},
+    [SYS_listen] = {sys_listen, "socket"},
+    [SYS_connect] = {sys_connect, "socket"},
+    [SYS_accept] = {sys_accept, "socket"},
 };
 
 /**

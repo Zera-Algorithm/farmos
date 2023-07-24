@@ -6,6 +6,9 @@
 #define SOCKET_COUNT 128
 #define PENDING_COUNT 128
 
+#define AF_UNIX 1  /* Unix domain sockets 		*/
+#define AF_LOCAL 1 /* POSIX name for AF_UNIX	*/
+
 typedef unsigned int socklen_t;
 
 typedef struct {
@@ -15,11 +18,15 @@ typedef struct {
 	char zero[8];
 } SocketAddr;
 
+typedef struct {
+	mutex_t state_lock;
+	bool is_close
+} SocketState;
+
 typedef struct Socket {
 	bool used;
 	mutex_t lock;
 	u32 type;
-	// Process *process;
 	SocketAddr addr;	/* local addr */
 	SocketAddr target_addr; /* remote addr */
 	u64 socketReadPos;	// read position
@@ -27,8 +34,17 @@ typedef struct Socket {
 	SocketAddr waiting_queue[PENDING_COUNT];
 	int waiting_h;
 	int waiting_t;
-	// struct Spinlock lock;
 	int listening;
+	u64 bufferAddr;
+	SocketState state;
+	// bool is_close; 由首先关闭连接的socket来写另一socket的is_close属性
 } Socket;
+
+void socket_init();
+int socket(int domain, int type, int protocol);
+int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
+int listen(int sockfd, int backlog);
+int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
+int accept(int sockfd, SocketAddr *addr);
 
 #endif

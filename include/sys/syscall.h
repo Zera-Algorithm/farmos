@@ -58,4 +58,11 @@ size_t sys_writev(int fd, const struct iovec *iov, int iovcnt);
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 
+// socket
+int sys_socket(int domain, int type, int protocol);
+int sys_bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
+int sys_listen(int sockfd, int backlog);
+int sys_connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
+int sys_accept(int sockfd, SocketAddr *addr);
+
 #endif // !_SYSCALL_H

@@ -119,6 +119,7 @@ void freeFd(uint i) {
 		// 释放fd的资源
 		fds[i].dirent = NULL;
 		fds[i].pipe = NULL;
+		fds[i].socket = NULL;
 		fds[i].type = 0;
 		fds[i].offset = 0;
 		fds[i].flags = 0;

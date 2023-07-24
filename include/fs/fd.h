@@ -25,7 +25,6 @@ typedef struct Fd {
 
 	u32 refcnt; // 引用计数
 	Socket *socket;
-	u64 socketAddr;
 } Fd;
 
 typedef struct DirentUser {
