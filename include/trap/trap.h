@@ -18,4 +18,11 @@ void utrap_firstsched();
 // Trap Handler
 err_t page_fault_handler(u64 badva) __attribute__((warn_unused_result));
 
+void trap_device();
+
+void utrap_timer();
+void ktrap_timer();
+
+void trap_pgfault();
+
 #endif

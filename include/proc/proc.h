@@ -77,4 +77,8 @@ void proc_free(proc_t *p);
 #define proc_unlock(p) mtx_unlock(&(p)->p_lock)
 #define proc_hold(p) mtx_hold(&(p)->p_lock)
 
+#define PID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000) < 16))
+#define PID_TO_INDEX(tid) (tid & 0xffff)
+#define PID_INIT (PID_GENERATE(1, 0))
+
 #endif /* !_PROC_H_ */

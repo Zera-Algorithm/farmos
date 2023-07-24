@@ -16,10 +16,9 @@ extern char trampoline[];
 static sigevent_t *sig_getse(thread_t *td) {
 	assert(mtx_hold(&td->td_lock));
 	sigevent_t *se = NULL;
-	sigset_t sigset = sigset_or(&td->td_sigmask, &td->td_cursigmask);
 	TAILQ_FOREACH (se, &td->td_sigqueue, se_link) {
 		// 若信号正在处理或者信号没被阻塞，返回信号
-		if ((se->se_status & SE_PROCESSING) || (!sigset_isset(&sigset, se->se_signo))) {
+		if ((se->se_status & SE_PROCESSING) || sig_td_canhandle(td, se->se_signo)) {
 			return se;
 		}
 	}

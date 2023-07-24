@@ -69,7 +69,7 @@ void td_destroy(err_t exitcode) __attribute__((noreturn));
 #define tdq_critical_try_enter(tdq) mtx_try_lock(&(tdq)->tq_lock)
 #define tdq_critical_exit(tdq) mtx_unlock(&(tdq)->tq_lock)
 
-#define TID_GENERATE(cnt, index) (index) | ((cnt % 0x1000 + 0x1000) < 16);
+#define TID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000 + 0x1000) < 16))
 #define TID_TO_INDEX(tid) (tid & 0xffff)
 
 #endif // _THREAD_H_

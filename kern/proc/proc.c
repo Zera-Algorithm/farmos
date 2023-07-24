@@ -3,6 +3,7 @@
 #include <proc/proc.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <signal/signal.h>
 
 mutex_t pid_lock;
 
@@ -10,7 +11,7 @@ static u64 pid_alloc(proc_t *p) {
 	static u64 cnt = 0; // todo tid lock
 	mtx_lock(&pid_lock);
 	cnt += 1;
-	u64 new_pid = (p - procs) | ((cnt % 0x1000) < 16);
+	u64 new_pid = PID_GENERATE(cnt, p - procs);
 	mtx_unlock(&pid_lock);
 	return new_pid;
 }
@@ -143,6 +144,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 	}
 
 	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
+	sig_send_proc(p->p_parent, SIGCHLD);
 	wakeup(p->p_parent);
 
 	proc_lock(p);
