@@ -67,6 +67,7 @@ int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);
 int sys_sigreturn();
 int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize);
 int sys_tkill(int tid, int sig);
+int sys_kill(int pid, int sig);
 
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);

@@ -63,6 +63,7 @@ static syscall_function_t sys_table[] = {
     [SYS_rt_sigreturn] = {sys_sigreturn, "sigreturn"},
     [SYS_rt_sigprocmask] = {sys_sigprocmask, "sigprocmask"},
     [SYS_tkill] = {sys_tkill, "tkill"},
+    [SYS_kill] = {sys_kill, "kill"},
 };
 
 /**

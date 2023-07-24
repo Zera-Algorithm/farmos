@@ -83,26 +83,10 @@ void utrap_entry() {
 		// 用户态中断
 		if (exc_code == INTERRUPT_TIMER) {
 			// 时钟中断
-			log(LEVEL_MODULE, "Timer Int On Hart %d\n", cpu_this_id());
-			// 先设置下次时钟中断的触发时间，再进行调度
-			handler_timer_int();
-			yield();
+			utrap_timer();
 		} else if (exc_code == INTERRUPT_EXTERNEL) {
-			log(DEFAULT, "externel interrupt on CPU %d!\n", cpu_this_id());
-			int irq = plicClaim();
-
-			if (irq == VIRTIO0_IRQ) {
-				// Note: call virtio intr handler
-				log(DEFAULT, "[cpu %d] catch virtio intr\n", cpu_this_id());
-				virtio_disk_intr();
-			} else {
-				log(DEFAULT, "[cpu %d] unknown externel interrupt irq = %d\n",
-				    cpu_this_id(), irq);
-			}
-
-			if (irq) {
-				plicComplete(irq);
-			}
+			// 外部中断
+			trap_device();
 		} else {
 			warn("unknown interrupt %d, ignored.\n", exc_code);
 		}
@@ -111,37 +95,27 @@ void utrap_entry() {
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
 			syscall_entry(&td->td_trapframe);
-			goto utrap_return;
 		} else if (exc_code == EXCCODE_PAGE_FAULT) {
 			// 页错误，属于内核线程范畴，允许中断 todo
-			if (page_fault_handler(r_stval() & ~(PAGE_SIZE - 1))) {
-				// 页错误处理失败，杀死进程
-				warn("(stack: %lx) page fault on tid = %d[%s], kill it.\n",
-				     TD_USTACK, td->td_tid, td->td_name);
-			} else {
-				// 页错误处理成功，继续执行
-				goto utrap_return;
-			}
+			trap_pgfault();
 		} else {
 			// 其他情况
 			warn("uncaught exception.\n");
+			printReg(&td->td_trapframe);
+			warn("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
+			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
+			// cpu的输出变为乱码，访问excCause数组出现load page fault
+			// 可能与参数的数目过多有关系，因此将输出分拆为两段
+			warn("\tcpu: %d\n"
+			     "\tExcCode: %d\n"
+			     "\tCause: %s\n"
+			     "\tSepc: 0x%016lx (kern/kernel.asm)\n"
+			     "\tStval(bad memory address): 0x%016lx\n",
+			     cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
+			sys_exit(-1); // errcode todo
 		}
-
-		printReg(&td->td_trapframe);
-		warn("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
-		// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
-		// cpu的输出变为乱码，访问excCause数组出现load page fault
-		// 可能与参数的数目过多有关系，因此将输出分拆为两段
-		warn("\tcpu: %d\n"
-		     "\tExcCode: %d\n"
-		     "\tCause: %s\n"
-		     "\tSepc: 0x%016lx (kern/kernel.asm)\n"
-		     "\tStval(bad memory address): 0x%016lx\n",
-		     cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
-		sys_exit(-1); // errcode todo
 	}
 
-utrap_return:
 	// 中断或异常处理完毕，从现场恢复用户态
 	log(LEVEL_MODULE, "before %s return to user\n", td->td_name);
 	utrap_return();
