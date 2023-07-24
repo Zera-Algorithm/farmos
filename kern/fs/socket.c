@@ -4,6 +4,11 @@
 #include <mm/memlayout.h>
 #include <mm/vmm.h>
 #include <proc/interface.h>
+#include <lib/log.h>
+#include <lock/mutex.h>
+#include <proc/sleep.h>
+#include <lib/transfer.h>
+#include <lib/string.h>
 
 static uint socket_bitmap[SOCKET_COUNT / 32] = {0};
 Socket sockets[SOCKET_COUNT];
@@ -14,6 +19,10 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
 static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset);
 static int fd_socket_close(struct Fd *fd);
 static int fd_socket_stat(struct Fd *fd, u64 pkStat);
+
+static SocketAddr gen_local_socket_addr();
+static Socket * remote_find_peer_socket(const Socket *local_socket);
+static Socket * find_listening_socket(const SocketAddr *addr);
 
 struct FdDev fd_dev_socket = {
     .dev_id = 's',
@@ -26,12 +35,10 @@ struct FdDev fd_dev_socket = {
 
 void socket_init() {
 	mtx_init(&mtx_socketmap, "sys_socketable", 1, MTX_SPIN);
-	// TODO 不是很理解这里 sys_socketable的意义，请review一下
 }
 
 int socketAlloc() {
 	int i;
-	// TODO 对socketBitMap加锁，使得只有一个进程能够进入Alloc函数
 	mtx_lock(&mtx_socketmap);
 	for (i = 0; i < SOCKET_COUNT; i++) {
 		int index = i >> 5;
@@ -75,7 +82,7 @@ int socket(int domain, int type, int protocol) {
 	socket->used = true;
 	socket->addr.family = domain;
 	socket->type = type;
-	socket->bufferAddr = kvmAlloc();
+	socket->bufferAddr = (void *)kvmAlloc();
 
 	int sfd = fdAlloc();
 	if (sfd < 0) {
@@ -164,9 +171,9 @@ int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
 	local_socket->target_addr = *addr;
 	mtx_unlock(&local_socket->lock);
 
-	Socket *target_socket = find_listening_socket(addr);
+	Socket * target_socket = find_listening_socket(addr);
 	if (target_socket == NULL) {
-		printf("server socket doesn't exists or isn't listening");
+		warn("server socket doesn't exists or isn't listening");
 		return -1;
 	}
 
@@ -181,12 +188,14 @@ int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
 
 	int pos = (target_socket->waiting_t - 1 + PENDING_COUNT) % PENDING_COUNT;
 
-	//  释放服务端target_socket的锁，客户端进入睡眠，等待服务端唤醒客户端
-	sleep(&target_socket->lock, &target_socket->waiting_queue[pos],
-	      "connecting... waiting for target socket to accept\n");
 
 	// 尝试唤醒服务端，以等待队列指针作为chan
 	wakeup(target_socket->waiting_queue);
+
+	//  释放服务端target_socket的锁，客户端进入睡眠，等待服务端唤醒客户端
+	sleep(&target_socket->waiting_queue[pos], &target_socket->lock,
+	      "connecting... waiting for target socket to accept\n");
+
 	mtx_unlock(&target_socket->lock);
 
 	return 0;
@@ -210,8 +219,7 @@ int accept(int sockfd, SocketAddr *addr) {
 	while (local_socket->waiting_h == local_socket->waiting_t) {
 		// 此时代表没有连接请求，释放服务端socket锁，进入睡眠
 		// 等到客户端有请求时，唤醒服务端，并且被唤醒后，此时服务端拥有服务端socket的锁
-		sleep(&local_socket->lock, local_socket->waiting_queue,
-		      "waiting for socket to enter waiting queue...\n");
+		sleep(local_socket->waiting_queue, &local_socket->lock, "waiting for socket to enter waiting queue...\n");
 	}
 
 	// Socket *addr = socket->waiting_queue[(socket->waiting_h++) % PENDING_COUNT];
@@ -245,7 +253,7 @@ static SocketAddr gen_local_socket_addr() {
 	return addr;
 }
 
-static Socket *find_listening_socket(const SocketAddr *addr) {
+ static Socket * find_listening_socket(const SocketAddr *addr) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if (sockets[i].used && sockets[i].addr.family == addr->family &&
@@ -260,7 +268,7 @@ static Socket *find_listening_socket(const SocketAddr *addr) {
 	// TODO 检查加锁的合理性
 }
 
-static Socket *remote_find_peer_socket(const Socket *local_socket) {
+static Socket * remote_find_peer_socket(const Socket *local_socket) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if (sockets[i].used && sockets[i].addr.family == local_socket->target_addr.family &&
@@ -289,6 +297,7 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		if (!localSocket->state.is_close) {
 			mtx_unlock(&localSocket->state.state_lock);
 
+			wakeup(&localSocket->socketWritePos); 
 			mtx_unlock_sleep(&fd->lock);
 			sleep(&localSocket->socketReadPos, &localSocket->lock,
 			      "wait another socket to write");
@@ -339,8 +348,7 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			} else {
 				mtx_unlock(&localSocket->state.state_lock);
 
-				wakeup(
-				    &targetSocket->socketReadPos); // TODO 讨论这一wakeup是否必要，
+				wakeup(&targetSocket->socketReadPos); 
 				mtx_unlock_sleep(&fd->lock);
 				sleep(&targetSocket->socketWritePos, &targetSocket->lock,
 				      "wait another socket to  read.\n");
@@ -364,15 +372,6 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 void socketFree(int socketNum) {
 
-	mtx_lock(&mtx_socketmap);
-	//  对socketBitMap加锁，使得只有一个进程能够进入Alloc函数
-
-	assert(socketNum >= 0 && socketNum < SOCKET_COUNT);
-	int index = socketNum >> 5;
-	int inner = socketNum & 31;
-	socket_bitmap[index] &= ~(1 << inner);
-	mtx_unlock(&mtx_socketmap);
-
 	Socket *socket = &sockets[socketNum];
 
 	mtx_lock(&socket->lock);
@@ -386,7 +385,8 @@ void socketFree(int socketNum) {
 	socket->type = 0;
 
 	if (socket->bufferAddr != NULL) {
-		kvmFree(socket->bufferAddr);
+		socket->bufferAddr = NULL;
+		kvmFree((u64)socket->bufferAddr);
 	}
 
 	memset(&socket->addr, 0, sizeof(SocketAddr));
@@ -397,6 +397,15 @@ void socketFree(int socketNum) {
 	mtx_lock(&socket->state.state_lock);
 	socket->state.is_close = false;
 	mtx_unlock(&socket->state.state_lock);
+
+	mtx_lock(&mtx_socketmap);
+	//  对socketBitMap加锁，使得只有一个进程能够进入Alloc函数
+
+	assert(socketNum >= 0 && socketNum < SOCKET_COUNT);
+	int index = socketNum >> 5;
+	int inner = socketNum & 31;
+	socket_bitmap[index] &= ~(1 << inner);
+	mtx_unlock(&mtx_socketmap);
 }
 
 static int fd_socket_close(struct Fd *fd) {
@@ -406,7 +415,10 @@ static int fd_socket_close(struct Fd *fd) {
 		mtx_lock(&targetSocket->state.state_lock);
 		targetSocket->state.is_close = true;
 		mtx_unlock(&targetSocket->state.state_lock);
+		
 	}
+
+	wakeup(&localSocket->socketWritePos); // TODO 检查此处wake的正确性
 	int socketNum = localSocket - sockets;
 	socketFree(socketNum);
 

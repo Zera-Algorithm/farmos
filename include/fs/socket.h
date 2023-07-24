@@ -11,16 +11,16 @@
 
 typedef unsigned int socklen_t;
 
-typedef struct {
+typedef struct SocketAddr{
 	u16 family;
 	u16 port;
 	u32 addr;
 	char zero[8];
 } SocketAddr;
 
-typedef struct {
+typedef struct SocketState{
 	mutex_t state_lock;
-	bool is_close
+	bool is_close;
 } SocketState;
 
 typedef struct Socket {
@@ -35,7 +35,7 @@ typedef struct Socket {
 	int waiting_h;
 	int waiting_t;
 	int listening;
-	u64 bufferAddr;
+	void * bufferAddr;
 	SocketState state;
 	// bool is_close; 由首先关闭连接的socket来写另一socket的is_close属性
 } Socket;
@@ -46,5 +46,6 @@ int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
 int listen(int sockfd, int backlog);
 int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
 int accept(int sockfd, SocketAddr *addr);
+void socketFree(int socketNum);
 
 #endif

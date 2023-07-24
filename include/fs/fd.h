@@ -6,6 +6,7 @@
 #include <lock/mutex.h>
 #include <proc/thread.h>
 #include <types.h>
+#include <fs/socket.h>
 
 #define FDNUM 1024
 
