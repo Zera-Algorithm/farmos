@@ -32,7 +32,7 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 
 	// 1. 分配足够的页
 	int npage = (_size) % PAGE_SIZE == 0 ? (_size / PAGE_SIZE) : (_size / PAGE_SIZE + 1);
-	log(DEBUG, "size: %d, npage: %d", dirent->file_size, npage);
+	log(DEBUG, "size: %d, npage: %d\n", dirent->file_size, npage);
 	for (int i = 0; i < npage; i++) {
 		u64 pa = vmAlloc();
 		u64 va = ((u64)_binary) + i * PAGE_SIZE;

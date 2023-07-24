@@ -1,5 +1,6 @@
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lib/transfer.h>
 #include <mm/vmm.h>
 #include <mm/vmtools.h>
 #include <proc/cpu.h>
@@ -56,7 +57,7 @@ static void proc_fork_name_debug(thread_t *childtd) {
 	}
 }
 
-u64 td_fork(thread_t *td, u64 childsp) {
+u64 td_fork(thread_t *td, u64 childsp, u64 ptid, u64 tls, u64 ctid) {
 	proc_t *p = td->td_proc;
 	thread_t *childtd = td_alloc();
 
@@ -78,6 +79,11 @@ u64 td_fork(thread_t *td, u64 childsp) {
 	}
 	// 设置子线程的返回值
 	childtd->td_trapframe.a0 = 0;
+	childtd->td_trapframe.tp = tls;
+	if (ptid != 0) {
+		copyOut(ptid, (void *)&childtd->td_tid, sizeof(u32));
+	}
+	childtd->td_ctid = ctid;
 
 	// 将子进程的初始线程加入调度队列
 	tdq_critical_enter(&thread_runq);
@@ -104,6 +110,7 @@ u64 proc_fork(thread_t *td, u64 childsp) {
 	// 父进程操作
 	// 使用写时复制映射父进程的用户线程地址空间
 	pdWalk(p->p_pt, duppage, NULL, childp->p_pt);
+	childp->p_brk = p->p_brk;
 	safestrcpy(childtd->td_name, td->td_name, MAX_PROC_NAME_LEN);
 	proc_fork_name_debug(childtd);
 	// 复制父线程的文件信息

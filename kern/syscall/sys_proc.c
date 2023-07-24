@@ -81,6 +81,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 		}
 	}
 	p->p_brk = 0;
+	td->td_ctid = 0;
 
 	// 加载可执行文件到内核
 	void *bin;
@@ -106,8 +107,10 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
  * @return 成功返回子进程的id，失败返回-1
  */
 u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
+	warn("params: flags = %lx, stack = %lx, ptid = %lx, tls = %lx, ctid = %lx\n", flags, stack,
+	     ptid, tls, ctid);
 	if (flags & CLONE_VM) {
-		return td_fork(cpu_this()->cpu_running, stack);
+		return td_fork(cpu_this()->cpu_running, stack, ptid, tls, ctid);
 	} else {
 		return proc_fork(cpu_this()->cpu_running, stack);
 	}
@@ -147,9 +150,15 @@ u64 sys_getuid() {
 	return 0; // 未实现用户，直接返回0即可
 }
 
+u64 sys_gettid() {
+	return cpu_this()->cpu_running->td_tid;
+}
+
 // pTid是int *的指针
 u64 sys_set_tid_address(u64 pTid) {
-	return cpu_this()->cpu_running->td_tid;
+	thread_t *td = cpu_this()->cpu_running;
+	td->td_ctid = pTid;
+	return td->td_tid;
 }
 
 u64 sys_getppid() {

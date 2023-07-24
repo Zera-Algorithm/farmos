@@ -33,4 +33,14 @@ int putchar(int);
 int puts(const char *s);
 void printf(const char *fmt, ...);
 
+#define panic_on(expr)                                                                             \
+	do {                                                                                       \
+		int r = (expr);                                                                    \
+		if (r) {                                                                           \
+			printf("panic at %s:%d: %d\n", __FILE__, __LINE__, r);                     \
+			while (1)                                                                  \
+				;                                                                  \
+		}                                                                                  \
+	} while (0)
+
 #endif // __STDIO_H__

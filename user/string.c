@@ -31,6 +31,31 @@ int atoi(const char *s) {
 	return neg ? n : -n;
 }
 
+void *memcpy(void *dst, const void *src, size_t n) {
+	const char *s;
+	char *d;
+
+	if (n == 0) {
+		return dst;
+	}
+
+	s = src;
+	d = dst;
+	if (s < d && s + n > d) {
+		s += n;
+		d += n;
+		while (n-- > 0) {
+			*--d = *--s;
+		}
+	} else {
+		while (n-- > 0) {
+			*d++ = *s++;
+		}
+	}
+
+	return dst;
+}
+
 void *memset(void *dest, int c, size_t n) {
 	char *p = dest;
 	for (int i = 0; i < n; ++i, *(p++) = c)

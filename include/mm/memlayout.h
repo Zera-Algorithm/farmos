@@ -34,7 +34,8 @@
 // FarmOS 虚拟内存布局
 #define TRAMPOLINE (MAXVA - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
-#define STACKTOP (TRAPFRAME - PAGE_SIZE)
+#define SIGNAL_TRAMPOLINE (TRAPFRAME - PAGE_SIZE)
+#define STACKTOP (SIGNAL_TRAMPOLINE - PAGE_SIZE)
 #define USTACKTOP STACKTOP
 
 // 内核初始化栈部分（静态数组）
@@ -46,11 +47,10 @@
 #define TD_KSTACK(p) (STACKTOP - ((p) + 1) * (TD_KSTACK_SIZE + PAGE_SIZE))
 
 // 用户页表中，线程的用户栈部分
-#define TD_USTACK_PAGE_NUM 10				// 用户栈占用的页数
+// 至少要分到32页，因为libc可能有默认栈的设置
+#define TD_USTACK_PAGE_NUM 32				// 用户栈占用的页数
 #define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
 #define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
-#define TD_TEMPUSTACK (TD_USTACK - TD_USTACK_SIZE - PAGE_SIZE)
-#define TD_TEMPUSTACK_OFFSET (TD_USTACK - TD_TEMPUSTACK)
 
 // 内核的起始位置
 #define KERNBASE 0x80200000ul

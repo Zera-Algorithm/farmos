@@ -37,16 +37,16 @@ int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
 		}
 	}
 
-	// 3. 修改mount的目录的属性，并新建一个fs项目
-	dir->raw_dirent.DIR_Attr |= ATTR_MOUNT;
-	sync_dirent_rawdata_back(dir);
-
+	// 3. 初始化mount的文件系统
 	FileSystem *fs;
 	allocFs(&fs);
 	fs->image = image;
 	fs->deviceNumber = 0;
 	fs->mountPoint = dir;
 	fat32_init(fs);
+
+	// 4. 将fs挂载到dir上
+	dir->head = fs;
 
 	mtx_unlock_sleep(&mtx_file);
 	return 0;
@@ -71,8 +71,7 @@ int umount_fs(char *dirPath, Dirent *baseDir) {
 		mtx_unlock_sleep(&mtx_file);
 		return -1;
 	}
-	mntPoint->raw_dirent.DIR_Attr &= (~ATTR_MOUNT);
-	sync_dirent_rawdata_back(mntPoint);
+	mntPoint->head = NULL;
 
 	// 3. 寻找fs
 	FileSystem *fs = find_fs_by(find_fs_of_dir, mntPoint);

@@ -11,14 +11,14 @@
 
 typedef unsigned int socklen_t;
 
-typedef struct SocketAddr{
+typedef struct SocketAddr {
 	u16 family;
 	u16 port;
 	u32 addr;
 	char zero[8];
 } SocketAddr;
 
-typedef struct SocketState{
+typedef struct SocketState {
 	mutex_t state_lock;
 	bool is_close;
 } SocketState;
@@ -35,7 +35,7 @@ typedef struct Socket {
 	int waiting_h;
 	int waiting_t;
 	int listening;
-	void * bufferAddr;
+	void *bufferAddr;
 	SocketState state;
 	// bool is_close; 由首先关闭连接的socket来写另一socket的is_close属性
 } Socket;

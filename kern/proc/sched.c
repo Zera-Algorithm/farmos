@@ -15,9 +15,12 @@ clock_t ticks = 0; // 总时间片数（由 thread_runq.tq_lock 保护）
 void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
-	assert(cpu_this()->cpu_running->td_lock.mtx_depth == 1);
 	if (cpu_this()->cpu_lk_depth != 1) {
 		panic("schedule: cpu_lk_depth %d\n", cpu_this()->cpu_lk_depth);
+	}
+	if (cpu_this()->cpu_running->td_lock.mtx_depth != 1) {
+		panic("schedule: td_lock.mtx_depth %d\n",
+		      cpu_this()->cpu_running->td_lock.mtx_depth);
 	}
 	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
@@ -92,6 +95,8 @@ static thread_t *sched_runnable(thread_t *old) {
 }
 
 void sched_init() {
+	assert(intr_get() == 0);
+	assert(cpu_this()->cpu_lk_depth == 0);
 	cpu_t *cpu = cpu_this();
 
 	log(LEVEL_GLOBAL, "Hart %d start scheduling\n", cpu_this_id());

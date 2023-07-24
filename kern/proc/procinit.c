@@ -36,7 +36,7 @@ void thread_init() {
 		// 插入空闲线程队列
 		TAILQ_INSERT_HEAD(&thread_freeq.tq_head, td, td_freeq);
 		// 初始化线程锁
-		mtx_init(&td->td_lock, "thread", false, MTX_SPIN);
+		mtx_init(&td->td_lock, "thread", false, MTX_SPIN | MTX_RECURSE);
 		// 初始化线程内核栈
 		td->td_kstack = (u64)kstacks + TD_KSTACK_SIZE * i;
 		// 将内核线程栈映射到内核页表
@@ -59,7 +59,7 @@ void proc_init() {
 		// 插入空闲进程队列
 		LIST_INSERT_HEAD(&proc_freelist.pl_list, p, p_list);
 		// 初始化进程锁
-		mtx_init(&p->p_lock, "proc", false, MTX_SPIN);
+		mtx_init(&p->p_lock, "proc", false, MTX_SPIN | MTX_RECURSE);
 		// 初始化进程的线程队列
 		TAILQ_INIT(&p->p_threads);
 		// 初始化进程的子进程队列
@@ -88,6 +88,10 @@ void proc_initupt(proc_t *p) {
 	extern char trampoline[];
 	// 由于TRAMPOLINE是用户与内核共享的空间，因此需要赋以 PTE_G 全局位
 	panic_on(ptMap(p->p_pt, TRAMPOLINE, (u64)trampoline, PTE_R | PTE_X | PTE_G));
+
+	// signal TRAMPOLINE
+	extern char user_sig_return[];
+	panic_on(ptMap(p->p_pt, SIGNAL_TRAMPOLINE, (u64)user_sig_return, PTE_R | PTE_X | PTE_U));
 
 	// 该进程的trapframe
 	p->p_trapframe = (trapframe_t *)vmAlloc();
@@ -242,6 +246,19 @@ void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp)
 
 	// 1. 拷入argv数组
 	u64 len_argv = copyin_arg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf);
+
+	// // for debug
+	// if (argv != NULL) {
+	// 	u64 argv1;
+	// 	char argv1_str[128];
+	// 	copy_in(src_pt, (u64)(&argv[1]), &argv1, sizeof(char *));
+	// 	copy_in_str(src_pt, (u64)argv1, argv1_str, 128);
+	// 	warn("argv1 = %s\n", argv1_str);
+	// 	strcat(td->td_name, "_");
+	// 	strcat(td->td_name, argv1_str);
+	// }
+	// // debug end
+
 	assert(len_argv == argc + 1);
 
 	// 2. 拷入envp数组

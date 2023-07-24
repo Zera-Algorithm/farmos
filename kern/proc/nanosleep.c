@@ -41,7 +41,7 @@ void nanosleep_proc(u64 clocks) {
 		LIST_INSERT_HEAD(&nanosleep_list, nanosleep, nano_link);
 	} else {
 		int insert = 0;
-		nanosleep_t *tmp, *last;
+		nanosleep_t *tmp, *last = NULL;
 		LIST_FOREACH (tmp, &nanosleep_list, nano_link) {
 			last = tmp;
 			if (tmp->end_time > nanosleep->end_time) {

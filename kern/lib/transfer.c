@@ -12,13 +12,38 @@ typedef err_t (*user_kernel_callback_t)(void *uptr, void *kptr, size_t len, void
 /**
  * @brief 用户态到内核态的数据操作
  * @param callback 负责复制数据的函数，返回非 0 表示停止复制
+ * @param cow 如果为 1，表示需要对用户地址 uptr 进行写时复制
  */
 static void userToKernel(Pte *upd, u64 uptr, void *kptr, size_t len,
-			 user_kernel_callback_t callback, void *arg) {
+			 user_kernel_callback_t callback, bool cow, void *arg) {
 	u64 uoff = uptr % PAGE_SIZE;
+	int r;
 
 	for (u64 i = 0; i < len; uoff = 0) {
-		u64 urealpa = pteToPa(ptLookup(upd, uptr + i));
+		u64 va = uptr + i;
+		Pte pte = ptLookup(upd, va);
+		u64 urealpa;
+
+		if (cow && (pte & PTE_COW)) {
+			warn("COW when copyOut: va=%lx\n", va);
+			// 写时复制
+			u64 newpa = vmAlloc();
+			u64 oldpa = pteToPa(pte);
+			memcpy((void *)newpa, (void *)oldpa, PAGE_SIZE);
+			u64 newperm = (PTE_PERM(pte) & ~PTE_COW) | PTE_W;
+			if ((r = ptMap(upd, va, newpa, newperm)) < 0) {
+				panic("userToKernel: ptMap failed: %d\n", r);
+			}
+			urealpa = newpa;
+		} else {
+			urealpa = pteToPa(pte);
+		}
+
+		// for debug
+		if (urealpa < 0x1000 || (u64)kptr < 0x1000) {
+			panic("address too low: urealpa=%lx, kptr=%lx\n", urealpa, (u64)kptr);
+		}
+
 		size_t ulen = MIN(len - i, PAGE_SIZE - uoff);
 		if (callback((void *)(urealpa + uoff), kptr + i, ulen, arg)) {
 			break;
@@ -61,7 +86,7 @@ err_t copyInStrCallback(void *uptr, void *kptr, size_t len, void *arg) {
  * @brief 将内核的数据拷贝到用户态地址，使用传入的用户态页表
  */
 void copyOutOnPageTable(Pte *pgDir, u64 uPtr, void *kPtr, int len) {
-	userToKernel(pgDir, uPtr, kPtr, len, copyOutCallback, NULL);
+	userToKernel(pgDir, uPtr, kPtr, len, copyOutCallback, true, NULL);
 }
 
 /**
@@ -76,7 +101,7 @@ void copyOut(u64 uPtr, void *kPtr, int len) {
  * @brief 将用户的数据拷贝入内核
  */
 void copyIn(u64 uPtr, void *kPtr, int len) {
-	userToKernel(cur_proc_pt(), uPtr, kPtr, len, copyInCallback, NULL);
+	userToKernel(cur_proc_pt(), uPtr, kPtr, len, copyInCallback, false, NULL);
 }
 
 /**
@@ -85,17 +110,17 @@ void copyIn(u64 uPtr, void *kPtr, int len) {
  */
 void copyInStr(u64 uPtr, void *kPtr, int n) {
 	Pte *pgDir = cur_proc_pt();
-	userToKernel(pgDir, uPtr, kPtr, n, copyInStrCallback, NULL);
+	userToKernel(pgDir, uPtr, kPtr, n, copyInStrCallback, false, NULL);
 }
 
 void copy_in(Pte *upd, u64 uptr, void *kptr, size_t len) {
-	userToKernel(upd, uptr, kptr, len, copyInCallback, NULL);
+	userToKernel(upd, uptr, kptr, len, copyInCallback, false, NULL);
 }
 
 void copy_in_str(Pte *upd, u64 uptr, void *kptr, size_t len) {
-	userToKernel(upd, uptr, kptr, len, copyInStrCallback, NULL);
+	userToKernel(upd, uptr, kptr, len, copyInStrCallback, false, NULL);
 }
 
 void copy_out(Pte *upd, u64 uptr, void *kptr, size_t len) {
-	userToKernel(upd, uptr, kptr, len, copyOutCallback, NULL);
+	userToKernel(upd, uptr, kptr, len, copyOutCallback, true, NULL);
 }

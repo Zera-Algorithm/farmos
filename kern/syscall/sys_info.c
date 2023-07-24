@@ -17,6 +17,9 @@ void sys_uname(u64 upuname) {
 	copy_out(td->td_pt, upuname, &utsname, sizeof(utsname));
 }
 
+/**
+ * @brief 获取当前时间，当uptv和uptz不为0时，将时间和时区写入用户态
+ */
 void sys_gettimeofday(u64 uptv, u64 uptz) {
 	timeval_t tv;
 	timezone_t tz;
@@ -26,8 +29,10 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 	tz.tz_dsttime = 0;     // todo
 
 	thread_t *td = cpu_this()->cpu_running;
-	copy_out(td->td_pt, uptv, &tv, sizeof(tv));
-	copy_out(td->td_pt, uptz, &tz, sizeof(tz));
+	if (uptv)
+		copy_out(td->td_pt, uptv, &tv, sizeof(tv));
+	if (uptz)
+		copy_out(td->td_pt, uptz, &tz, sizeof(tz));
 }
 
 // 此处不校验clockid,直接返回cpu时间

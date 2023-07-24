@@ -2,17 +2,19 @@
 #include <fs/fat32.h>
 #include <fs/fd.h>
 #include <fs/fd_device.h>
+#include <fs/file.h>
 #include <fs/pipe.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
 #include <lock/mutex.h>
-#include <lock/sleeplock.h>
+#include <mm/kmalloc.h>
 #include <proc/cpu.h>
 #include <proc/interface.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <sys/errno.h>
 #include <sys/syscall_fs.h>
 
 struct mutex mtx_fd;
@@ -114,7 +116,9 @@ void freeFd(uint i) {
 		mtx_unlock(&mtx_fd);
 
 		// 关闭fd对应的设备
-		fd->fd_dev->dev_close(fd);
+		if (fd->fd_dev != NULL) { // 可能是新创建的kernFd，因为找不到文件而失败，被迫释放
+			fd->fd_dev->dev_close(fd);
+		}
 
 		// 释放fd的资源
 		fds[i].dirent = NULL;
@@ -144,7 +148,7 @@ int read(int fd, u64 buf, size_t count) {
 
 	// 判断是否能读取
 	if ((pfd->flags & O_ACCMODE) == O_WRONLY) {
-		warn("fd can not be read\n");
+		warn("fd %d can not be read\n", fd);
 
 		mtx_unlock_sleep(&pfd->lock);
 		return -1;
@@ -331,6 +335,7 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 			*dirent = get_cwd_dirent(cur_proc_fs_struct());
 			if (*dirent == NULL) {
 				warn("cwd fd is invalid: %s\n", cur_proc_fs_struct()->cwd);
+				return -EBADF; // 需要检查所有调用此函数的上级函数是否有依赖
 			}
 			return 0;
 		}
@@ -339,13 +344,13 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 
 	if (fd < 0 || fd >= MAX_FD_COUNT) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
-		return -1;
+		return -EBADF;
 	} else {
 		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
 		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 			warn("kern fd(%d) is wrong, please check\n",
 			     cur_proc_fs_struct()->fdList[fd]);
-			return -1;
+			return -EBADF;
 		} else {
 			int kFd = cur_proc_fs_struct()->fdList[fd];
 			if (kernFd)
@@ -357,6 +362,27 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 	}
 }
 
+/**
+ * @brief 测试fd是否有效，有效返回kfd(不带锁)，无效返回NULL
+ * 不接受fd为AT_CWD的情况，如果需要请移步getDirentByFd
+ */
+Fd *get_kfd_by_fd(int fd) {
+	if (fd < 0 || fd >= MAX_FD_COUNT) {
+		warn("write param fd(%d) is wrong, please check\n", fd);
+		return NULL;
+	} else {
+		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
+		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
+			warn("kern fd(%d) is wrong, please check\n",
+			     cur_proc_fs_struct()->fdList[fd]);
+			return NULL;
+		} else {
+			int kfd = cur_proc_fs_struct()->fdList[fd];
+			return &fds[kfd];
+		}
+	}
+}
+
 // 以下不涉及设备的读写访问
 
 int getdents64(int fd, u64 buf, int len) {
@@ -364,26 +390,33 @@ int getdents64(int fd, u64 buf, int len) {
 	int kernFd, ret, offset;
 	unwrap(getDirentByFd(fd, &dir, &kernFd));
 
-	DirentUser direntUser;
-	direntUser.d_ino = 0;
-	direntUser.d_reclen = DIRENT_USER_SIZE;
-	direntUser.d_type = dev_file;
+	DirentUser *direntUser = kmalloc(DIRENT_USER_SIZE);
+	direntUser->d_ino = 0;
+	direntUser->d_reclen = DIRENT_USER_SIZE;
+	direntUser->d_type = dev_file;
 	ret = dirGetDentFrom(dir, fds[kernFd].offset, &file, &offset, NULL);
-	direntUser.d_off = offset;
+	direntUser->d_off = offset;
 	fds[kernFd].offset = offset;
 
-	strncpy(direntUser.d_name, file->name, DIRENT_NAME_LENGTH);
-
 	if (ret == 0) {
+		// 读到了目录尾部，此时file为NULL
 		warn("read dirents to the end! dir: %s\n", dir->name);
+		direntUser->d_name[0] = '\0';
+		copyOut(buf, direntUser, DIRENT_USER_SIZE);
+		kfree(direntUser);
+		return 0;
 	} else {
-		ret = DIRENT_USER_SIZE;
+		strncpy(direntUser->d_name, file->name, DIRENT_NAME_LENGTH);
+		copyOut(buf, direntUser, DIRENT_USER_SIZE);
+		dirent_dealloc(file);
+		kfree(direntUser);
+		return DIRENT_USER_SIZE;
 	}
-	copyOut(buf, &direntUser, DIRENT_USER_SIZE);
-
-	return ret;
 }
 
+/**
+ * @brief makeDirAtFd 在dirFd指定的目录下创建目录。请求进程仅创建目录，不持有创建目录的引用
+ */
 int makeDirAtFd(int dirFd, u64 path, int mode) {
 	Dirent *dir;
 	int ret;
@@ -435,7 +468,7 @@ int fileStatFd(int fd, u64 pkstat) {
 /**
  * @brief 以fd+path为凭证获取文件状态
  * @note 需要获取和关闭dirent，在fileStat中会对dirent层加锁
- * @todo 需要处理flags为AT_SYMLINK_NOFOLLOW的情况（不跟随符号链接）
+ * @todo 需要处理flags为AT_NO_AUTOMOUNT或AT_EMPTY_PATH的情况
  */
 int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
 	Dirent *baseDir, *file;
@@ -443,10 +476,17 @@ int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
 	unwrap(getDirentByFd(dirFd, &baseDir, NULL));
 	copyInStr(pPath, path, MAX_NAME_LEN);
 
-	file = getFile(baseDir, path);
+	log(LEVEL_GLOBAL, "fstat %s, dirFd is %d, flags = %x\n", path, dirFd, flags);
+
+	if (flags & AT_SYMLINK_NOFOLLOW) {
+		// 不跟随符号链接
+		file = get_file_raw(baseDir, path);
+	} else {
+		file = getFile(baseDir, path);
+	}
 	if (file == NULL) {
 		warn("can't find file %s at fd %d\n", path, dirFd);
-		return -1;
+		return -ENOENT;
 	}
 	struct kstat kstat;
 	fileStat(file, &kstat);
@@ -454,4 +494,44 @@ int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
 
 	file_close(file);
 	return 0;
+}
+
+off_t lseekFd(int fd, off_t offset, int whence) {
+	int kFd_num;
+	struct kstat kstat;
+	unwrap(getDirentByFd(fd, NULL, &kFd_num));
+	Fd *kernFd = &fds[kFd_num];
+
+	mtx_lock_sleep(&kernFd->lock);
+	if (whence == SEEK_SET || whence == SEEK_DATA) {
+		kernFd->offset = offset;
+	} else if (whence == SEEK_CUR) {
+		kernFd->offset += offset;
+	} else if (whence == SEEK_END) {
+		// 只有磁盘文件才能获取到文件的大小
+		if (kernFd->type != dev_file) {
+			warn("only file can use SEEK_END\n");
+			mtx_unlock_sleep(&kernFd->lock);
+			return -1;
+		} else {
+			fileStat(kernFd->dirent, &kstat);
+			kernFd->offset = kstat.st_size + offset;
+		}
+	} else if (whence == SEEK_HOLE) {
+		fileStat(kernFd->dirent, &kstat);
+		// 文件中没有任何空洞，设置offset为文件尾部
+		kernFd->offset = kstat.st_size;
+	} else {
+		warn("unknown lseek whence %d\n", whence);
+	}
+	mtx_unlock_sleep(&kernFd->lock);
+	return 0;
+}
+
+int faccessatFd(int dirFd, u64 pPath, int mode, int flags) {
+	Dirent *dir;
+	char path[MAX_NAME_LEN];
+	unwrap(getDirentByFd(dirFd, &dir, NULL));
+	copyInStr(pPath, path, MAX_NAME_LEN);
+	return faccessat(dir, path, mode, flags);
 }

@@ -10,6 +10,7 @@
 typedef struct FileDev {
 	int dev_id;
 	char *dev_name;
+	void *data; // 设备内储存的数据
 	int (*dev_read)(struct Dirent *file, int user, u64 dst, uint off, uint n);
 	int (*dev_write)(struct Dirent *file, int user, u64 src, uint off, uint n);
 } FileDev;
