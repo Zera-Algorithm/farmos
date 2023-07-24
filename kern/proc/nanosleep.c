@@ -2,6 +2,7 @@
 #include <lib/error.h>
 #include <lock/mutex.h>
 #include <proc/nanosleep.h>
+#include <proc/cpu.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
 
@@ -35,6 +36,7 @@ void nanosleep_proc(u64 clocks) {
 	nanosleep->clocks = clocks;
 	nanosleep->start_time = getTime();
 	nanosleep->end_time = nanosleep->start_time + clocks;
+	nanosleep->td = cpu_this()->cpu_running;
 
 	// 插入队列，保证队列按end_time升序排列
 	if (LIST_EMPTY(&nanosleep_list)) {
@@ -78,5 +80,23 @@ void nanosleep_check() {
 		nanosleep_dealloc(first);
 	}
 
+	mtx_unlock(&mtx_nanosleep);
+}
+
+/**
+ * @brief 提前唤醒处于nanosleep状态的线程
+ * 不检验线程是否处于nanosleep状态，可能在调用之前就已因时间到期而唤醒，调用者需要自行保证正确性
+ * 如果线程在nanosleep队列中，提前唤醒不影响原有的到期唤醒功能
+ */
+void nanosleep_early_wakeup(thread_t *td) {
+	mtx_lock(&mtx_nanosleep);
+	nanosleep_t *tmp;
+	LIST_FOREACH (tmp, &nanosleep_list, nano_link) {
+		if (tmp->td == td) {
+			wakeup(tmp);
+			nanosleep_dealloc(tmp);
+			break;
+		}
+	}
 	mtx_unlock(&mtx_nanosleep);
 }
