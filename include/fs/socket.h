@@ -2,6 +2,8 @@
 #define _SOCKET_H
 #include <fs/fd.h>
 #include <types.h>
+#include <lib/queue.h>
+#include <lock/mutex.h>
 
 #define SOCKET_COUNT 128
 #define PENDING_COUNT 128
@@ -39,6 +41,15 @@ typedef struct Socket {
 	SocketState state;
 	// bool is_close; 由首先关闭连接的socket来写另一socket的is_close属性
 } Socket;
+
+typedef	struct Message {
+	u16 family;
+	u16 port;
+	u32 addr;
+	void * bufferAddr;
+} Message;
+
+LIST_HEAD(Message_list, Message);
 
 void socket_init();
 int socket(int domain, int type, int protocol);
