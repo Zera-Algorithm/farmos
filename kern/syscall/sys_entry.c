@@ -64,6 +64,7 @@ static syscall_function_t sys_table[] = {
     [SYS_rt_sigprocmask] = {sys_sigprocmask, "sigprocmask"},
     [SYS_tkill] = {sys_tkill, "tkill"},
     [SYS_kill] = {sys_kill, "kill"},
+    [SYS_futex] = {sys_futex, "futex"},
 };
 
 /**

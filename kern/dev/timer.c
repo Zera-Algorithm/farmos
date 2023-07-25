@@ -5,7 +5,6 @@
 #include "riscv.h"
 #include "types.h"
 #include <dev/timer.h>
-#include <proc/nanosleep.h>
 
 /**
  * @brief 获取当前的时间（以Cycles为单位）
@@ -44,5 +43,4 @@ static void timer_set_next_tick() {
  */
 void handler_timer_int() {
 	timer_set_next_tick();
-	nanosleep_check();
 }
