@@ -30,4 +30,8 @@ typedef struct timespec {
 #define CLOCK_REALTIME_ALARM 8
 #define CLOCK_BOOTTIME_ALARM 9
 
+// 工具
+
+#define TV_USEC(tv) ((tv).tv_sec * 1000000 + (tv).tv_usec)
+
 #endif // _TIME_H

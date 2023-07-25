@@ -20,7 +20,7 @@ int close(int);
 pid_t getpid(void);
 pid_t getppid(void);
 int sched_yield(void);
-void exit(int);
+void exit(int) __attribute__((noreturn));
 pid_t fork(void);
 pid_t clone(int (*fn)(void *arg), void *arg, void *stack, size_t stack_size, unsigned long flags);
 int exec(char *);
@@ -62,5 +62,8 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 int kill(pid_t pid, int sig);
 int tkill(pid_t tid, int sig);
+
+int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val3);
+int gettid();
 
 #endif // __UNISTD_H__
