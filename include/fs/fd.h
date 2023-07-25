@@ -11,6 +11,7 @@
 #define FDNUM 1024
 
 typedef struct FdDev FdDev;
+typedef struct Socket Socket;
 
 typedef struct Fd {
 	// 保证每个fd的读写不并发

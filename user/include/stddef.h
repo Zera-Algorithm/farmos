@@ -14,6 +14,7 @@ typedef unsigned int uint32;
 typedef long long int64;
 typedef unsigned long long uint64;
 typedef unsigned int uint;
+typedef unsigned int socklen_t;
 
 #define ULONG_MAX (0xffffffffffffffffULL)
 #define LONG_MAX (0x7fffffffffffffffLL)
@@ -140,6 +141,13 @@ struct iovec {
 	void *iov_base;
 	size_t iov_len;
 };
+
+typedef struct SocketAddr {
+	uint16 family;
+	uint16 port;
+	uint32 addr;
+	char zero[8];
+} SocketAddr;
 
 // for mmap
 #define PROT_NONE 0

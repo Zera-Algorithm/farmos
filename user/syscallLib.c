@@ -57,6 +57,8 @@ pid_t clone(int (*fn)(void *arg), void *arg, void *stack, size_t stack_size, uns
 }
 void exit(int code) {
 	syscall(SYS_exit, code);
+	while (1)
+		;
 }
 
 int waitpid(int pid, int *code, int options) {
@@ -212,4 +214,33 @@ int kill(pid_t pid, int sig) {
 
 int tkill(pid_t tid, int sig) {
 	return syscall(SYS_tkill, tid, sig);
+}
+
+int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val3) {
+	return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
+}
+
+int socket(int domain, int type, int protocol) {
+	return syscall(SYS_socket, domain, type, protocol);
+}
+
+int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen) {
+	return syscall(SYS_bind, sockfd, sockectaddr, addrlen);
+}
+
+int listen(int sockfd, int backlog) {
+	return syscall(SYS_listen, sockfd, backlog);
+}
+
+int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
+	return syscall(SYS_connect, sockfd, addr, addrlen);
+}
+
+int accept(int sockfd, SocketAddr *addr) {
+	return syscall(SYS_accept, sockfd, addr);
+}
+
+
+int gettid() {
+	return syscall(SYS_gettid);
 }

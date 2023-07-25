@@ -1,6 +1,7 @@
 #ifndef _SOCKET_H
 #define _SOCKET_H
 #include <fs/fd.h>
+#include <lock/mutex.h>
 #include <types.h>
 
 #define SOCKET_COUNT 128
@@ -8,8 +9,6 @@
 
 #define AF_UNIX 1  /* Unix domain sockets 		*/
 #define AF_LOCAL 1 /* POSIX name for AF_UNIX	*/
-
-typedef unsigned int socklen_t;
 
 typedef struct SocketAddr {
 	u16 family;
