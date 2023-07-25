@@ -87,6 +87,11 @@ sigaction_t *sigaction_get(proc_t *p, int signo);
 void sigeventq_insert(thread_t *td, sigevent_t *se);
 void sigeventq_remove(thread_t *td, sigevent_t *se);
 
+// 信号发送相关函数
+bool sig_td_canhandle(thread_t *td, int signo);
+void sig_send_td(thread_t *td, int signo);
+void sig_send_proc(proc_t *p, int signo);
+
 // 信号相关宏
 #define SIGHUP 1
 #define SIGINT 2

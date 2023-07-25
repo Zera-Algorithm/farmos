@@ -67,6 +67,7 @@ int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);
 int sys_sigreturn();
 int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize);
 int sys_tkill(int tid, int sig);
+int sys_kill(int pid, int sig);
 
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
@@ -80,5 +81,7 @@ int sys_bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
 int sys_listen(int sockfd, int backlog);
 int sys_connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
 int sys_accept(int sockfd, SocketAddr *addr);
+// Futex(sys_futex)
+int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);
 
 #endif // !_SYSCALL_H
