@@ -44,6 +44,9 @@ typedef struct proclist {
 extern proc_t procs[NPROC];
 extern proclist_t proc_freelist;
 
+// 处理argv参数的回调函数
+typedef void (*argv_callback_t)(char *kstr_arr[]);
+
 void proc_init();
 proc_t *proc_alloc();
 void proc_addtd(proc_t *p, thread_t *td);
@@ -53,7 +56,8 @@ void proc_initucode(proc_t *p, thread_t *inittd, const void *bin, size_t size);
 
 void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack);
 void proc_recycleupt(proc_t *p);
-void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp);
+void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
+		    argv_callback_t callback);
 
 void proc_create(const char *name, const void *bin, size_t size);
 u64 td_fork(thread_t *td, u64 childsp, u64 ptid, u64 tls, u64 ctid);
@@ -77,7 +81,7 @@ void proc_free(proc_t *p);
 #define proc_unlock(p) mtx_unlock(&(p)->p_lock)
 #define proc_hold(p) mtx_hold(&(p)->p_lock)
 
-#define PID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000) < 16))
+#define PID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000) << 16))
 #define PID_TO_INDEX(tid) (tid & 0xffff)
 #define PID_INIT (PID_GENERATE(1, 0))
 

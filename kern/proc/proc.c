@@ -82,7 +82,7 @@ void proc_create(const char *name, const void *bin, size_t size) {
 	inittd->td_status = RUNNABLE;
 
 	// 初始化参数
-	proc_setustack(inittd, p->p_pt, 0, NULL, 0);
+	proc_setustack(inittd, p->p_pt, 0, NULL, 0, NULL);
 
 	// 将初始线程加入调度队列
 	tdq_critical_enter(&thread_runq);

@@ -46,11 +46,7 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 
 fileid_t file_load(const char *path, void **bin, size_t *size) {
 	// load时加锁，unload时解锁
-	if (path[1] == 'w') {
-		*size = 666;
-	}
-	file = getFile(NULL, (char *)path);
-	assert(file != NULL);
+	panic_on(getFile(NULL, (char *)path, &file));
 	log(DEBUG, "file: %s\n", file->name);
 	return file_load_by_dirent(file, bin, size);
 }

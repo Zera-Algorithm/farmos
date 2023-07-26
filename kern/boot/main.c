@@ -47,7 +47,7 @@ void hartInit() {
 extern void trapInitHart();
 extern void sched_init();
 
-// #define SINGLE
+#define SINGLE
 // #define LOCALCOMP_TEST
 
 // start() jumps here in supervisor mode on all CPUs.
@@ -99,20 +99,20 @@ void main() {
 		mtx_init(&mtx_file_load, "kload", 0, MTX_SLEEP);
 
 		assert(intr_get() == 0);
-		// PROC_CREATE(test_printf, "test1");
-		// PROC_CREATE(test_printf, "test2");
-		// PROC_CREATE(test_printf, "test3");
-		// PROC_CREATE(test_pthread, "test_pthread");
-		// PROC_CREATE(test_clone, "test_clone");
-		// PROC_CREATE(test_pipe, "test_pipe");
-		// #ifdef LOCALCOMP_TEST
-		// 		PROC_CREATE(test_init, "test_init");
-		// #else
-		// 		PROC_CREATE(test_busybox, "test_busybox");
-		// #endif
+// PROC_CREATE(test_printf, "test1");
+// PROC_CREATE(test_printf, "test2");
+// PROC_CREATE(test_printf, "test3");
+// PROC_CREATE(test_pthread, "test_pthread");
+// PROC_CREATE(test_clone, "test_clone");
+// PROC_CREATE(test_pipe, "test_pipe");
+#ifdef LOCALCOMP_TEST
+		PROC_CREATE(test_init, "test_init");
+#else
+		PROC_CREATE(test_busybox, "test_busybox");
+#endif
 		// PROC_CREATE(test_execve, "test_execve");
 		// PROC_CREATE(test_while, "test_while");
-		PROC_CREATE(test_futex, "test_futex");
+		// PROC_CREATE(test_futex, "test_futex");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;

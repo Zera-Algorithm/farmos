@@ -38,7 +38,7 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 // 此处不校验clockid,直接返回cpu时间
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
-	ts.tv_sec = getUSecs() / 1e6;
+	ts.tv_sec = getUSecs() / 1000000ul;
 	ts.tv_nsec = getTime() * NSEC_PER_CLOCK;
 
 	thread_t *td = cpu_this()->cpu_running;

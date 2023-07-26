@@ -74,13 +74,13 @@ static char *skip_slash(char *p) {
  * @brief 将dirent的引用计数加一
  */
 void dget(Dirent *dirent) {
-#ifdef REFCNT_DEBUG
+	assert(dirent->holder_cnt < 64);
 	dirent->holders[dirent->holder_cnt++] = cpu_this()->cpu_running->td_name;
 
+#ifdef REFCNT_DEBUG
 	mtx_lock_sleep(&mtx_file);
 	warn("dget: %s, process: %s\n", dirent->name, cpu_this()->cpu_running->td_name);
 	mtx_unlock_sleep(&mtx_file);
-
 #endif
 	dirent->refcnt += 1;
 }
@@ -89,7 +89,6 @@ void dget(Dirent *dirent) {
  * @brief 将dirent的引用数减一
  */
 void dput(Dirent *dirent) {
-#ifdef REFCNT_DEBUG
 	char *name = cpu_this()->cpu_running->td_name;
 	for (int i = 0; i < dirent->holder_cnt; i++) {
 		if (dirent->holders[i] == name) {
@@ -99,6 +98,7 @@ void dput(Dirent *dirent) {
 		}
 	}
 
+#ifdef REFCNT_DEBUG
 	mtx_lock_sleep(&mtx_file);
 	warn("dput: %s, process: %s\n", dirent->name, cpu_this()->cpu_running->td_name);
 	mtx_unlock_sleep(&mtx_file);
@@ -147,7 +147,7 @@ static int dir_lookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **f
 		}
 	}
 
-	return -E_NOT_FOUND;
+	return -ENOENT;
 }
 
 /**
@@ -247,7 +247,7 @@ int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent
 		}
 
 		if (path - p >= MAX_NAME_LEN) {
-			return -E_BAD_PATH;
+			return -ENAMETOOLONG;
 		}
 
 		memcpy(name, p, path - p);
@@ -258,7 +258,8 @@ int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent
 		// 2. 检查目录的属性
 		// 如果不是目录，则直接报错
 		if (!IS_DIRECTORY(&dir->raw_dirent)) {
-			return -E_NOT_FOUND;
+			// 中途扫过的一个路径不是目录
+			return -ENOTDIR;
 		}
 
 		tmp = try_enter_mount_dir(dir);
@@ -290,7 +291,7 @@ int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent
 		if ((r = dir_lookup(fs, dir, name, &file)) < 0) {
 			// printf("r = %d\n", r);
 			// *path == '\0'表示遍历到最后一个项目了
-			if (r == -E_NOT_FOUND && *path == '\0') {
+			if (r == -ENOENT && *path == '\0') {
 				if (pdir) {
 					*pdir = dir;
 				}
@@ -373,7 +374,7 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 	}
 
 	// 2. 处理错误：当出现其他错误，或者没有找到上一级的目录时，退出
-	if (r != -E_NOT_FOUND || dir == NULL) {
+	if (r != -ENOENT || dir == NULL) {
 		mtx_unlock_sleep(&mtx_file);
 		return r;
 	}

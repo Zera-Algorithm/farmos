@@ -84,4 +84,26 @@ struct pollfd {
 // for getfd and setfd
 #define FD_CLOEXEC 1
 
+#define __FSID_T_TYPE                                                                              \
+	struct {                                                                                   \
+		int __val[2];                                                                      \
+	}
+
+struct statfs {
+	i64 f_type;
+	i64 f_bsize;
+	u64 f_blocks;
+	u64 f_bfree;
+	u64 f_bavail;
+	u64 f_files;
+	u64 f_ffree;
+	struct {
+		int val[2];
+	} f_fsid;
+	i64 f_namelen;
+	i64 f_frsize;
+	i64 f_flags;
+	i64 f_spare[4]; // 保留位
+};
+
 #endif

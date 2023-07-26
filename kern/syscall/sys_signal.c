@@ -15,8 +15,15 @@ int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
 }
 
 int sys_sigreturn() {
+	thread_t *td = cpu_this()->cpu_running;
+	if (sigaction_get(td->td_proc, td->td_sig->se_signo)->sa_flags & SA_SIGINFO) {
+		mtx_lock(&td->td_lock);
+		siginfo_return(td, td->td_sig);
+		mtx_unlock(&td->td_lock);
+	}
 	sig_return(cpu_this()->cpu_running);
-	return 0;
+	// a0由syscall返回
+	return cpu_this()->cpu_running->td_trapframe.a0;
 }
 
 #define SIG_BLOCK 0
