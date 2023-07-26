@@ -87,8 +87,13 @@ bool sig_td_canhandle(thread_t *td, int signo);
 void sig_send_td(thread_t *td, int signo);
 void sig_send_proc(proc_t *p, int signo);
 
+sigevent_t *sig_getse(thread_t *td);
+
 // 特殊信号处理函数相关函数
 void siginfo_set(thread_t *td, sigevent_t *se);
 void siginfo_return(thread_t *td, sigevent_t *se);
+
+// 等待
+void sig_timedwait(thread_t *td, sigset_t *set, siginfo_t *info, u64 timeout);
 
 #endif // _SIGNAL_H

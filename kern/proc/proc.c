@@ -136,7 +136,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 			proc_free(child);
 		} else {
 			warn("haven't implement init, child %d is still alive\n", child->p_pid);
-			child->p_parent = 0;
+			child->p_parent = &procs[PID_TO_INDEX(PID_INIT)];
 			// child->td_parent = TID_INIT;
 			// todo: insert to init's childlist and wake up init
 		}
@@ -145,6 +145,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 
 	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
 	if (p->p_pid != PID_INIT) {
+		warn("proc %08x destroying, send SIGCHLD to parent %08x\n", p->p_pid, p->p_parent->p_pid);
 		sig_send_proc(p->p_parent, SIGCHLD);
 		wakeup(p->p_parent);
 	}

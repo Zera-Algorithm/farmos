@@ -7,7 +7,6 @@
 #include <mm/vmtools.h>
 #include <proc/cpu.h>
 #include <proc/interface.h>
-#include <proc/nanosleep.h>
 #include <proc/sched.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
@@ -15,6 +14,7 @@
 #include <sys/syscall.h>
 #include <sys/syscall_proc.h>
 #include <sys/time.h>
+#include <proc/tsleep.h>
 
 void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;
@@ -187,13 +187,7 @@ u64 sys_wait4(u64 pid, u64 status, u64 options) {
 u64 sys_nanosleep(u64 pTimeSpec) {
 	timeval_t timeVal;
 	copyIn(pTimeSpec, &timeVal, sizeof(timeVal));
-	u64 usec = timeVal.tv_sec * 1000000 + timeVal.tv_usec;
-	u64 clocks = usec * CLOCK_PER_USEC;
-	log(LEVEL_MODULE, "time to nanosleep: %d clocks\n", clocks);
-
-	// 执行睡眠
-	nanosleep_proc(clocks);
-
+	tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal) + getUSecs());
 	return 0;
 }
 

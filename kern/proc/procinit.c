@@ -22,13 +22,11 @@ void *kstacks;
 
 void thread_init() {
 	extern mutex_t td_tid_lock;
-	extern mutex_t mtx_nanosleep;
 	mtx_init(&td_tid_lock, "td_tid_lock", false, MTX_SPIN);
 	mtx_init(&wait_lock, "wait_lock", false, MTX_SPIN);
 	mtx_init(&thread_runq.tq_lock, "thread_runq", false, MTX_SPIN);
 	mtx_init(&thread_freeq.tq_lock, "thread_freeq", false, MTX_SPIN);
 	mtx_init(&thread_sleepq.tq_lock, "thread_sleepq", false, MTX_SPIN);
-	mtx_init(&mtx_nanosleep, "mtx_nanosleep", false, MTX_SPIN);
 	TAILQ_INIT(&thread_runq.tq_head);
 	TAILQ_INIT(&thread_freeq.tq_head);
 	TAILQ_INIT(&thread_sleepq.tq_head);

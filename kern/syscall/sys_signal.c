@@ -5,6 +5,7 @@
 #include <signal/signal.h>
 #include <sys/errno.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
 
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
 	if (signum < 0 || signum >= SIGNAL_MAX) {
@@ -109,5 +110,32 @@ int sys_kill(int pid, int sig) {
 	}
 
 	sig_send_proc(p, sig);
+
+	assert(pid == p->p_pid);
 	return 0;
+}
+
+int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout) {
+	thread_t *td = cpu_this()->cpu_running;
+	
+	sigset_t sigset = {0};
+	if (usigset) {
+		copy_in(td->td_proc->p_pt, usigset, &sigset, sizeof(sigset_t));
+	}
+
+	timespec_t timeout = {0};
+	if (utimeout) {
+		copy_in(td->td_proc->p_pt, utimeout, &timeout, sizeof(timespec_t));
+	}
+
+	mtx_lock(&td->td_lock);
+	siginfo_t info = {0};
+	sig_timedwait(td, &sigset, &info, TS_USEC(timeout));
+	mtx_unlock(&td->td_lock);
+
+	if (uinfo) {
+		copy_out(td->td_proc->p_pt, uinfo, &info, sizeof(siginfo_t));
+	}
+
+	return info.si_signo;
 }

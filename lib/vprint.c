@@ -136,6 +136,7 @@ void vprintfmt(fmt_callback_t out, void *data, const char *fmt, va_list ap) {
 			break;
 
 		case 'x':
+		case 'p':
 			if (long_flag) {
 				num = va_arg(ap, long int);
 			} else {

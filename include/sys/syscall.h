@@ -77,12 +77,14 @@ int sys_sigreturn();
 int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize);
 int sys_tkill(int tid, int sig);
 int sys_kill(int pid, int sig);
+int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout);
 
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 err_t sys_msync(u64 addr, size_t length, int flags);
 err_t sys_unmap(u64 start, u64 len);
 err_t sys_mprotect(u64 addr, size_t len, int prot);
+
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);
