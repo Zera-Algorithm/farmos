@@ -35,6 +35,10 @@ struct FdDev fd_dev_socket = {
 
 void socket_init() {
 	mtx_init(&mtx_socketmap, "sys_socketable", 1, MTX_SPIN);
+	for (int i = 0; i < SOCKET_COUNT; i++) {
+		mtx_init(&sockets[i].lock, "socket_lock", 1, MTX_SPIN);
+		mtx_init(&sockets[i].state.state_lock, "socket_state_lock", 1, MTX_SPIN);
+	}
 }
 
 int socketAlloc() {
@@ -45,8 +49,6 @@ int socketAlloc() {
 		int inner = i & 31;
 		if ((socket_bitmap[index] & (1 << inner)) == 0) {
 			socket_bitmap[index] |= 1 << inner;
-			mtx_init(&sockets[i].lock, "socket_lock", 1, MTX_SPIN);
-			mtx_init(&sockets[i].state.state_lock, "socket_state_lock", 1, MTX_SPIN);
 			mtx_unlock(&mtx_socketmap);
 			return i;
 		}
@@ -173,7 +175,7 @@ int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
 
 	Socket *target_socket = find_listening_socket(addr);
 	if (target_socket == NULL) {
-		warn("server socket doesn't exists or isn't listening");
+		warn("server socket doesn't exists or isn't listening\n");
 		return -1;
 	}
 
@@ -385,8 +387,8 @@ void socketFree(int socketNum) {
 	socket->type = 0;
 
 	if (socket->bufferAddr != NULL) {
-		socket->bufferAddr = NULL;
 		kvmFree((u64)socket->bufferAddr);
+		socket->bufferAddr = NULL;
 	}
 
 	memset(&socket->addr, 0, sizeof(SocketAddr));

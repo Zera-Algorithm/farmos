@@ -85,6 +85,7 @@ void main() {
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
 		kmalloc_init();
+		socket_init();
 
 		extern mutex_t first_thread_lock;
 		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
@@ -112,7 +113,7 @@ void main() {
 		// #endif
 		// PROC_CREATE(test_execve, "test_execve");
 		// PROC_CREATE(test_while, "test_while");
-		PROC_CREATE(test_futex, "test_futex");
+		PROC_CREATE(test_socket, "test_socket");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;
