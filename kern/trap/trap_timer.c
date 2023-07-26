@@ -1,17 +1,15 @@
 #include <dev/timer.h>
-#include <futex/futex.h>
 #include <lib/log.h>
 #include <proc/cpu.h>
-#include <proc/nanosleep.h>
 #include <proc/sched.h>
 #include <sys/syscall.h>
 #include <trap/trap.h>
+#include <proc/tsleep.h>
 
 void ktrap_timer() {
 	log(DEFAULT, "timer interrupt on CPU %d!\n", cpu_this_id());
 	handler_timer_int();
-	nanosleep_check();
-	futexevent_check();
+	tsleep_check();
 }
 
 void utrap_timer() {

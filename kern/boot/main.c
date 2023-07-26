@@ -22,6 +22,7 @@
 #include <riscv.h>
 #include <signal/signal.h>
 #include <types.h>
+#include <proc/tsleep.h>
 
 volatile static int started = 0;
 // 用于记录当前哪个核已被启动
@@ -47,7 +48,7 @@ void hartInit() {
 extern void trapInitHart();
 extern void sched_init();
 
-#define SINGLE
+// #define SINGLE
 // #define LOCALCOMP_TEST
 
 // start() jumps here in supervisor mode on all CPUs.
@@ -77,6 +78,7 @@ void main() {
 		proc_init();
 		sig_init();
 		futexevent_init();
+		tsleep_init();
 
 		// 其它
 		trapInitHart(); // install kernel trap vector

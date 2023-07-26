@@ -23,8 +23,8 @@ void sys_uname(u64 upuname) {
 void sys_gettimeofday(u64 uptv, u64 uptz) {
 	timeval_t tv;
 	timezone_t tz;
-	tv.tv_sec = getUSecs() / 1e6;
-	tv.tv_usec = getUSecs();
+	tv.tv_sec = getUSecs() / 1000000ul;
+	tv.tv_usec = getUSecs() % 1000000ul;
 	tz.tz_minuteswest = 0; // todo
 	tz.tz_dsttime = 0;     // todo
 
@@ -39,7 +39,7 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
 	ts.tv_sec = getUSecs() / 1000000ul;
-	ts.tv_nsec = getTime() * NSEC_PER_CLOCK;
+	ts.tv_nsec = (getTime() * NSEC_PER_CLOCK) % 1000000000ul;
 
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, tp, &ts, sizeof(ts));

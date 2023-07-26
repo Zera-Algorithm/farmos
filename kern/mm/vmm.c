@@ -180,6 +180,12 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 	// 如果页表项已经存在，抹除其内容（可优化）
 	Pte *originPte = ptWalk(pgdir, va, false);
 	if (originPte != NULL && (*originPte & PTE_V)) {
+		if (pteToPa(*originPte) == pa) {
+			// 页表项已经存在，且映射的物理地址相同，更新权限
+			*originPte = paToPte(pa) | perm | PTE_V;
+			mtx_unlock(&kvmlock);
+			return 0;
+		}
 		panic_on(ptUnmap(pgdir, va));
 	}
 	// 页表项已经不存在，创建新的页表项

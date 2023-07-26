@@ -71,6 +71,7 @@ static syscall_function_t sys_table[] = {
     [SYS_kill] = {sys_kill, "kill"},
     [SYS_futex] = {sys_futex, "futex"},
     [SYS_statfs] = {sys_statfs, "statfs"},
+    [SYS_rt_sigtimedwait] = {sys_sigtimedwait, "sigtimedwait"},
 };
 
 /**
@@ -82,11 +83,15 @@ extern char *sys_names[];
 void syscall_entry(trapframe_t *tf) {
 	u64 sysno = tf->a7;
 	syscall_function_t *sys_func = &sys_table[sysno];
+    thread_t *td = cpu_this()->cpu_running;
 
 	if (sys_func != NULL && sys_func->name != NULL) {
 		log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
-		    cpu_this()->cpu_running->td_name, sys_func->name, tf->epc);
+		    td->td_name, sys_func->name, tf->epc);
+        if (sysno != SYS_write)
+        log(9999, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
 	}
+    
 
 	// S态时间审计
 	// u64 startTime = getTime();
@@ -100,7 +105,7 @@ void syscall_entry(trapframe_t *tf) {
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))sys_table[sysno].func;
 	if (func == NULL) {
 		// TODO: 未实现的syscall应当默认返回-1
-		tf->a0 = 0;
+		tf->a0 = -1;
 		warn("unimplemented or unknown syscall: %s(%d)\n", sys_names[sysno], sysno);
 		return;
 		// sys_exit(SYSCALL_ERROR);
@@ -111,8 +116,10 @@ void syscall_entry(trapframe_t *tf) {
 	if ((i64)tf->a0 < 0) {
 		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
-	log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s' return 0x%lx\n", cpu_this_id(),
-	    cpu_this()->cpu_running->td_name, sys_func->name, tf->a0);
+    if (sysno != SYS_write)
+    log(9999, "Thread %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
+    
+	
 
 	// // S态时间审计
 	// u64 endTime = getTime();
