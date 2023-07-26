@@ -113,7 +113,10 @@ int socket(int domain, int type, int protocol) {
 	return usfd;
 }
 
-int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen) {
+int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
+	SocketAddr socketaddr;
+	copyIn((u64)p_sockectaddr, &socketaddr, sizeof(SocketAddr));
+
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
@@ -125,9 +128,9 @@ int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen) {
 
 	mtx_lock(&socket->lock);
 
-	if (socket->addr.family == sockectaddr->family) {
-		socket->addr.addr = sockectaddr->addr;
-		socket->addr.port = sockectaddr->port;
+	if (socket->addr.family == socketaddr.family) {
+		socket->addr.addr = socketaddr.addr;
+		socket->addr.port = socketaddr.port;
 	}
 
 	mtx_unlock(&socket->lock);
@@ -157,7 +160,9 @@ int listen(int sockfd, int backlog) {
 	return 0;
 }
 
-int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
+int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
+	SocketAddr addr;
+	copyIn((u64)p_addr, &addr, sizeof(SocketAddr));
 
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -170,10 +175,10 @@ int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
 
 	mtx_lock(&local_socket->lock);
 	local_socket->addr = gen_local_socket_addr();
-	local_socket->target_addr = *addr;
+	local_socket->target_addr = addr;
 	mtx_unlock(&local_socket->lock);
 
-	Socket *target_socket = find_listening_socket(addr);
+	Socket *target_socket = find_listening_socket(&addr);
 	if (target_socket == NULL) {
 		warn("server socket doesn't exists or isn't listening\n");
 		return -1;
@@ -202,7 +207,9 @@ int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
 	return 0;
 }
 
-int accept(int sockfd, SocketAddr *addr) {
+int accept(int sockfd, SocketAddr *p_addr) {
+	SocketAddr addr;
+	copyIn((u64)p_addr, &addr, sizeof(SocketAddr));
 
 	int newUerFd;
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
