@@ -1,5 +1,6 @@
 #include <dev/sbi.h>
 #include <lib/log.h>
+#include <lib/printf.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <sys/syscall.h>
@@ -16,6 +17,8 @@ static syscall_function_t sys_table[] = {
     [SYS_openat] = {sys_openat, "openat"},
     [SYS_read] = {sys_read, "read"},
     [SYS_write] = {sys_write, "write"},
+    [SYS_pread64] = {sys_pread64, "pread64"},
+    [SYS_pwrite64] = {sys_pwrite64, "pwrite64"},
     [SYS_readv] = {sys_readv, "readv"},
     [SYS_writev] = {sys_writev, "writev"},
     [SYS_exit] = {sys_exit, "exit"},
@@ -26,6 +29,7 @@ static syscall_function_t sys_table[] = {
     [SYS_mmap] = {sys_mmap, "mmap"},
     [SYS_mprotect] = {sys_mprotect, "mprotect"},
     [SYS_msync] = {sys_msync, "msync"},
+    [SYS_madvise] = {sys_madvise, "sys_madvise"},
     [SYS_fstat] = {sys_fstat, "fstat"},
     [SYS_fstatat] = {sys_fstatat, "fstatat"},
     [SYS_faccessat] = {sys_faccessat, "faccessat"},
@@ -63,8 +67,10 @@ static syscall_function_t sys_table[] = {
     [SYS_rt_sigreturn] = {sys_sigreturn, "sigreturn"},
     [SYS_rt_sigprocmask] = {sys_sigprocmask, "sigprocmask"},
     [SYS_tkill] = {sys_tkill, "tkill"},
+    [SYS_prlimit64] = {sys_prlimit64, "prlimit64"},
     [SYS_kill] = {sys_kill, "kill"},
     [SYS_futex] = {sys_futex, "futex"},
+    [SYS_statfs] = {sys_statfs, "statfs"},
 };
 
 /**
@@ -78,15 +84,12 @@ void syscall_entry(trapframe_t *tf) {
 	syscall_function_t *sys_func = &sys_table[sysno];
 
 	if (sys_func != NULL && sys_func->name != NULL) {
-		log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s'\n", cpu_this_id(),
-		    cpu_this()->cpu_running->td_name, sys_func->name);
+		log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
+		    cpu_this()->cpu_running->td_name, sys_func->name, tf->epc);
 	}
 
 	// S态时间审计
 	// u64 startTime = getTime();
-	if (sysno == 210) {
-		cpu_halt(); // todotodo: sys_shutdown
-	}
 	// 系统调用最多6个参数
 	u64 (*func)(u64, u64, u64, u64, u64, u64);
 
@@ -97,7 +100,7 @@ void syscall_entry(trapframe_t *tf) {
 	func = (u64(*)(u64, u64, u64, u64, u64, u64))sys_table[sysno].func;
 	if (func == NULL) {
 		// TODO: 未实现的syscall应当默认返回-1
-		tf->a0 = -1;
+		tf->a0 = 0;
 		warn("unimplemented or unknown syscall: %s(%d)\n", sys_names[sysno], sysno);
 		return;
 		// sys_exit(SYSCALL_ERROR);
@@ -105,6 +108,9 @@ void syscall_entry(trapframe_t *tf) {
 
 	// 将系统调用返回值放入a0寄存器
 	tf->a0 = func(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4, tf->a5);
+	if ((i64)tf->a0 < 0) {
+		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
+	}
 	log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s' return 0x%lx\n", cpu_this_id(),
 	    cpu_this()->cpu_running->td_name, sys_func->name, tf->a0);
 

@@ -2,6 +2,7 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
+#include <mm/kmalloc.h>
 #include <mm/vmm.h>
 #include <mm/vmtools.h>
 #include <param.h>
@@ -138,19 +139,19 @@ static inline void push_data(pte_t *argpt, u64 *sp, void *data, u64 len, int ali
 
 /**
  * @brief
- * 从in_pt对应的页表上取数据（通过arg_array指针），压到out_pt对应的栈上（栈指针为*p_sp）。新的栈上地址存储在arg_buf数组中
+ * 从in_pt对应的页表上取数据（通过arg_array指针），存入数组kstr_array中。
+ * 其中数组中的字符串都通过kmalloc分配，需要释放
  * @param arg_array 指向参数字符串的用户地址空间指针，若为NULL表示没有参数
- * @return 返回arg_buf的长度
+ * @return 返回内核字符串数组的长度
  */
-static int copyin_arg_array(pte_t *in_pt, pte_t *out_pt, char **arg_array, u64 *p_sp,
-			    char *arg_buf[]) {
-	char buf[MAXARGLEN + 1];
+static int copyin_uarg_array(pte_t *in_pt, char **arg_array, char *kstr_array[]) {
 	int arg_count = 0;
 
 	if (arg_array != NULL) {
 		while (1) {
 			// 1. 拷贝指向参数字符串的用户地址空间指针
 			char *arg;
+			char *buf = kmalloc(MAXARGLEN + 1);
 			copy_in(in_pt, (u64)(&arg_array[arg_count]), &arg, sizeof(char *));
 			if (arg == NULL) {
 				break;
@@ -163,27 +164,25 @@ static int copyin_arg_array(pte_t *in_pt, pte_t *out_pt, char **arg_array, u64 *
 			size_t len = strlen(buf) + 1;
 			buf[len - 1] = '\0';
 
-			// 3. 向栈上压入argv字符串
-			push_data(out_pt, p_sp, buf, len, true);
-
-			// 4. 记录参数字符串的用户地址空间指针
-			arg_buf[arg_count] = (char *)*p_sp;
+			// 4. 记录内核字符串指针
+			kstr_array[arg_count] = buf;
 
 			arg_count += 1;
 			assert(arg_count < MAXARG);
 		}
 	}
 	// 5. 参数数组以NULL表示结束
-	arg_buf[arg_count] = NULL;
+	kstr_array[arg_count] = NULL;
 
-	return arg_count + 1;
+	return arg_count;
 }
 
 /**
- * @brief 拷入额外的参数数组（arg_array来自内核）
+ * @brief 拷入(追加)来自内核的参数数组（arg_array来自内核）
+ * @note 传入的数组arg_buf需要以NULL结尾，arg_array也需要以NULL结尾
  * @return 返回arg_buf的长度
  */
-static int copyin_extra_arg_array(pte_t *out_pt, char **arg_array, u64 *p_sp, char *arg_buf[]) {
+static int push_karg_array(pte_t *out_pt, char **arg_array, u64 *p_sp, char *arg_buf[]) {
 	int arg_count = 0;
 	while (arg_buf[arg_count] != NULL) {
 		arg_count += 1;
@@ -209,6 +208,37 @@ static int copyin_extra_arg_array(pte_t *out_pt, char **arg_array, u64 *p_sp, ch
 	// 5. 参数数组以NULL表示结束
 	arg_buf[arg_count] = NULL;
 	return arg_count + 1;
+}
+
+/**
+ * @brief 释放以kmalloc形式分配的内核字符串数组
+ */
+static void free_kstr_array(char *kstr_arr[]) {
+	for (int i = 0; kstr_arr[i] != NULL; i++) {
+		kfree(kstr_arr[i]);
+	}
+}
+
+/**
+ * @brief
+ * 从in_pt对应的页表上取数据（通过arg_array指针），压到out_pt对应的栈上（栈指针为*p_sp）。新的栈上地址存储在arg_buf数组中
+ * @param arg_array 指向参数字符串的用户地址空间指针，若为NULL表示没有参数
+ * @param callback 用于处理内核字符串参数数组的回调函数
+ * @return 返回arg_buf的长度
+ */
+static int push_uarg_array(pte_t *in_pt, pte_t *out_pt, char **arg_array, u64 *p_sp,
+			   char *arg_buf[], argv_callback_t callback) {
+	char *kstr_arr[MAXARG + 1];
+	int arg_count;
+
+	copyin_uarg_array(in_pt, arg_array, kstr_arr);
+	if (callback)
+		callback(kstr_arr);
+	arg_buf[0] = NULL;
+	arg_count = push_karg_array(out_pt, kstr_arr, p_sp, arg_buf);
+	free_kstr_array(kstr_arr);
+
+	return arg_count;
 }
 
 /**
@@ -239,13 +269,15 @@ static void build_auxiliary_vector(char *argvbuf[], u64 *p_len) {
  * @param argv 用户空间内的参数指针
  * @param envp 用户空间内的环境变量指针。为0表示没有环境变量
  */
-void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp) {
+void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
+		    argv_callback_t callback) {
 	pte_t *src_pt = td->td_proc->p_pt;
 	// argv和envp需要并列在一个数组里面，以实现头部的对齐
 	char *argvbuf[MAXARG];
 
 	// 1. 拷入argv数组
-	u64 len_argv = copyin_arg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf);
+	u64 len_argv =
+	    push_uarg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf, callback);
 
 	// // for debug
 	// if (argv != NULL) {
@@ -259,14 +291,15 @@ void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp)
 	// }
 	// // debug end
 
-	assert(len_argv == argc + 1);
+	// assert(len_argv == argc + 1);
 
 	// 2. 拷入envp数组
-	copyin_arg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv);
+	push_uarg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv,
+			NULL);
 
 	// 测试拷入内核的参数(参数列表需要以NULL结尾)
-	u64 len_envp = copyin_extra_arg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL},
-					      &td->td_trapframe.sp, argvbuf + len_argv);
+	u64 len_envp = push_karg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL},
+				       &td->td_trapframe.sp, argvbuf + len_argv);
 
 	// 3. 拷入辅助数组
 	u64 total_len = len_argv + len_envp;

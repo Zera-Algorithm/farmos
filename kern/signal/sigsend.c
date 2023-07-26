@@ -14,6 +14,9 @@ bool sig_td_canhandle(thread_t *td, int signo) {
 }
 
 void sig_send_td(thread_t *td, int signo) {
+	warn("%lx send signal %d to thread %lx\n", cpu_this()->cpu_running->td_tid, signo,
+	     td->td_tid);
+
 	assert(td != NULL);
 	mtx_lock(&td->td_lock);
 	sigevent_t *se = sigevent_alloc(signo);

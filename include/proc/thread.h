@@ -11,6 +11,8 @@
 
 typedef struct proc proc_t;
 
+// #define SLEEP_DEBUG
+
 typedef struct thread {
 	mutex_t td_lock; // 线程锁（已被全局初始化）
 	proc_t *td_proc; // 线程所属进程（不保护，线程初始化后只读）
@@ -20,7 +22,6 @@ typedef struct thread {
 	TAILQ_ENTRY(thread) td_freeq;  // 空闲队列链接（空闲队列锁保护）
 	pid_t td_tid;		       // 线程 id（不保护，线程初始化后只读）
 	state_t td_status;	       // 线程状态（线程锁保护）
-	u64 td_ctid;		       // 清空tid地址标识
 
 #define td_startzero td_name // 清零属性区域开始指针
 	char td_name[MAXPATH + 1]; // 线程名（不保护，线程初始化后只读） todo fork时溢出
@@ -32,6 +33,7 @@ typedef struct thread {
 	context_t td_context;	// 内核态上下文（不保护，只被当前线程访问）
 	bool td_killed;		// 线程是否被杀死（线程锁保护）
 	sigset_t td_cursigmask; // 线程正在处理的信号屏蔽字（线程锁保护）
+	u64 td_ctid;		// 清空tid地址标识
 #define td_startcopy td_sigmask
 	sigset_t td_sigmask; // 线程信号屏蔽字（线程锁保护）
 #define td_endcopy td_kstack
@@ -39,6 +41,11 @@ typedef struct thread {
 
 	ptr_t td_kstack;	 // 内核栈所在页的首地址（已被全局初始化）
 	sigeventq_t td_sigqueue; // 待处理信号队列（线程锁保护）
+
+#ifdef SLEEP_DEBUG
+	u64 td_sleep_start;    // 睡眠开始时间
+	void *td_sleep_reason; // 睡眠原因
+#endif
 
 #define td_pt td_proc->p_pt
 #define td_fs_struct td_proc->p_fs_struct
@@ -69,7 +76,7 @@ void td_destroy(err_t exitcode) __attribute__((noreturn));
 #define tdq_critical_try_enter(tdq) mtx_try_lock(&(tdq)->tq_lock)
 #define tdq_critical_exit(tdq) mtx_unlock(&(tdq)->tq_lock)
 
-#define TID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000 + 0x1000) < 16))
+#define TID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000 + 0x1000) << 16))
 #define TID_TO_INDEX(tid) (tid & 0xffff)
 
 #endif // _THREAD_H_

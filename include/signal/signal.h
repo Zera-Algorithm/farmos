@@ -2,6 +2,7 @@
 #define _SIGNAL_H
 
 #include <param.h>
+#include <signal/machine.h>
 #include <signal/sigset.h>
 #include <types.h>
 
@@ -34,14 +35,6 @@ typedef struct siginfo {
 	unsigned int si_arch; /* Architecture of attempted system call (since Linux 3.5) */
 } siginfo_t;
 
-// typedef struct sigaction {
-// 	void (*sa_handler)(int);
-// 	void (*sa_sigaction)(int, siginfo_t *, void *);
-// 	sigset_t sa_mask;
-// 	int sa_flags;
-// 	void (*sa_restorer)(void);
-// } sigaction_t;
-
 // 引用自musl的k_sigaction结构体
 typedef struct k_sigaction {
 	void (*sa_handler)(int);
@@ -61,6 +54,8 @@ typedef struct sigevent {
 	sigset_t se_restoremask;
 	int se_signo;
 	int se_status;
+	u64 se_usiginfo;
+	u64 se_uuctx;
 	TAILQ_ENTRY(sigevent) se_link;
 } sigevent_t;
 
@@ -92,40 +87,8 @@ bool sig_td_canhandle(thread_t *td, int signo);
 void sig_send_td(thread_t *td, int signo);
 void sig_send_proc(proc_t *p, int signo);
 
-// 信号相关宏
-#define SIGHUP 1
-#define SIGINT 2
-#define SIGQUIT 3
-#define SIGILL 4
-#define SIGTRAP 5
-#define SIGABRT 6
-#define SIGIOT SIGABRT
-#define SIGBUS 7
-#define SIGFPE 8
-#define SIGKILL 9
-#define SIGUSR1 10
-#define SIGSEGV 11
-#define SIGUSR2 12
-#define SIGPIPE 13
-#define SIGALRM 14
-#define SIGTERM 15
-#define SIGSTKFLT 16
-#define SIGCHLD 17
-#define SIGCONT 18
-#define SIGSTOP 19
-#define SIGTSTP 20
-#define SIGTTIN 21
-#define SIGTTOU 22
-#define SIGURG 23
-#define SIGXCPU 24
-#define SIGXFSZ 25
-#define SIGVTALRM 26
-#define SIGPROF 27
-#define SIGWINCH 28
-#define SIGIO 29
-#define SIGPOLL SIGIO
-#define SIGPWR 30
-#define SIGSYS 31
-#define SIGUNUSED SIGSYS
+// 特殊信号处理函数相关函数
+void siginfo_set(thread_t *td, sigevent_t *se);
+void siginfo_return(thread_t *td, sigevent_t *se);
 
 #endif // _SIGNAL_H

@@ -60,3 +60,12 @@ err_t sys_brk(u64 addr) {
 			return addr;
 	}
 }
+
+/**
+ * @brief 给予内核内存空间的访问建议
+ * 暂不实现，返回0即可
+ */
+int sys_madvise(void *addr, size_t length, int advice) {
+	warn("sys_madvise not implemented!\n");
+	return 0;
+}

@@ -35,10 +35,15 @@ struct FdDev fd_dev_file = {
 // 注意：设备的相关读写均不需要对fd加锁
 // Fd的锁应当由fd.c维护
 
+extern mutex_t mtx_file;
+
 int openat(int fd, u64 filename, int flags, mode_t mode) {
+	log(LEVEL_GLOBAL, "openat: fd = %d, filename = %lx, flags = %lx, mode = %d\n", fd, filename,
+	    flags, mode);
+
 	struct Dirent *dirent = NULL, *fileDirent = NULL;
 	char nameBuf[NAME_MAX_LEN] = {0};
-	int i, r;
+	int r;
 	int kernFd, userFd = -1;
 
 	copyInStr(filename, nameBuf, NAME_MAX_LEN);
@@ -50,14 +55,14 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	} else {
 		// 判断相对路径还是绝对路径
 		if (nameBuf[0] != '/') {
-			if (fd < 0 || fd >= MAX_FD_COUNT) {
+			if (fd < 0 || fd >= cur_proc_fs_struct()->rlimit_files_cur) {
 				warn("openat param fd is wrong, please check\n");
-				return -1;
+				return -EBADF;
 			} else {
 				if (cur_proc_fs_struct()->fdList[fd] < 0 ||
 				    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 					warn("kern fd is wrong, please check\n");
-					return -1;
+					return -EBADF;
 				} else {
 					dirent = fds[cur_proc_fs_struct()->fdList[fd]].dirent;
 				}
@@ -68,53 +73,54 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 			} */
 	}
 
-	// 检查用户可分配的Fd已分配完全
-	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (cur_proc_fs_struct()->fdList[i] == -1) {
-			userFd = i;
-			break;
-		}
+	if ((userFd = alloc_ufd()) < 0) {
+		return userFd;
 	}
 
-	if (userFd < 0) {
-		warn("no free fd in proc fdList\n");
-		return -1;
-	}
-
-	kernFd = fdAlloc();
-
-	if (kernFd < 0) {
-		warn("no free fd in kern fds\n");
-		return -1;
+	if ((kernFd = fdAlloc()) < 0) {
+		free_ufd(userFd);
+		return kernFd;
 	}
 
 	// fix: O_CREATE表示若文件不存在，则创建一个
 	// 打开，不含创建
-	fileDirent = getFile(dirent, nameBuf);
-	if (fileDirent == NULL) {
+	r = getFile(dirent, nameBuf, &fileDirent);
+	if (r < 0) {
 		if ((flags & O_CREATE) == O_CREATE) {
 			// 创建
 			r = createFile(dirent, nameBuf, &fileDirent);
 			if (r < 0) {
+				free_ufd(userFd);
 				freeFd(kernFd);
 				warn("create file fail: r = %d\n", r);
-				return -1;
+				return r;
 			}
 		} else {
+			free_ufd(userFd);
 			freeFd(kernFd);
 			warn("get file %s fail\n", nameBuf);
-			return -ENOENT;
+			return r;
 		}
+	}
+
+	if (flags & O_TRUNC) {
+		fshrink(fileDirent, 0);
 	}
 
 	fds[kernFd].dirent = fileDirent;
 	fds[kernFd].pipe = NULL;
 	fds[kernFd].type = dev_file;
-	fds[kernFd].offset = 0;
 	fds[kernFd].flags = flags;
 	fds[kernFd].stat.st_mode = mode;
 	fds[kernFd].fd_dev = &fd_dev_file; // 设置dev
 
+	if (flags & O_APPEND) {
+		mtx_lock_sleep(&mtx_file);
+		fds[kernFd].offset = fileDirent->file_size;
+		mtx_unlock_sleep(&mtx_file);
+	} else {
+		fds[kernFd].offset = 0;
+	}
 	cur_proc_fs_struct()->fdList[userFd] = kernFd;
 
 	return userFd;
@@ -124,23 +130,23 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 static int fd_file_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	Dirent *dirent = fd->dirent;
 	// 向抽象的文件设备写入内容
-	n = dirent->dev->dev_read(dirent, 1, buf, fd->offset, n);
+	n = dirent->dev->dev_read(dirent, 1, buf, offset, n);
 	if (n < 0) {
 		warn("file read num is below zero\n");
 		return -1;
 	}
-	fd->offset += n;
+	fd->offset = offset + n;
 	return n;
 }
 
 static int fd_file_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	Dirent *dirent = fd->dirent;
-	n = dirent->dev->dev_write(dirent, 1, buf, fd->offset, n);
+	n = dirent->dev->dev_write(dirent, 1, buf, offset, n);
 	if (n < 0) {
 		warn("file read num is below zero\n");
 		return -1;
 	}
-	fd->offset += n;
+	fd->offset = offset + n;
 	return n;
 }
 
