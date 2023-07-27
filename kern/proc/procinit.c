@@ -103,15 +103,20 @@ void proc_initupt(proc_t *p) {
  * @brief 分配并初始化一个新的用户空间栈
  * @note 申请了新的用户栈，并将其映射到用户页表，同时初始化用户栈指针
  */
-void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack) {
+void proc_initustack(proc_t *p, thread_t *inittd) {
 	// 分配用户栈空间
-	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
+	for (int i = 0; i < TD_USTACK_INIT_PAGE_NUM; i++) {
 		u64 pa = vmAlloc();
-		u64 va = ustack + i * PAGE_SIZE;
+		u64 va = TD_USTACK_INIT_BOTTOM + i * PAGE_SIZE;
 		panic_on(ptMap(p->p_pt, va, pa, PTE_R | PTE_W | PTE_U));
 	}
+	// 分配可拓展的用户栈空间
+	for (int i = 0; i < TD_USTACK_EXTEND_PAGE_NUM; i++) {
+		u64 va = TD_USTACK_BOTTOM + i * PAGE_SIZE;
+		panic_on(ptMap(p->p_pt, va, 0, PTE_R | PTE_W | PTE_U | PTE_PASSIVE));
+	}
 	// 初始化用户栈空间指针
-	inittd->td_trapframe.sp = ustack + TD_USTACK_SIZE;
+	inittd->td_trapframe.sp = USTACKTOP;
 	p->p_brk = 0;
 }
 

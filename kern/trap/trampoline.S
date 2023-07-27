@@ -56,6 +56,8 @@ userVec:
 	sd  t4,  OFFSET_T4(a0)
 	sd  t5,  OFFSET_T5(a0)
 	sd  t6,  OFFSET_T6(a0)
+
+	/*
 	// 保存浮点寄存器
 	fsd ft0, OFFSET_FT0(a0)
 	fsd ft1, OFFSET_FT1(a0)
@@ -89,6 +91,7 @@ userVec:
 	fsd ft9, OFFSET_FT9(a0)
 	fsd ft10, OFFSET_FT10(a0)
 	fsd ft11, OFFSET_FT11(a0)
+	*/
 
 	csrr t0, sscratch
 	sd t0, OFFSET_A0(a0)
@@ -103,7 +106,7 @@ userVec:
 
 	// e4: 恢复内核号（切到用户态时暂存在 TRAPFRAME 里）
 	ld tp, OFFSET_HARTID(a0)
-	
+
 	// e5: 内存屏障、切换到内核页表、再次内存屏障
 	ld t1, OFFSET_KERNEL_SATP(a0)
 	sfence.vma zero, zero
@@ -120,7 +123,7 @@ userVec:
  * a0/x10 = user_satp
  */
 userRet:
-	
+
 	// ue5: 内存屏障、切换到用户页表、再次内存屏障
 	sfence.vma zero, zero
 	csrw satp, a1
@@ -167,6 +170,8 @@ userRet:
 	ld  t4,  OFFSET_T4(a0)
 	ld  t5,  OFFSET_T5(a0)
 	ld  t6,  OFFSET_T6(a0)
+
+	/*
 	// 从 TRAPFRAME 中恢复浮点寄存器
 	fld ft0, OFFSET_FT0(a0)
 	fld ft1, OFFSET_FT1(a0)
@@ -200,6 +205,7 @@ userRet:
 	fld ft9, OFFSET_FT9(a0)
 	fld ft10, OFFSET_FT10(a0)
 	fld ft11, OFFSET_FT11(a0)
+	*/
 
 	csrrw a0, sscratch, a0
 

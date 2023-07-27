@@ -14,6 +14,7 @@
  */
 void tlbFlush() {
 	// 调用SBI，命令所有核都执行tlb刷新命令
+	// todo 带参数优化
 	SBI_RFENCE_SFENCE_VMA((1 << NCPU) - 1, 0, 0, MAXLONG);
 }
 
