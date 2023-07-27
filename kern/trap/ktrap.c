@@ -68,7 +68,7 @@ void kerneltrap(ktrapframe_t *tf) {
 		}
 	} else {
 		printf("sp = 0x%016lx, ra = 0x%016lx\n", tf->sp, tf->ra);
-		panic("uncaught exception.\n"
+		printf("uncaught exception.\n"
 		      "\tcpu: %d\n"
 		      "\tExcCode: %d\n"
 		      "\tCause: %s\n"

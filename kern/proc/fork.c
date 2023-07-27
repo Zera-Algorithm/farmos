@@ -14,7 +14,10 @@ static err_t duppage(Pte *pd, u64 target_va, Pte *target_pte, void *arg) {
 		pte_t parentpte = ptLookup(pd, target_va);
 		u64 perm = PTE_PERM(parentpte);
 		// 如果父线程的页表项是用户可写的，则进行写时复制（没考虑 PTE_G todo）
-		if ((perm & PTE_W) && (perm & PTE_U)) {
+		if (perm & PTE_PASSIVE) {
+			asm volatile("nop");
+			return ptMap(childpd, target_va, 0, perm);
+		} else if ((perm & PTE_W) && (perm & PTE_U)) {
 			perm = (perm & ~PTE_W) | PTE_COW;
 			return ptMap(childpd, target_va, pteToPa(parentpte), perm) ||
 			       ptMap(pd, target_va, pteToPa(parentpte), perm);
