@@ -74,6 +74,7 @@ static u64 clusterSec(FileSystem *fs, u64 cluster) {
 
 /**
  * @return 返回簇号 cluster 所在的 FAT 表的扇区号
+ * @param fatno FAT 表号，0 或 1
  */
 static u64 clusterFatSec(FileSystem *fs, u64 cluster, u8 fatno) {
 	const int fat32_entry_sz = 4;
@@ -148,7 +149,8 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 static void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 	panic_on(cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1);
 
-	for (u8 fatno = 1; fatno <= fs->superBlock.bpb.fat_cnt; fatno++) {
+	// fatno从0开始
+	for (u8 fatno = 0; fatno < fs->superBlock.bpb.fat_cnt; fatno++) {
 		u64 fatSec = clusterFatSec(fs, cluster, fatno);
 		Buffer *buf = fs->get(fs, fatSec);
 		u32 *fat = (u32 *)buf->data->data;
@@ -164,7 +166,7 @@ u32 fatRead(FileSystem *fs, u64 cluster) {
 		error("fatRead is 0! (cluster = %d)\n", cluster);
 		return 0;
 	}
-	u64 fatSec = clusterFatSec(fs, cluster, 1);
+	u64 fatSec = clusterFatSec(fs, cluster, 0);
 	Buffer *buf = fs->get(fs, fatSec);
 
 	if (buf == NULL) {
