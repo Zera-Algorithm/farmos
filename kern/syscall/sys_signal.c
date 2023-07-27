@@ -5,6 +5,7 @@
 #include <signal/signal.h>
 #include <sys/errno.h>
 #include <sys/syscall.h>
+#include <sys/time.h>
 
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
 	if (signum < 0 || signum >= SIGNAL_MAX) {
@@ -15,8 +16,15 @@ int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
 }
 
 int sys_sigreturn() {
+	thread_t *td = cpu_this()->cpu_running;
+	if (sigaction_get(td->td_proc, td->td_sig->se_signo)->sa_flags & SA_SIGINFO) {
+		mtx_lock(&td->td_lock);
+		siginfo_return(td, td->td_sig);
+		mtx_unlock(&td->td_lock);
+	}
 	sig_return(cpu_this()->cpu_running);
-	return 0;
+	// a0由syscall返回
+	return cpu_this()->cpu_running->td_trapframe.a0;
 }
 
 #define SIG_BLOCK 0
@@ -102,5 +110,33 @@ int sys_kill(int pid, int sig) {
 	}
 
 	sig_send_proc(p, sig);
+
+	assert(pid == p->p_pid);
 	return 0;
+}
+
+int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout) {
+	thread_t *td = cpu_this()->cpu_running;
+
+	sigset_t sigset = {0};
+	if (usigset) {
+		copy_in(td->td_proc->p_pt, usigset, &sigset, sizeof(sigset_t));
+	}
+
+	timespec_t timeout = {0};
+	if (utimeout) {
+		copy_in(td->td_proc->p_pt, utimeout, &timeout, sizeof(timespec_t));
+	}
+
+	mtx_lock(&td->td_lock);
+	siginfo_t info = {0};
+	// TODO: change / 10 back
+	sig_timedwait(td, &sigset, &info, TS_USEC(timeout) / 1000);
+	mtx_unlock(&td->td_lock);
+
+	if (uinfo) {
+		copy_out(td->td_proc->p_pt, uinfo, &info, sizeof(siginfo_t));
+	}
+
+	return info.si_signo;
 }

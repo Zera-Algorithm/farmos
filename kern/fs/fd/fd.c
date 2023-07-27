@@ -1,4 +1,3 @@
-#include <dev/sbi.h>
 #include <fs/fat32.h>
 #include <fs/fd.h>
 #include <fs/fd_device.h>
@@ -37,7 +36,7 @@ void fd_init() {
 void freeFd(uint i);
 
 /**
- * @brief 分配一个文件描述符
+ * @brief 分配一个文件描述符，保证文件描述符的内容是清空过的
  * @note 此为全局操作，需要获取fd锁
  */
 int fdAlloc() {
@@ -49,6 +48,8 @@ int fdAlloc() {
 		int inner = i & 31;
 		if ((fdBitMap[index] & (1 << inner)) == 0) {
 			fdBitMap[index] |= 1 << inner;
+
+			memset(&fds[i], 0, sizeof(struct Fd));
 			fds[i].refcnt = 1;
 			mtx_init(&fds[i].lock, "fd_lock", 1, MTX_SLEEP);
 
@@ -58,7 +59,9 @@ int fdAlloc() {
 	}
 
 	mtx_unlock(&mtx_fd);
-	return -1;
+	// 未找到空闲的系统fd
+	warn("no free fd in kern fds\n");
+	return -ENFILE;
 }
 
 /**
@@ -79,14 +82,14 @@ void cloneAddCite(uint i) {
  */
 int closeFd(int fd) {
 	int kernFd;
-	if (fd < 0 || fd >= MAX_FD_COUNT) {
+	if (fd < 0 || fd >= cur_proc_fs_struct()->rlimit_files_cur) {
 		warn("close param fd is wrong, please check\n");
-		return -1;
+		return -EBADF;
 	} else {
 		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
 		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 			warn("kern fd is wrong, please check\n");
-			return -1;
+			return -EBADF;
 		} else {
 			kernFd = cur_proc_fs_struct()->fdList[fd];
 			freeFd(kernFd);
@@ -97,10 +100,55 @@ int closeFd(int fd) {
 }
 
 /**
+ * @brief 获取用户的空闲fd，标记后并返回。
+ * 标记的目的是防止用户在获取fd后给fd数组赋值之前，再次调用此函数获取同一个fd
+ * 加锁加的是td_fs_struct的锁
+ * @return -EMFILE表示该进程可分配的文件描述符为空
+ */
+int alloc_ufd() {
+	int ufd;
+	mutex_t *lock = &cur_proc_fs_struct()->lock;
+	mtx_lock(lock);
+
+	// 检查用户可分配的Fd已分配完全
+	for (int i = 0; i < cur_proc_fs_struct()->rlimit_files_cur; i++) {
+		if (cur_proc_fs_struct()->fdList[i] == -1) {
+			ufd = i;
+			// 标识为FDNUM+1，防止用户再次使用该函数获取到一个fd，
+			// 同时如果访问此fd也会因为大于FDNUM而报错
+			cur_proc_fs_struct()->fdList[i] = FDNUM + 1;
+			mtx_unlock(lock);
+			return ufd;
+		}
+	}
+
+	mtx_unlock(lock);
+	warn("no spare fd for thread %s\n", cpu_this()->cpu_running->td_name);
+	return -EMFILE;
+}
+
+/**
+ * @brief 在用户fd层，释放用户fd，不关心其所对应的kernfd。
+ * 如果释放一个空闲的ufd，会报错
+ */
+void free_ufd(int ufd) {
+	mutex_t *lock = &cur_proc_fs_struct()->lock;
+	mtx_lock(lock);
+
+	assert(cur_proc_fs_struct()->fdList[ufd] != -1);
+	cur_proc_fs_struct()->fdList[ufd] = -1;
+
+	mtx_unlock(lock);
+}
+
+/**
  * @brief 将内核fd引用计数减一，如果引用计数归零，则回收
  */
 void freeFd(uint i) {
-	assert(i >= 0 && i < FDNUM);
+	// TODO
+	if (!(i >= 0 && i < FDNUM)) {
+		i += 1;
+	}
 	Fd *fd = &fds[i];
 
 	mtx_lock_sleep(&fd->lock);
@@ -151,11 +199,52 @@ int read(int fd, u64 buf, size_t count) {
 		warn("fd %d can not be read\n", fd);
 
 		mtx_unlock_sleep(&pfd->lock);
-		return -1;
+		return -EINVAL; // fd链接的对象不可读
 	}
 
 	// 处理dev_read
 	int ret = pfd->fd_dev->dev_read(pfd, buf, count, pfd->offset);
+
+	mtx_unlock_sleep(&pfd->lock);
+
+	// debug
+	// if (ret > 0) {
+	// 	log(LEVEL_GLOBAL, "[read] %d bytes from fd %d\n", ret, fd);
+	// 	if (ret > 0) {
+	// 		char sbuf[1025];
+	// 		copyInStr(buf, sbuf, MIN(1024, ret));
+	// 		sbuf[MIN(1024, ret)] = '\0';
+	// 		log(LEVEL_GLOBAL, "[read] content: %s\n", sbuf);
+	// 	}
+	// } else if (ret == 0) {
+	// 	log(LEVEL_GLOBAL, "[read] %d bytes from fd %d\n", ret, fd);
+	// } else {
+	// 	log(LEVEL_GLOBAL, "[read] error %d from fd %d\n", ret, fd);
+	// }
+
+	return ret;
+}
+
+size_t pread64(int fd, u64 buf, size_t count, off_t offset) {
+	int kernFd;
+	Fd *pfd;
+
+	unwrap(getDirentByFd(fd, NULL, &kernFd));
+	pfd = &fds[kernFd];
+	mtx_lock_sleep(&pfd->lock);
+
+	// 判断是否能读取
+	if ((pfd->flags & O_ACCMODE) == O_WRONLY) {
+		warn("fd %d can not be read\n", fd);
+
+		mtx_unlock_sleep(&pfd->lock);
+		return -EINVAL; // fd链接的对象不可读
+	}
+
+	// 处理dev_read
+	off_t old_off = pfd->offset;
+	int ret = pfd->fd_dev->dev_read(pfd, buf, count, offset);
+	pfd->offset = old_off;
 
 	mtx_unlock_sleep(&pfd->lock);
 	return ret;
@@ -178,7 +267,7 @@ size_t readv(int fd, const struct iovec *iov, int iovcnt) {
 		warn("fd can not be read\n");
 
 		mtx_unlock_sleep(&pfd->lock);
-		return -1;
+		return -EINVAL;
 	}
 
 	// 处理dev_read
@@ -193,7 +282,6 @@ size_t readv(int fd, const struct iovec *iov, int iovcnt) {
 			return len;
 		}
 		total += len;
-		pfd->offset += len;
 
 		if (len < iov_temp.iov_len) {
 			// 读取结束，读不到更多数据，直接返回
@@ -204,6 +292,33 @@ size_t readv(int fd, const struct iovec *iov, int iovcnt) {
 
 	mtx_unlock_sleep(&pfd->lock);
 	return total;
+}
+
+size_t pwrite64(int fd, u64 buf, size_t count, off_t offset) {
+	int kernFd;
+	Fd *pfd;
+
+	unwrap(getDirentByFd(fd, NULL, &kernFd));
+
+	pfd = &fds[kernFd];
+
+	mtx_lock_sleep(&pfd->lock);
+
+	// 判断是否能写入
+	if ((pfd->flags & O_ACCMODE) == O_RDONLY) {
+		warn("fd can not be write\n");
+
+		mtx_unlock_sleep(&pfd->lock);
+		return -EINVAL;
+	}
+
+	// 处理dev_write
+	off_t old_off = pfd->offset;
+	int ret = pfd->fd_dev->dev_write(pfd, buf, count, offset);
+	pfd->offset = old_off;
+
+	mtx_unlock_sleep(&pfd->lock);
+	return ret;
 }
 
 int write(int fd, u64 buf, size_t count) {
@@ -221,12 +336,24 @@ int write(int fd, u64 buf, size_t count) {
 		warn("fd can not be write\n");
 
 		mtx_unlock_sleep(&pfd->lock);
-		return -1;
+		return -EINVAL;
 	}
 
 	// 处理dev_write
 	int ret = pfd->fd_dev->dev_write(pfd, buf, count, pfd->offset);
 	mtx_unlock_sleep(&pfd->lock);
+
+	// debug
+	// if (ret >= 0) {
+	// 	log(LEVEL_GLOBAL, "[write] %d bytes to fd %d\n", ret, fd);
+	// 	if (ret > 0) {
+	// 		char sbuf[1025];
+	// 		copyInStr(buf, sbuf, MIN(1024, ret));
+	// 		sbuf[MIN(1024, ret)] = '\0';
+	// 		log(LEVEL_GLOBAL, "[write] content: %s\n", sbuf);
+	// 	}
+	// }
+
 	return ret;
 }
 
@@ -246,12 +373,17 @@ size_t writev(int fd, const struct iovec *iov, int iovcnt) {
 	if ((pfd->flags & O_ACCMODE) == O_RDONLY) {
 		warn("fd can not be read\n");
 		mtx_unlock_sleep(&pfd->lock);
-		return -1;
+		return -EINVAL;
 	}
 
 	// 处理dev_write
 	for (int i = 0; i < iovcnt; i++) {
 		copy_in(cur_proc_pt(), (u64)(&iov[i]), &iov_temp, sizeof(struct iovec));
+
+		// len == 0，无需写入
+		if (iov_temp.iov_len == 0) {
+			continue;
+		}
 		len = pfd->fd_dev->dev_write(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len,
 					     pfd->offset);
 		if (len < 0) {
@@ -260,7 +392,6 @@ size_t writev(int fd, const struct iovec *iov, int iovcnt) {
 			return len;
 		}
 		total += len;
-		pfd->offset += len;
 
 		if (len < iov_temp.iov_len) {
 			// 写入结束，写不进更多数据，直接返回
@@ -278,18 +409,10 @@ size_t writev(int fd, const struct iovec *iov, int iovcnt) {
 int dup(int fd) {
 	int newFd = -1;
 	int kernFd;
-	int i;
 
 	unwrap(getDirentByFd(fd, NULL, &kernFd));
-	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (cur_proc_fs_struct()->fdList[i] == -1) {
-			newFd = i;
-			break;
-		}
-	}
-	if (newFd < 0) {
-		warn("no free fd in proc fdList\n");
-		return -1;
+	if ((newFd = alloc_ufd()) < 0) {
+		return newFd;
 	}
 
 	cur_proc_fs_struct()->fdList[newFd] = kernFd;
@@ -300,23 +423,26 @@ int dup(int fd) {
 int dup3(int old, int new) {
 	int copied;
 
-	if (old < 0 || old >= MAX_FD_COUNT) {
-		warn("dup param old is wrong, please check\n");
-		return -1;
+	if (old == new)
+		return -EINVAL;
+
+	if (old < 0 || old >= cur_proc_fs_struct()->rlimit_files_cur) {
+		warn("dup param old %d is wrong, please check\n", old);
+		return -EBADF;
 	}
-	if (new < 0 || new >= MAX_FD_COUNT) {
-		warn("dup param new[] is wrong, please check\n");
-		return -1;
+	if (new < 0 || new >= cur_proc_fs_struct()->rlimit_files_cur) {
+		warn("dup param newfd %d is wrong, please check\n", new);
+		return -EBADF;
 	}
 	if (cur_proc_fs_struct()->fdList[new] >= 0 && cur_proc_fs_struct()->fdList[new] < FDNUM) {
 		freeFd(cur_proc_fs_struct()->fdList[new]);
 	} else if (cur_proc_fs_struct()->fdList[new] >= FDNUM) {
 		warn("kern fd is wrong, please check\n");
-		return -1;
+		return -EBADF;
 	}
 	if (cur_proc_fs_struct()->fdList[old] < 0 || cur_proc_fs_struct()->fdList[old] >= FDNUM) {
 		warn("kern fd is wrong, please check\n");
-		return -1;
+		return -EBADF;
 	}
 	copied = cur_proc_fs_struct()->fdList[old];
 	cur_proc_fs_struct()->fdList[new] = copied;
@@ -342,7 +468,7 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 		// dirent无效时，由于AT_FDCWD是负数，应当继续下面的流程，直到报错
 	}
 
-	if (fd < 0 || fd >= MAX_FD_COUNT) {
+	if (fd < 0 || fd >= cur_proc_fs_struct()->rlimit_files_cur) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
 		return -EBADF;
 	} else {
@@ -367,7 +493,7 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
  * 不接受fd为AT_CWD的情况，如果需要请移步getDirentByFd
  */
 Fd *get_kfd_by_fd(int fd) {
-	if (fd < 0 || fd >= MAX_FD_COUNT) {
+	if (fd < 0 || fd >= cur_proc_fs_struct()->rlimit_files_cur) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
 		return NULL;
 	} else {
@@ -473,6 +599,7 @@ int fileStatFd(int fd, u64 pkstat) {
 int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
 	Dirent *baseDir, *file;
 	char path[MAX_NAME_LEN];
+	int ret;
 	unwrap(getDirentByFd(dirFd, &baseDir, NULL));
 	copyInStr(pPath, path, MAX_NAME_LEN);
 
@@ -480,13 +607,13 @@ int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
 
 	if (flags & AT_SYMLINK_NOFOLLOW) {
 		// 不跟随符号链接
-		file = get_file_raw(baseDir, path);
+		ret = get_file_raw(baseDir, path, &file);
 	} else {
-		file = getFile(baseDir, path);
+		ret = getFile(baseDir, path, &file);
 	}
-	if (file == NULL) {
+	if (ret < 0) {
 		warn("can't find file %s at fd %d\n", path, dirFd);
-		return -ENOENT;
+		return ret;
 	}
 	struct kstat kstat;
 	fileStat(file, &kstat);
@@ -496,36 +623,67 @@ int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
 	return 0;
 }
 
+/**
+ * lseek() repositions the file offset of the open file description associated with the file
+ descriptor fd to the argument offset according to the directive whence as follows:
+
+       SEEK_SET
+	      The file offset is set to offset bytes.
+
+       SEEK_CUR
+	      The file offset is set to its current location plus offset bytes.
+
+       SEEK_END
+	      The file offset is set to the size of the file plus offset bytes.
+
+	Upon successful completion, lseek() returns the resulting offset location as measured in
+ bytes from the begin‐ ning of the file.  On error, -errno is returned.
+ */
 off_t lseekFd(int fd, off_t offset, int whence) {
+	log(LEVEL_GLOBAL, "lseek fd %d, offset %ld, whence %d\n", fd, offset, whence);
+
 	int kFd_num;
+	int ret = 0;
+	off_t new_off = 0;
 	struct kstat kstat;
 	unwrap(getDirentByFd(fd, NULL, &kFd_num));
 	Fd *kernFd = &fds[kFd_num];
 
 	mtx_lock_sleep(&kernFd->lock);
 	if (whence == SEEK_SET || whence == SEEK_DATA) {
-		kernFd->offset = offset;
+		new_off = offset;
 	} else if (whence == SEEK_CUR) {
-		kernFd->offset += offset;
+		new_off = kernFd->offset + offset;
 	} else if (whence == SEEK_END) {
 		// 只有磁盘文件才能获取到文件的大小
 		if (kernFd->type != dev_file) {
 			warn("only file can use SEEK_END\n");
-			mtx_unlock_sleep(&kernFd->lock);
-			return -1;
+			ret = -ESPIPE;
 		} else {
 			fileStat(kernFd->dirent, &kstat);
-			kernFd->offset = kstat.st_size + offset;
+			new_off = kstat.st_size + offset;
 		}
 	} else if (whence == SEEK_HOLE) {
 		fileStat(kernFd->dirent, &kstat);
 		// 文件中没有任何空洞，设置offset为文件尾部
-		kernFd->offset = kstat.st_size;
+		new_off = kstat.st_size;
 	} else {
 		warn("unknown lseek whence %d\n", whence);
+		ret = -EINVAL;
 	}
-	mtx_unlock_sleep(&kernFd->lock);
-	return 0;
+
+	if (ret < 0) {
+		mtx_unlock_sleep(&kernFd->lock);
+		return ret;
+	} else if (new_off < 0) {
+		warn("lseek offset %d is negative\n", new_off);
+		mtx_unlock_sleep(&kernFd->lock);
+		return -EINVAL;
+	} else {
+		kernFd->offset = new_off;
+		mtx_unlock_sleep(&kernFd->lock);
+		return new_off;
+	}
 }
 
 int faccessatFd(int dirFd, u64 pPath, int mode, int flags) {

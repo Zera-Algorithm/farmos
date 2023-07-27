@@ -4,6 +4,7 @@
 #include <types.h>
 
 // 基于内核fd的读写，需要自行避免并发
+// fd的offset由本层维护
 // 其中的buf均是用户态地址
 typedef struct FdDev {
 	int dev_id;

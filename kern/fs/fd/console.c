@@ -64,31 +64,42 @@ int errorConsoleAlloc() {
 	return errorconsole;
 }
 
+// 从控制台读取字符，最多阻塞一次
 static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	char ch;
-	for (int i = 0; i < n; i++) {
+	int is_blocked = 0;
+	int i;
+	for (i = 0; i < n; i++) {
+		if (is_blocked) {
+			break;
+		}
+
 		// 如果没读到字符，sbi_getchar会返回255
 		while ((ch = SBI_GETCHAR()) == 255) {
 			yield();
+			is_blocked = 1;
 		}
 		// printf("sbi_getchar: %c\n", ch);
 		copyOut((buf + i), &ch, 1);
 	}
-	fd->offset += n;
-	return n;
+	fd->offset += i;
+	return i;
 }
 
+#define WRITE_MAX_PER_TIME 1024
+
+// 目前支持无限长度的输出
 static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
-	if (n >= 1024) {
-		panic("console write too much: n = %ld", n);
+	char s[WRITE_MAX_PER_TIME + 1];
+
+	for (int i = 0; i <= n; i += WRITE_MAX_PER_TIME) {
+		int len = MIN(WRITE_MAX_PER_TIME, n - i);
+		copyIn(buf + i, s, len);
+		s[len] = 0;
+
+		// 需要在copyIn之后再printf输出，防止先获取pr_lock造成死锁
+		printf("%s", s);
 	}
-
-	char s[1024];
-	copyIn(buf, s, n);
-	s[n] = 0;
-
-	// 需要在copyIn之后再printf输出，防止先获取pr_lock造成死锁
-	printf("%s", s);
 
 	fd->offset += n;
 	return n;

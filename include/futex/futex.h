@@ -29,13 +29,12 @@ typedef struct futexeventq {
 // 快速用户空间互斥锁接口
 void futexevent_init();
 
-err_t futex_wait(u64 uaddr, u64 val, u64 utimeout);
+err_t futex_wait(u64 uaddr, u32 val, u64 utimeout);
 err_t futex_wake(u64 uaddr, u64 wakecnt);
 err_t futex_requeue(u64 srcuaddr, u64 dstuaddr, u64 wakecnt, u64 maxwaiter);
 
 futexevent_t *futexevent_alloc(u64 uaddr, u64 pid, u64 wake);
 void futexevent_free_and_wake(futexevent_t *fe);
-void futexevent_check();
 
 extern futexeventq_t fe_usedq;
 

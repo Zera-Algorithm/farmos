@@ -7,7 +7,7 @@
 sigset_t set2;
 sigset_t set;
 
-int main(int argc, char **argv) {
+int main() {
 	sigset_init(&set);
 	sigset_set(&set, 1);
 	sigset_set(&set, 2);

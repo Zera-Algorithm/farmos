@@ -1,7 +1,7 @@
 #include <dev/timer.h>
 #include <futex/futex.h>
 #include <lib/log.h>
-#include <proc/sleep.h>
+#include <proc/tsleep.h>
 #include <proc/thread.h>
 
 futexevent_t futexevents[FUTEXEVENTS_MAX];
@@ -29,7 +29,7 @@ void futexevent_init() {
 }
 
 // 从 futex 事件队列中获取一个 futex 事件
-futexevent_t *futexevent_alloc(u64 uaddr, u64 pid, u64 wake) {
+futexevent_t *futexevent_alloc(u64 uaddr, u64 pid, u64 timeout) {
 	futexevent_t *fe = NULL;
 	feq_critical_enter(&fe_freeq);
 	assert(!TAILQ_EMPTY(&fe_freeq.ftxq_head));
@@ -39,7 +39,8 @@ futexevent_t *futexevent_alloc(u64 uaddr, u64 pid, u64 wake) {
 
 	fe->ftx_upaddr = uaddr;
 	fe->ftx_waiterpid = pid;
-	fe->ftx_waketime = wake;
+	fe->ftx_waketime = timeout == 0 ? 0 : timeout + getUSecs();
+	warn("futexevent_alloc: until %d\n", timeout);
 
 	feq_critical_enter(&fe_usedq);
 	TAILQ_INSERT_TAIL(&fe_usedq.ftxq_head, fe, ftx_link);
@@ -61,23 +62,6 @@ void futexevent_free_and_wake(futexevent_t *fe) {
 	TAILQ_INSERT_HEAD(&fe_freeq.ftxq_head, fe, ftx_freeq);
 	feq_critical_exit(&fe_freeq);
 
-	wakeup(fe);
+	twakeup(fe);
 }
 
-void futexevent_check() {
-	u64 now = getUSecs();
-	// 释放超时的 futex 事件
-	futexevent_t *fe = NULL;
-	futexeventq_t fe_releaseq;
-	TAILQ_INIT(&fe_releaseq.ftxq_head);
-	// 遍历使用队列
-	feq_critical_enter(&fe_usedq);
-	TAILQ_FOREACH (fe, &fe_usedq.ftxq_head, ftx_link) {
-		if (fe->ftx_waketime != 0 && fe->ftx_waketime <= now) {
-			futexevent_free_and_wake(fe);
-			warn("futexevent_check: %s's futex event timeout\n",
-			     threads[TID_TO_INDEX(fe->ftx_waiterpid)].td_name);
-		}
-	}
-	feq_critical_exit(&fe_usedq);
-}

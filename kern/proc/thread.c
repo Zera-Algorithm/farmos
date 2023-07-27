@@ -1,5 +1,7 @@
+#include <futex/futex.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <mm/memlayout.h>
 #include <proc/cpu.h>
@@ -72,6 +74,16 @@ static void td_free(thread_t *td) {
 void td_destroy(err_t exitcode) {
 	thread_t *td = cpu_this()->cpu_running;
 
+	if (td->td_ctid) {
+		mtx_lock(&td->td_lock);
+		int val = 0;
+		warn("td_destroy: td_ctid not null, copy 0 to it to notice other\n");
+		copyOut(td->td_ctid, (void *)&val, sizeof(u32));
+		warn("called futex_wake(%p, %d)\n", td->td_ctid, 1);
+		futex_wake(td->td_ctid, 1); // 唤醒仍在等待的其他join线程
+		mtx_unlock(&td->td_lock);
+	}
+
 	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
 
 	// 将线程从进程链表中移除
@@ -85,6 +97,7 @@ void td_destroy(err_t exitcode) {
 
 	// 此时线程转为悬垂线程（不归属于任何进程），回收线程资源
 	mtx_lock(&td->td_lock);
+
 	td_free(td);
 	// 在此之后会访问 context, status, lock 等字段，不需要进程参与
 	schedule();

@@ -47,9 +47,9 @@ void sigevent_free(sigevent_t *se) {
 // 信号处理函数注册
 
 err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
-	assert(0 <= signo && signo < SIGNAL_MAX);
+	assert(0 < signo && signo <= SIGNAL_MAX);
 	thread_t *td = cpu_this()->cpu_running;
-	sigaction_t *kact = &sigactions[td->td_proc - procs][signo];
+	sigaction_t *kact = &sigactions[td->td_proc - procs][signo - 1];
 
 	// ksigaction实际的大小：考虑到sigset_t的可变长
 	size_t ksa_size = sizeof(sigaction_t) - sizeof(sigset_t) + sigset_size;
@@ -60,6 +60,12 @@ err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
 	if (act != 0) {
 		memset(kact, 0, sizeof(sigaction_t));
 		copy_in(td->td_proc->p_pt, act, kact, ksa_size);
+		if (!(kact->sa_flags & SA_RESTORER)) {
+			kact->sa_restorer = 0;
+		}
+		if (0x1 < (u64)kact->sa_handler && (u64)kact->sa_handler < 0x10000ul) {
+			error("sigaction_register: invalid handler %p", kact->sa_handler);
+		}
 	}
 	return 0;
 }
@@ -68,6 +74,6 @@ err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
  * @brief 返回对应的信号处理动作
  */
 sigaction_t *sigaction_get(proc_t *p, int signo) {
-	assert(0 <= signo && signo < SIGNAL_MAX);
-	return &sigactions[p - procs][signo];
+	assert(0 < signo && signo <= SIGNAL_MAX);
+	return &sigactions[p - procs][signo - 1];
 }

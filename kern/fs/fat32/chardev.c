@@ -116,5 +116,5 @@ void create_chardev_file(char *path, char *str, chardev_read_fn_t read, chardev_
 	if (file->dev == NULL) {
 		return;
 	}
-	file->type = DIRENT_DEV;
+	file->type = DIRENT_CHARDEV;
 }
