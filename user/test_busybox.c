@@ -13,6 +13,7 @@ int main() {
 	char *const *argvs[] = {
 				// unixbench little test
 				// (char *const[]) {"/pipe", "1", NULL},
+				// (char *const[]) {"./fstime", "-c", "-t", "1", "-b", "1024", "-m", "2000", NULL},
 
 				// unixbench big test
 				(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},

@@ -42,13 +42,20 @@ static Buffer *bufAlloc(u32 dev, u64 blockno) {
 		}
 	}
 
-	// 没有被缓存，找到最久未使用的缓冲区
+	// 没有被缓存，找到最久未使用的缓冲区（LRU策略换出）
 	TAILQ_FOREACH_REVERSE(buf, &bufferGroups[group].list, BufList, link) {
 		if (buf->refcnt == 0) {
+			if (buf->valid && buf->dirty) {
+				// 如果该缓冲区已经被使用，写回磁盘
+				// 即换出时写回磁盘
+				virtio_disk_rw(buf, 1);
+			}
+
 			// 如果该缓冲区没有被引用，直接使用
 			buf->dev = dev;
 			buf->blockno = blockno;
 			buf->valid = 0;
+			buf->dirty = 0;
 			buf->refcnt = 1;
 			log(BUF_MODULE, "BufAlloc MISS: <dev: %d, blockno: %d> in Buffer[%d][%d]\n",
 			    dev, blockno, group, buf - bufferGroups[group].buf);
@@ -69,7 +76,8 @@ Buffer *bufRead(u32 dev, u64 blockno) {
 }
 
 void bufWrite(Buffer *buf) {
-	virtio_disk_rw(buf, 1);
+	buf->dirty = true;
+	return;
 }
 
 void bufRelease(Buffer *buf) {

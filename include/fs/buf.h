@@ -27,6 +27,7 @@ typedef struct Buffer {
 	u64 blockno;
 	i32 dev;
 	bool valid;
+	bool dirty;
 	u16 disk;
 	u16 refcnt;
 	BufferData *data;
