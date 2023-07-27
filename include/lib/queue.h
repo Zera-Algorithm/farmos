@@ -138,9 +138,12 @@
 	for ((var) = ((head)->lh_first); (var); (var) = ((var)->field.le_next))
 
 /**
- * @brief 边遍历边删除，需要自己在循环底部维护迭代
+ * @brief 边遍历边部分删除，需要自己在循环底部维护迭代
  * @note 若遍历的元素要删除，则需要预先保存下一项；若不删除，则直接LIST_NEXT即可
  */
+#define LIST_FOREACH_PARTIAL_DEL(var, head)                                                                \
+	for ((var) = ((head)->lh_first); (var); )
+
 #define LIST_UNTIL_EMPTY(var, head)                                                                \
 	for ((var) = ((head)->lh_first); (var); (var) = ((head)->lh_first))
 

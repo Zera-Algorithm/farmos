@@ -11,6 +11,9 @@
 #define BUF_MODULE 1
 #define FAT_MODULE 4
 
+#define FS_MODULE 1
+#define FS_GLOBAL 5
+
 #define PROC_MODULE 1
 #define PROC_GLOBAL 5
 

@@ -141,6 +141,16 @@ struct iovec {
 	size_t iov_len;
 };
 
+typedef struct timeval {
+	unsigned long tv_sec;	     /* seconds */
+	unsigned long tv_usec; /* microseconds */
+} timeval_t;
+
+struct itimerval {
+	struct timeval it_interval; /* Interval for periodic timer */
+	struct timeval it_value;    /* Time until next expiration */
+};
+
 // for mmap
 #define PROT_NONE 0
 #define PROT_READ 1

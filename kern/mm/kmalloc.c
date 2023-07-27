@@ -19,6 +19,7 @@ static malloc_config_t malloc_config[] = {
     {.size = 512, .npage = 80},
     {.size = 1024, .npage = 40},
     {.size = 2048, .npage = 40},
+	{.size = 4096, .npage = 0},
     {.size = -1},
 };
 

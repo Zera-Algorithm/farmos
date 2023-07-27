@@ -61,6 +61,9 @@ int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact)
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 int kill(pid_t pid, int sig);
 int tkill(pid_t tid, int sig);
+int getitimer(int which, struct itimerval *curr_value);
+int setitimer(int which, const struct itimerval *new_value,
+				struct itimerval *old_value);
 
 int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val3);
 int gettid();

@@ -83,7 +83,7 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 				tmpName[11] = 0;
 			}
 
-			log(DEBUG, "find: \"%s\"\n", tmpName);
+			log(FS_MODULE, "find: \"%s\"\n", tmpName);
 
 			// 2. 设置找出的dirent的信息（为NULL的无需设置）
 			Dirent *dirent = dirent_alloc();
@@ -240,7 +240,7 @@ static char *fill_long_entry(FAT32LongDirectory *longDir, char *raw_name) {
 int dir_alloc_file(Dirent *dir, Dirent **file, char *name) {
 	Dirent *dirent = dirent_alloc();
 
-	log(LEVEL_GLOBAL, "create a file using long Name! name is %s\n", name);
+	log(FS_GLOBAL, "create a file using long Name! name is %s\n", name);
 	int cnt = get_entry_count_by_name(name);
 
 	unwrap(dir_alloc_entry(dir, &dirent, cnt));
