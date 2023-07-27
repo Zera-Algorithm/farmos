@@ -6,6 +6,7 @@
 #include <sys/errno.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
+#include <signal/itimer.h>
 
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
 	if (signum < 0 || signum >= SIGNAL_MAX) {
@@ -140,3 +141,28 @@ int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout) {
 
 	return info.si_signo;
 }
+
+// int setitimer(int which, const struct itimerval *new_value);
+// 目前不关心which的数值，统一以ITIMER_REAL处理
+int sys_setitimer(int which, u64 new_value, u64 old_value) {
+	struct itimerval new, old;
+	thread_t *td = cpu_this()->cpu_running;
+	if (old_value) {
+		itimer_get(td, &old);
+		copyOut(old_value, &old, sizeof(struct itimerval));
+	}
+	if (new_value) {
+		copyIn(new_value, &new, sizeof(struct itimerval));
+		itimer_update(td, &new);
+	}
+	return 0;
+}
+
+int sys_getitimer(int which, u64 curr_value) {
+	struct itimerval curr;
+	thread_t *td = cpu_this()->cpu_running;
+	itimer_get(td, &curr);
+	copyOut(curr_value, &curr, sizeof(struct itimerval));
+	return 0;
+}
+

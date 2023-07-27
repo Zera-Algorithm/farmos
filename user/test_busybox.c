@@ -10,7 +10,10 @@ int main() {
 	printf("test_busybox started!\n");
 	int wstatus = 0;
 
-	char *const *argvs[] = {// busybox测试
+	char *const *argvs[] = {
+				// unixbench little test
+				(char *const[]) {"/syscall", "1", "getpid", NULL},
+				// busybox测试
 				// (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 				// libc-test的static测试点和dynamic测试点
 				// (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},

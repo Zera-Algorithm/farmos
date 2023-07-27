@@ -21,6 +21,7 @@
 #include <proc/thread.h>
 #include <riscv.h>
 #include <signal/signal.h>
+#include <signal/itimer.h>
 #include <types.h>
 #include <proc/tsleep.h>
 
@@ -87,6 +88,7 @@ void main() {
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
 		kmalloc_init();
+		itimer_init();
 
 		extern mutex_t first_thread_lock;
 		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
