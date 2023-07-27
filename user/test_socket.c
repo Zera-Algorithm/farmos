@@ -12,7 +12,8 @@
 /* Address to accept any incoming messages.  */
 #define	INADDR_ANY		((uint) 0x00000000)
 
-char msg_send[] = "Sender's Message: Hello, Client!";
+char server_send[] = "Server: Hello, Client!";
+char client_response[] = "Client: Checked Server's Msg!";
 
 int server() {
 	int iSocketFD = 0;
@@ -61,16 +62,16 @@ int server() {
 		printf("remote: port = %d, addr = %x\n", remoteAddr.port, remoteAddr.addr);
 
 		//发送内容，参数分别是连接句柄，内容，大小，其他信息（设为0即可）
-		write(new_fd, msg_send, sizeof(msg_send));
+		write(new_fd, server_send, sizeof(server_send));
 	}
 
 	printf("accept produces new_fd: %d\n", new_fd);
 	iRecvLen = read(new_fd, buf, sizeof(buf));
 	if(0 >= iRecvLen)    //对端关闭连接 返回0
 	{
-		printf("接收失败或者对端关闭连接！\n");
+		printf("Client Response: get error!\n");
 	}else{
-		printf("buf: %s\n", buf);
+		printf("Client Response: %s\n", buf);
 	}
 
 	close(new_fd);
@@ -104,8 +105,15 @@ int client() {
 		printf("connect failed: %d", ret);//失败时也可打印errno
 	} else {
 		printf("Connect Success!\n");
-		read(iSocketFD, buf, sizeof(buf)); // 将接收数据打入buf，参数分别是句柄，储存处，最大长度，其他信息（设为0即可）。
-		printf("Received: %s\n", buf);
+		ret = read(iSocketFD, buf, sizeof(buf)); // 将接收数据打入buf，参数分别是句柄，储存处，最大长度，其他信息（设为0即可）。
+		
+		if (ret > 0) {
+			printf("Clinet Received: %s\n", buf);
+			write(iSocketFD, client_response, sizeof(client_response));
+		} else {
+			printf("Client Receive: error %d\n", ret);
+		}
+		
 	}
 
 	close(iSocketFD);//关闭socket

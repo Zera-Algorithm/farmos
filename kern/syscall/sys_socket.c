@@ -16,6 +16,6 @@ int sys_connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
 	return connect(sockfd, addr, addrlen);
 }
 
-int sys_accept(int sockfd, SocketAddr *addr) {
-	return accept(sockfd, addr);
+int sys_accept(int sockfd, SocketAddr *addr, socklen_t * addrlen) {
+	return accept(sockfd, addr, addrlen);
 }
