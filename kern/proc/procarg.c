@@ -6,6 +6,8 @@
 #include <mm/kmalloc.h>
 #include <lib/string.h>
 #include <lib/error.h>
+#include <lib/log.h>
+#include <lib/printf.h>
 
 // 初始化栈区域
 /**
@@ -69,7 +71,7 @@ static int copyin_uarg_array(pte_t *in_pt, char **arg_array, char *kstr_array[])
  * @note 传入的数组arg_buf需要以NULL结尾，arg_array也需要以NULL结尾
  * @return 返回arg_buf的长度
  */
-int push_karg_array(pte_t *out_pt, char **arg_array, u64 *p_sp, char *arg_buf[]) {
+int push_karg_array(pte_t *out_pt, char **karg_array, u64 *p_sp, char *arg_buf[]) {
 	int arg_count = 0;
 	while (arg_buf[arg_count] != NULL) {
 		arg_count += 1;
@@ -77,10 +79,11 @@ int push_karg_array(pte_t *out_pt, char **arg_array, u64 *p_sp, char *arg_buf[])
 	}
 
 	// 目前arg_buf[arg_count] == NULL
-	for (int i = 0; arg_array[i] != NULL; i++) {
+	for (int i = 0; karg_array[i] != NULL; i++) {
 		// 1. 从内核拷贝参数字符串
-		char *buf = arg_array[i];
+		char *buf = karg_array[i];
 		size_t len = strlen(buf) + 1;
+		// log(PROC_GLOBAL, "push str: %s\n", buf);
 
 		// 3. 向栈上压入argv字符串
 		push_data(out_pt, p_sp, buf, len, true);

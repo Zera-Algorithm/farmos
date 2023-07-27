@@ -265,7 +265,7 @@ int main() {
 	// NULL}, 	NULL
 	// };
 
-	char *const envp[] = {"env1=1", "env2=2", NULL};
+	char *const envp[] = {"LD_LIBRARY_PATH=/", NULL};
 
 	int child = fork();
 	if (child) {
