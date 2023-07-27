@@ -49,6 +49,7 @@ void bufTest(u64 blockno);
 Buffer *bufRead(u32 dev, u64 blockno) __attribute__((warn_unused_result));
 void bufWrite(Buffer *buf);
 void bufRelease(Buffer *buf);
+void bufSync();
 
 // struct buf {
 // 	int valid; // has data been read from disk?

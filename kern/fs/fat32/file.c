@@ -6,6 +6,7 @@
 #include <fs/file_time.h>
 #include <fs/fs.h>
 #include <fs/vfs.h>
+#include <fs/buf.h>
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
@@ -359,4 +360,13 @@ int faccessat(Dirent *dir, char *path, int mode, int flags) {
 	// 因此确认文件存在后，不继续检查，直接返回0
 	file_close(file);
 	return 0;
+}
+
+/**
+ * @brief 同步文件系统到磁盘
+ */
+void fs_sync() {
+	mtx_lock_sleep(&mtx_file);
+	bufSync();
+	mtx_unlock_sleep(&mtx_file);
 }

@@ -110,3 +110,21 @@ void bufTest(u64 blockno) {
 
 	log(LEVEL_GLOBAL, "buf test %d passed!\n", blockno);
 }
+
+/**
+ * @brief 同步buf中所有的页到磁盘，同时把所有buf中的页都标记为非脏页
+ */
+void bufSync() {
+	log(LEVEL_GLOBAL, "begin sync all pages to disk!\n");
+	for (int i = 0; i < BGROUP_NUM; i++) {
+		BufferGroup *b = &bufferGroups[i];
+		for (int j = 0; j < BGROUP_BUF_NUM; j++) {
+			Buffer *buf = &b->buf[j];
+			if (buf->valid && buf->dirty) {
+				virtio_disk_rw(buf, 1);
+				buf->dirty = false;
+			}
+		}
+	}
+	log(LEVEL_GLOBAL, "sync all pages to disk done!\n");
+}
