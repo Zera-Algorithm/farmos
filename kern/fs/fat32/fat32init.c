@@ -151,6 +151,11 @@ static void init_fs_other() {
 
 	makeDirAt(fatFs->root, "/etc", 0);
 	makeDirAt(fatFs->root, "/tmp", 0);
+
+	// 将默认的动态链接库链接到/lib目录
+	makeDirAt(fatFs->root, "/lib", 0);
+	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
+	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
 }
 
 void init_files() {

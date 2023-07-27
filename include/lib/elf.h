@@ -112,7 +112,21 @@ int loadDataMapper(void *data, u64 va, size_t offset, u64 perm, const void *src,
 	     ++_ph_idx, (phOff) += (elfHeader)->e_phentsize)
 
 // Values for Proghdr type
-#define ELF_PROG_LOAD 1
+#define ELF_PROG_LOAD 1 // deprecated
+#define PT_NULL    0
+#define PT_LOAD    1
+#define PT_DYNAMIC 2
+#define PT_INTERP  3
+#define PT_NOTE    4
+#define PT_SHLIB   5
+#define PT_PHDR    6
+#define PT_TLS     7               /* Thread local storage segment */
+#define PT_LOOS    0x60000000      /* OS-specific */
+#define PT_HIOS    0x6fffffff      /* OS-specific */
+#define PT_LOPROC  0x70000000
+#define PT_HIPROC  0x7fffffff
+#define PT_GNU_EH_FRAME		0x6474e550
+
 
 // Flag bits for Proghdr flags
 #define ELF_PROG_FLAG_EXEC 1

@@ -14,7 +14,7 @@ void sgv_handler(int num) {
 	exit(0);
 }
 
-int main(int argc, char **argv) {
+int main() {
 	sigset_t set;
 	sigset_init(&set);
 	struct sigaction sig;

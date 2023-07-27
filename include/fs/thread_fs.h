@@ -23,9 +23,6 @@ typedef struct thread_fs {
 	u64 rlimit_files_max; // 进程最大打开文件数hard limit
 } thread_fs_t;
 
-#define MMAP_START 0x600000000
-#define MMAP_END 0x800000000
-
 void init_thread_fs(thread_fs_t *td_fs_struct);
 void fork_thread_fs(thread_fs_t *old, thread_fs_t *new);
 void recycle_thread_fs(thread_fs_t *td_fs_struct);

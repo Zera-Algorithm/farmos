@@ -33,6 +33,7 @@ static syscall_function_t sys_table[] = {
     [SYS_fstat] = {sys_fstat, "fstat"},
     [SYS_fstatat] = {sys_fstatat, "fstatat"},
     [SYS_faccessat] = {sys_faccessat, "faccessat"},
+	[SYS_ftruncate] = {sys_ftruncate, "ftruncate"},
     [SYS_close] = {sys_close, "close"},
     [SYS_dup] = {sys_dup, "dup"},
     [SYS_dup3] = {sys_dup3, "dup3"},
@@ -63,6 +64,7 @@ static syscall_function_t sys_table[] = {
     [SYS_gettimeofday] = {sys_gettimeofday, "gettimeofday"},
     [SYS_munmap] = {sys_unmap, "munmap"},
     [SYS_brk] = {sys_brk, "brk"},
+	[SYS_membarrier] = {sys_membarrier, "membarrier"},
     [SYS_rt_sigaction] = {sys_sigaction, "sigaction"},
     [SYS_rt_sigreturn] = {sys_sigreturn, "sigreturn"},
     [SYS_rt_sigprocmask] = {sys_sigprocmask, "sigprocmask"},
@@ -89,9 +91,9 @@ void syscall_entry(trapframe_t *tf) {
 		log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
 		    td->td_name, sys_func->name, tf->epc);
         if (sysno != SYS_write)
-        log(9999, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
+        log(LEVEL_GLOBAL, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
 	}
-    
+
 
 	// S态时间审计
 	// u64 startTime = getTime();
@@ -117,9 +119,9 @@ void syscall_entry(trapframe_t *tf) {
 		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
     if (sysno != SYS_write)
-    log(9999, "Thread %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
-    
-	
+    log(LEVEL_GLOBAL, "Thread %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
+
+
 
 	// // S态时间审计
 	// u64 endTime = getTime();

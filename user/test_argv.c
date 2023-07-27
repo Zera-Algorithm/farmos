@@ -4,6 +4,7 @@
 #include <syscallDataStruct.h>
 #include <unistd.h>
 
+// Note: 暂时不能使用，因为取消了用户程序加载参数的能力
 int main(int argc, char *argv[], char *envp[]) {
 	for (int i = 0; i < argc; i++) {
 		printf("arg[%d]: %s\n", i, argv[i]);

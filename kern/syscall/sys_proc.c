@@ -14,6 +14,7 @@
 #include <sys/syscall.h>
 #include <sys/syscall_proc.h>
 #include <sys/time.h>
+#include <proc/procarg.h>
 #include <proc/tsleep.h>
 
 void sys_exit(err_t code) {
@@ -35,7 +36,7 @@ static u64 argc_count(pte_t *pt, char **argv) {
 	return argc - 1;
 }
 
-static void copy_arg(proc_t *p, thread_t *exectd, char **argv, u64 envp, argv_callback_t callback) {
+static stack_arg_t copy_arg(proc_t *p, thread_t *exectd, char **argv, u64 envp, argv_callback_t callback) {
 	// 从旧的用户栈拷贝参数到新的用户栈
 
 	// 将旧的用户栈映射到临时页表上
@@ -48,7 +49,7 @@ static void copy_arg(proc_t *p, thread_t *exectd, char **argv, u64 envp, argv_ca
 	}
 
 	exectd->td_trapframe.sp = TD_USTACK + TD_USTACK_SIZE;
-	proc_setustack(exectd, temppt, argc_count(p->p_pt, argv), argv, envp, callback);
+	stack_arg_t ret = proc_setustack(exectd, temppt, argc_count(p->p_pt, argv), argv, envp, callback);
 
 	// 回收临时页表
 	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
@@ -58,6 +59,7 @@ static void copy_arg(proc_t *p, thread_t *exectd, char **argv, u64 envp, argv_ca
 		panic_on(ptMap(p->p_pt, stackva, pa, PTE_R | PTE_W | PTE_U));
 	}
 	pdWalk(temppt, vmUnmapper, kvmUnmapper, NULL);
+	return ret;
 }
 
 extern fileid_t file_load(const char *path, void **bin, size_t *size);
@@ -99,10 +101,6 @@ static void exec_elf_callback(char *kstr_arr[]) {
 
 	strcat(td->td_name, "_");
 	strcat(td->td_name, kstr_arr[i - 1]);
-
-	if (strncmp(kstr_arr[i - 1], "ungetc", 7) == 0) {
-		kstr_arr[i + 1] = "ungetc";
-	}
 }
 
 /**
@@ -112,6 +110,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	// 当前只支持进程中仅有一个线程时进行 exec
 	thread_t *td = cpu_this()->cpu_running;
 	proc_t *p = cpu_this()->cpu_running->td_proc;
+	stack_arg_t stack_arg; // 压栈参数
 
 	assert(TAILQ_FIRST(&p->p_threads) == TAILQ_LAST(&p->p_threads, thread_tailq_head));
 
@@ -127,10 +126,10 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 		// 执行脚本，指定解释器为busybox
 		strncpy(pathbuf, "/busybox", MAX_PROC_NAME_LEN);
 		// 加载参数
-		copy_arg(p, td, argv, envp, exec_sh_callback);
+		stack_arg = copy_arg(p, td, argv, envp, exec_sh_callback);
 	} else { // 判定为ELF文件
 		// 加载参数
-		copy_arg(p, td, argv, envp, exec_elf_callback);
+		stack_arg = copy_arg(p, td, argv, envp, exec_elf_callback);
 	}
 
 	// 回收先前的代码段
@@ -142,17 +141,10 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	p->p_brk = 0;
 	td->td_ctid = 0;
 
-	// 加载可执行文件到内核
-	void *bin;
-	size_t size;
-	log(DEBUG, "START LOAD CODE\n");
-	fileid_t file = file_load(pathbuf, &bin, &size);
-	log(DEBUG, "END LOAD CODE\n");
-	// 加载代码段
+	// 加载程序的各个段
 	log(DEBUG, "START LOAD CODE SEGMENT\n");
-	proc_initucode(p, td, bin, size);
+	proc_initucode_by_file(p, td, pathbuf, &stack_arg);
 	log(DEBUG, "END LOAD CODE SEGMENT\n");
-	file_unload(file);
 	return 0;
 }
 

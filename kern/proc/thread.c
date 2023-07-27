@@ -79,6 +79,7 @@ void td_destroy(err_t exitcode) {
 		int val = 0;
 		warn("td_destroy: td_ctid not null, copy 0 to it to notice other\n");
 		copyOut(td->td_ctid, (void *)&val, sizeof(u32));
+		warn("called futex_wake(%p, %d)\n", td->td_ctid, 1);
 		futex_wake(td->td_ctid, 1); // 唤醒仍在等待的其他join线程
 		mtx_unlock(&td->td_lock);
 	}
