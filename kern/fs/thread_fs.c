@@ -84,7 +84,7 @@ Dirent *get_cwd_dirent(thread_fs_t *fs_struct) {
 	if (fs_struct->cwd_dirent != NULL) {
 		return fs_struct->cwd_dirent;
 	} else {
-		fs_struct->cwd_dirent = getFile(NULL, fs_struct->cwd);
+		panic_on(getFile(NULL, fs_struct->cwd, &(fs_struct->cwd_dirent)));
 		return fs_struct->cwd_dirent;
 	}
 }
