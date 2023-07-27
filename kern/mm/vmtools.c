@@ -30,15 +30,12 @@ err_t pdWalk(Pte *pd, pte_callback_t pte_callback, pt_callback_t pt_callback, vo
 					Pte *pt2 = (Pte *)pteToPa(pt1[j]);
 
 					for (u64 k = 0; k < PAGE_INDEX_MAX; k++) {
-						if (pt2[k] & PTE_V) {
-							u64 va = ((((i << PAGE_INDEX_LEN) + j)
-								   << PAGE_INDEX_LEN) +
-								  k)
+						if (pt2[k] != 0) {
+							u64 va = ((((i << PAGE_INDEX_LEN) + j) << PAGE_INDEX_LEN) + k)
 								 << PAGE_SHIFT;
 							// 操作物理页
 							if (pte_callback != NULL) {
-								unwrap(pte_callback(pd, va, &pt2[k],
-										    arg));
+								unwrap(pte_callback(pd, va, &pt2[k], arg));
 							}
 						}
 					}

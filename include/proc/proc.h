@@ -57,7 +57,7 @@ void proc_initucode_by_binary(proc_t *p, thread_t *inittd, const void *bin, size
 typedef struct stack_arg stack_arg_t;
 typedef void (*argv_callback_t)(char *kstr_arr[]);
 
-void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack);
+void proc_initustack(proc_t *p, thread_t *inittd);
 void proc_recycleupt(proc_t *p);
 stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
 		    argv_callback_t callback);
