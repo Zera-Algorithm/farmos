@@ -183,9 +183,9 @@ struct Proc {
 	struct Dirent *cwd;	      // Current directory
 	char name[MAX_PROC_NAME_LEN]; // Process name (debugging)
 
-	LIST_ENTRY(Proc) procFreeLink;	// 空闲链表链接
-	LIST_ENTRY(Proc) procSleepLink; // 进程睡眠链接(进程可以因为多种原因睡眠)
-	LIST_ENTRY(Proc) procChildLink; // 子进程列表链接
+	LIST_ENTRY(Proc) procFreeLink;	       // 空闲链表链接
+	LIST_ENTRY(Proc) procSleepLink;	       // 进程睡眠链接(进程可以因为多种原因睡眠)
+	LIST_ENTRY(Proc) procChildLink;	       // 子进程列表链接
 	TAILQ_ENTRY(Proc) procSchedLink[NCPU]; // cpu调度队列链接
 	struct ProcList childList;	       // 子进程列表
 };
@@ -214,12 +214,11 @@ inline int procCanRun(struct Proc *proc) {
 #define PROCESS_INIT 0x0400ul
 
 // #symbol 可以将symbol原封不动地转换为对应的字符串（即两边加引号）
-#define PROC_CREATE(programName, priority)                                                         \
-	({                                                                                         \
-		extern char binary_##programName[];                                                \
-		extern int binary_##programName##_size;                                            \
-		procCreate(#programName, binary_##programName, binary_##programName##_size,        \
-			   priority);                                                              \
+#define PROC_CREATE(programName, priority)                                                                             \
+	({                                                                                                             \
+		extern char binary_##programName[];                                                                    \
+		extern int binary_##programName##_size;                                                                \
+		procCreate(#programName, binary_##programName, binary_##programName##_size, priority);                 \
 	})
 
 #endif

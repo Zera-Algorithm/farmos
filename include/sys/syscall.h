@@ -30,8 +30,7 @@ u64 sys_getppid();
 clock_t sys_times(u64 utms);
 u64 sys_getuid();
 u64 sys_set_tid_address(u64 pTid);
-int sys_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit,
-		  struct rlimit *old_limit);
+int sys_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit, struct rlimit *old_limit);
 
 // 系统信息（sys_info）
 void sys_uname(u64 upuname);
@@ -86,7 +85,6 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 err_t sys_msync(u64 addr, size_t length, int flags);
 err_t sys_unmap(u64 start, u64 len);
 err_t sys_mprotect(u64 addr, size_t len, int prot);
-
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);

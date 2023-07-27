@@ -5,9 +5,9 @@
 #include <syscallDataStruct.h>
 #include <unistd.h>
 
-#define THREAD_FLAGS                                                                               \
-	(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD | CLONE_SYSVSEM |        \
-	 CLONE_SETTLS | CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID | CLONE_DETACHED)
+#define THREAD_FLAGS                                                                                                   \
+	(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS |             \
+	 CLONE_PARENT_SETTID | CLONE_CHILD_CLEARTID | CLONE_DETACHED)
 
 __attribute__((aligned(4096))) char stack1[4096];
 __attribute__((aligned(4096))) char stack2[4096];

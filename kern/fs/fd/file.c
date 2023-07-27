@@ -38,8 +38,7 @@ struct FdDev fd_dev_file = {
 extern mutex_t mtx_file;
 
 int openat(int fd, u64 filename, int flags, mode_t mode) {
-	log(LEVEL_GLOBAL, "openat: fd = %d, filename = %lx, flags = %lx, mode = %d\n", fd, filename,
-	    flags, mode);
+	log(LEVEL_GLOBAL, "openat: fd = %d, filename = %lx, flags = %lx, mode = %d\n", fd, filename, flags, mode);
 
 	struct Dirent *dirent = NULL, *fileDirent = NULL;
 	char nameBuf[NAME_MAX_LEN] = {0};
@@ -59,8 +58,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 				warn("openat param fd is wrong, please check\n");
 				return -EBADF;
 			} else {
-				if (cur_proc_fs_struct()->fdList[fd] < 0 ||
-				    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
+				if (cur_proc_fs_struct()->fdList[fd] < 0 || cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 					warn("kern fd is wrong, please check\n");
 					return -EBADF;
 				} else {

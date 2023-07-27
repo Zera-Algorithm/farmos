@@ -13,8 +13,7 @@ typedef int (*initcall_t)(void);
 /**
  * @brief 定义fs层的初始化函数，以在初始化时调用
  */
-#define fs_initcall(fn)                                                                            \
-	static initcall_t __initcall_##fn __attribute__((used))                                    \
-	    __attribute__((__section__(".initcall_fs"))) = fn
+#define fs_initcall(fn)                                                                                                \
+	static initcall_t __initcall_##fn __attribute__((used)) __attribute__((__section__(".initcall_fs"))) = fn
 
 #endif

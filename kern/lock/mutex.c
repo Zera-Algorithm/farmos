@@ -6,18 +6,18 @@
 #include <proc/thread.h>
 #include <riscv.h>
 
-#define mtx_spin_debug(...)                                                                        \
-	do {                                                                                       \
-		if (m->mtx_debug && (m->mtx_type & MTX_SPIN)) {                                    \
-			log(MUTEX_SPIN, __VA_ARGS__);                                              \
-		}                                                                                  \
+#define mtx_spin_debug(...)                                                                                            \
+	do {                                                                                                           \
+		if (m->mtx_debug && (m->mtx_type & MTX_SPIN)) {                                                        \
+			log(MUTEX_SPIN, __VA_ARGS__);                                                                  \
+		}                                                                                                      \
 	} while (0)
 
-#define mtx_sleep_debug(...)                                                                       \
-	do {                                                                                       \
-		if (m->mtx_debug && (m->mtx_type & MTX_SLEEP)) {                                   \
-			log(MUTEX_SLEEP, __VA_ARGS__);                                             \
-		}                                                                                  \
+#define mtx_sleep_debug(...)                                                                                           \
+	do {                                                                                                           \
+		if (m->mtx_debug && (m->mtx_type & MTX_SLEEP)) {                                                       \
+			log(MUTEX_SLEEP, __VA_ARGS__);                                                                 \
+		}                                                                                                      \
 	} while (0)
 
 /**
@@ -106,15 +106,15 @@ void mtx_lock(mutex_t *m) {
 			if (m->mtx_type & MTX_RECURSE) {
 				// 重入，增加重入深度
 				m->mtx_depth++;
-				mtx_spin_debug("lock[%s] re-entered! (depth:%d)\n",
-					       m->mtx_lock_object.lo_name, m->mtx_depth);
+				mtx_spin_debug("lock[%s] re-entered! (depth:%d)\n", m->mtx_lock_object.lo_name,
+					       m->mtx_depth);
 				// 离开临界区（自旋互斥量重入不用再套一层临界区）
 				lo_critical_leave();
 			} else {
 				// 不能重入，离开临界区
 				lo_critical_leave();
-				error("mtx_lock: mtx %s(%d) is not re-entrant\n",
-				      m->mtx_lock_object.lo_name, m->mtx_type);
+				error("mtx_lock: mtx %s(%d) is not re-entrant\n", m->mtx_lock_object.lo_name,
+				      m->mtx_type);
 			}
 		} else {
 			// 非重入，获取自旋锁
@@ -152,8 +152,7 @@ void mtx_unlock(mutex_t *m) {
 			assert(m->mtx_type & MTX_RECURSE);
 			// 自旋互斥量，离开重入，减少重入深度（不退出临界区，因为重入获取锁时没套临界区）
 			m->mtx_depth--;
-			mtx_spin_debug("lock[%s] re-leave! (depth:%d)\n",
-				       m->mtx_lock_object.lo_name, m->mtx_depth);
+			mtx_spin_debug("lock[%s] re-leave! (depth:%d)\n", m->mtx_lock_object.lo_name, m->mtx_depth);
 		} else {
 			// 自旋互斥量，非重入，释放锁（离开临界区）
 			mtx_spin_debug("lock[%s] released!\n", m->mtx_lock_object.lo_name);
@@ -182,21 +181,18 @@ void mtx_lock_sleep(mutex_t *m) {
 		if (m->mtx_type & MTX_RECURSE) {
 			// 重入，增加重入深度
 			m->mtx_depth++;
-			mtx_sleep_debug("lock[%s] re-entered! (depth:%d)\n",
-					m->mtx_lock_object.lo_name, m->mtx_depth);
+			mtx_sleep_debug("lock[%s] re-entered! (depth:%d)\n", m->mtx_lock_object.lo_name, m->mtx_depth);
 		} else {
 			// 非重入，报错
 			error("mtx_lock_sleep: lock[%s] already hold by %s, %s go sleeping\n",
-			      m->mtx_lock_object.lo_name, m->mtx_owner->td_name,
-			      cpu_this()->cpu_running->td_name);
+			      m->mtx_lock_object.lo_name, m->mtx_owner->td_name, cpu_this()->cpu_running->td_name);
 		}
 	} else {
 		// 睡眠锁未被自己认领，检查所有权字段
 		while (m->mtx_owner != 0) {
 			// 若自旋锁已被认领，则睡眠（睡眠时会释放自旋锁）
-			mtx_sleep_debug("lock[%s] hold by %s, %s go sleeping\n",
-					m->mtx_lock_object.lo_name, m->mtx_owner->td_name,
-					cpu_this()->cpu_running->td_name);
+			mtx_sleep_debug("lock[%s] hold by %s, %s go sleeping\n", m->mtx_lock_object.lo_name,
+					m->mtx_owner->td_name, cpu_this()->cpu_running->td_name);
 			sleep(m, m, m->mtx_lock_object.lo_name);
 		}
 		// 所有权为空，本进程认领睡眠锁
@@ -204,8 +200,7 @@ void mtx_lock_sleep(mutex_t *m) {
 		m->mtx_owner = cpu_this()->cpu_running;
 		m->mtx_depth = 1;
 
-		mtx_sleep_debug("lock[%s] acquired by %s!\n", m->mtx_lock_object.lo_name,
-				m->mtx_owner->td_name);
+		mtx_sleep_debug("lock[%s] acquired by %s!\n", m->mtx_lock_object.lo_name, m->mtx_owner->td_name);
 	}
 
 	// 认领完毕，释放互斥量
@@ -226,11 +221,9 @@ void mtx_unlock_sleep(mutex_t *m) {
 		assert(m->mtx_type & MTX_RECURSE);
 		// 重入，减少重入深度，不唤醒
 		m->mtx_depth--;
-		mtx_sleep_debug("lock[%s] re-leave! (depth:%d)\n", m->mtx_lock_object.lo_name,
-				m->mtx_depth);
+		mtx_sleep_debug("lock[%s] re-leave! (depth:%d)\n", m->mtx_lock_object.lo_name, m->mtx_depth);
 	} else {
-		mtx_sleep_debug("lock[%s] released by %s!\n", m->mtx_lock_object.lo_name,
-				m->mtx_owner->td_name);
+		mtx_sleep_debug("lock[%s] released by %s!\n", m->mtx_lock_object.lo_name, m->mtx_owner->td_name);
 
 		// 非重入，释放所有权，重入深度置零，唤醒所有等待该锁的进程
 		m->mtx_owner = 0;

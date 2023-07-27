@@ -16,12 +16,10 @@ union WaitStatus {
 
 // 以下是判断进程状态的一些宏
 #define WIFEXITED(status) ((union WaitStatus)(status).bits.low8 == 0)
-#define WIFSIGNALED(status)                                                                        \
-	(((signed char)(((union WaitStatus)(status).bits.low8 & 0x7f) + 1) >> 1) > 0)
+#define WIFSIGNALED(status) (((signed char)(((union WaitStatus)(status).bits.low8 & 0x7f) + 1) >> 1) > 0)
 #define WIFSTOPPED(status) ((union WaitStatus)(status).bits.low8 == 0x7f)
-#define WIFCONTINUED(status)                                                                       \
-	((union WaitStatus)(status).bits.low8 == 0xff &&                                           \
-	 (union WaitStatus)(status).bits.high8 == 0xff)
+#define WIFCONTINUED(status)                                                                                           \
+	((union WaitStatus)(status).bits.low8 == 0xff && (union WaitStatus)(status).bits.high8 == 0xff)
 
 // wait系统调用的options掩码
 #define WNOHANG 1    /* Don't block waiting.  */

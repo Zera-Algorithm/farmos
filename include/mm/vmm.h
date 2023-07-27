@@ -23,8 +23,8 @@
 #define PAGE_LEVELS (3ull)		      // 页表级数
 #define PAGE_INDEX_LEN (9ull)		      // 页表项索引长度
 #define PAGE_INDEX_MAX (1ull << PAGE_INDEX_LEN)
-#define PTX(va, level)                                                                             \
-	(((u64)(va) >> (PAGE_SHIFT + (PAGE_LEVELS - (level)) * PAGE_INDEX_LEN)) &                  \
+#define PTX(va, level)                                                                                                 \
+	(((u64)(va) >> (PAGE_SHIFT + (PAGE_LEVELS - (level)) * PAGE_INDEX_LEN)) &                                      \
 	 0x1ff) // 获取虚拟地址 va 在第 level 级页表中的索引
 
 // 获取PTE中的PERM部分

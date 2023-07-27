@@ -33,8 +33,7 @@ static void build_dirent_tree(Dirent *parent) {
 		// printf("get child: %s, parent: %s\n", child->name, parent->name);
 
 		// 跳过.和..
-		if (strncmp(child->name, ".          ", 11) == 0 ||
-		    strncmp(child->name, "..         ", 11) == 0) {
+		if (strncmp(child->name, ".          ", 11) == 0 || strncmp(child->name, "..         ", 11) == 0) {
 			continue;
 		}
 		LIST_INSERT_HEAD(&parent->child_list, child, dirent_link);

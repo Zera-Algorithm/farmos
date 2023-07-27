@@ -133,8 +133,7 @@ static int rmfile(struct Dirent *file) {
 
 	// 3. 清空目录项
 	for (int i = 0; i < cnt; i++) {
-		panic_on(file_write(file->parent_dirent, 0, (u64)&data,
-				    file->parent_dir_off - i * DIR_SIZE, 1) < 0);
+		panic_on(file_write(file->parent_dirent, 0, (u64)&data, file->parent_dir_off - i * DIR_SIZE, 1) < 0);
 	}
 
 	// 4. 释放其占用的Cluster

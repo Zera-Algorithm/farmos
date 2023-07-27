@@ -7,15 +7,15 @@
 #include <mm/vmtools.h>
 #include <proc/cpu.h>
 #include <proc/interface.h>
+#include <proc/procarg.h>
 #include <proc/sched.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <proc/tsleep.h>
 #include <sys/errno.h>
 #include <sys/syscall.h>
 #include <sys/syscall_proc.h>
 #include <sys/time.h>
-#include <proc/procarg.h>
-#include <proc/tsleep.h>
 
 void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;
@@ -121,8 +121,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 
 	// TODO: 区分ELF和脚本
 	int len = strlen(pathbuf);
-	if (len > 3 && pathbuf[len - 3] == '.' && pathbuf[len - 2] == 's' &&
-	    pathbuf[len - 1] == 'h') {
+	if (len > 3 && pathbuf[len - 3] == '.' && pathbuf[len - 2] == 's' && pathbuf[len - 1] == 'h') {
 		// 执行脚本，指定解释器为busybox
 		strncpy(pathbuf, "/busybox", MAX_PROC_NAME_LEN);
 		// 加载参数
@@ -158,8 +157,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
  * @return 成功返回子进程的id，失败返回-1
  */
 u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
-	warn("params: flags = %lx, stack = %lx, ptid = %lx, tls = %lx, ctid = %lx\n", flags, stack,
-	     ptid, tls, ctid);
+	warn("params: flags = %lx, stack = %lx, ptid = %lx, tls = %lx, ctid = %lx\n", flags, stack, ptid, tls, ctid);
 	if (flags & CLONE_VM) {
 		return td_fork(cpu_this()->cpu_running, stack, ptid, tls, ctid);
 	} else {
@@ -219,8 +217,7 @@ clock_t sys_times(u64 utms) {
 /**
  * @brief 调整进程的资源限制。目前仅支持NOFILE和STACK的查询，不支持修改。修改不生效
  */
-int sys_prlimit64(pid_t pid, int resource, const struct rlimit *pnew_limit,
-		  struct rlimit *pold_limit) {
+int sys_prlimit64(pid_t pid, int resource, const struct rlimit *pnew_limit, struct rlimit *pold_limit) {
 	if (pold_limit != NULL) {
 		struct rlimit oldlimit;
 		switch (resource) {
@@ -243,8 +240,8 @@ int sys_prlimit64(pid_t pid, int resource, const struct rlimit *pnew_limit,
 		struct rlimit newlimit;
 		copyIn((u64)pnew_limit, &newlimit, sizeof(newlimit));
 		if (newlimit.rlim_cur > newlimit.rlim_max) {
-			warn("sys_prlimit64: new_limit->rlim_cur %d > new_limit->rlim_max %d\n",
-			     newlimit.rlim_cur, newlimit.rlim_max);
+			warn("sys_prlimit64: new_limit->rlim_cur %d > new_limit->rlim_max %d\n", newlimit.rlim_cur,
+			     newlimit.rlim_max);
 			return -EINVAL;
 		}
 
@@ -252,8 +249,8 @@ int sys_prlimit64(pid_t pid, int resource, const struct rlimit *pnew_limit,
 		case RLIMIT_NOFILE:
 			// 大于最大可分配数
 			if (newlimit.rlim_max > MAX_FD_COUNT) {
-				warn("sys_prlimit64: new_limit->rlim_max %d > MAX_FD_COUNT %d\n",
-				     newlimit.rlim_max, MAX_FD_COUNT);
+				warn("sys_prlimit64: new_limit->rlim_max %d > MAX_FD_COUNT %d\n", newlimit.rlim_max,
+				     MAX_FD_COUNT);
 				return -EINVAL;
 			}
 

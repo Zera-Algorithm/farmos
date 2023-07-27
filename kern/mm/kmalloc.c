@@ -52,8 +52,7 @@ void kmalloc_init() {
 		malloc_config[i].head = NULL;
 
 		// j指向在本大小对象池中的偏移
-		for (int j = 0; j < malloc_config[i].npage * PAGE_SIZE;
-		     j += malloc_config[i].size) {
+		for (int j = 0; j < malloc_config[i].npage * PAGE_SIZE; j += malloc_config[i].size) {
 			malloc_header_t *header = (malloc_header_t *)(heap_top + j);
 			header->phead = &malloc_config[i].head;
 			header->next = NULL;
@@ -114,8 +113,7 @@ void *kmalloc(size_t size) {
 	// 2. 从链表中取出
 	malloc_header_t *header = malloc_config[i].head;
 	if (header == NULL) {
-		warn("kalloc: object of size %d is used up, try to extend a page\n",
-		     malloc_config[i].size);
+		warn("kalloc: object of size %d is used up, try to extend a page\n", malloc_config[i].size);
 		extend_heap(&malloc_config[i]);
 		header = malloc_config[i].head;
 	}

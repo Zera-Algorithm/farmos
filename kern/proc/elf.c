@@ -1,12 +1,12 @@
+#include <fs/kload.h>
 #include <lib/elf.h>
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
 #include <mm/vmm.h>
+#include <proc/dynamic_link.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
-#include <proc/dynamic_link.h>
-#include <fs/kload.h>
 
 /**
  * @brief 从src加载数据，填充va指向的页（起始于offset），并映射到进程的地址空间
@@ -47,8 +47,7 @@ static int loadCode(thread_t *td, const void *binary, size_t size, u64 *maxva) {
 		ProgramHeader *ph = (ProgramHeader *)(binary + phOff);
 		// 只加载能加载的段
 		if (ph->p_type == ELF_PROG_LOAD) {
-			panic_on(loadElfSegment(ph, binary + ph->p_off, loadDataMapper,
-						td->td_proc->p_pt));
+			panic_on(loadElfSegment(ph, binary + ph->p_off, loadDataMapper, td->td_proc->p_pt));
 			*maxva = MAX(*maxva, ph->p_vaddr + ph->p_memsz - 1);
 		}
 	}

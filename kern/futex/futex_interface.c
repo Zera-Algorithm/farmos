@@ -1,13 +1,13 @@
+#include <dev/timer.h>
 #include <futex/futex.h>
 #include <lib/log.h>
 #include <lib/transfer.h>
 #include <mm/vmm.h>
 #include <proc/cpu.h>
-#include <proc/tsleep.h>
 #include <proc/thread.h>
+#include <proc/tsleep.h>
 #include <sys/errno.h>
 #include <sys/time.h>
-#include <dev/timer.h>
 
 static u64 uaddr_to_pa(pte_t *pt, u64 uaddr) {
 	pte_t pte = ptLookup(pt, uaddr);
@@ -39,7 +39,6 @@ err_t futex_wait(u64 uaddr, u32 val, u64 utimeout) {
 		feq_critical_exit(&fe_usedq);
 		return -EAGAIN;
 	}
-
 
 	// 睡眠（释放了使用队列锁）
 	err_t r = tsleep(fe, &fe_usedq.ftxq_lock, utimeout ? "#futex_wait_timeout" : "#futex_wait", fe->ftx_waketime);

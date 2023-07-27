@@ -2,9 +2,9 @@
 #include <lib/log.h>
 #include <proc/cpu.h>
 #include <proc/sched.h>
+#include <proc/tsleep.h>
 #include <sys/syscall.h>
 #include <trap/trap.h>
-#include <proc/tsleep.h>
 
 void ktrap_timer() {
 	log(DEFAULT, "timer interrupt on CPU %d!\n", cpu_this_id());

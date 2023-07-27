@@ -55,11 +55,11 @@ typedef struct siginfo {
 	int si_fd;		/* File descriptor */
 	short si_addr_lsb;	/* Least significant bit of address (since Linux 2.6.32) */
 	void *si_lower;		/* Lower bound when address violation	occurred (since Linux 3.19) */
-	void *si_upper;	      /* Upper bound when address violation	occurred ,(since Linux 3.19) */
-	int si_pkey;	      /* Protection key on PTE that causedfault (since Linux 4.6) */
-	void *si_call_addr;   /* Address of system call instruction	(since Linux 3.5) */
-	int si_syscall;	      /* Number of attempted system call (since Linux 3.5) */
-	unsigned int si_arch; /* Architecture of attempted system call (since Linux 3.5) */
+	void *si_upper;		/* Upper bound when address violation	occurred ,(since Linux 3.19) */
+	int si_pkey;		/* Protection key on PTE that causedfault (since Linux 4.6) */
+	void *si_call_addr;	/* Address of system call instruction	(since Linux 3.5) */
+	int si_syscall;		/* Number of attempted system call (since Linux 3.5) */
+	unsigned int si_arch;	/* Architecture of attempted system call (since Linux 3.5) */
 } siginfo_t;
 
 typedef struct sigaction {

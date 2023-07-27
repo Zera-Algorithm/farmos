@@ -13,8 +13,8 @@ typedef struct thread thread_t;
 typedef enum state { UNUSED = 0, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE } state_t;
 
 typedef struct proc {
-	mutex_t p_lock;		 // 进程锁（已被全局初始化）
-	LIST_ENTRY(proc) p_list; // 空闲列表链接（空闲列表锁保护）
+	mutex_t p_lock;					 // 进程锁（已被全局初始化）
+	LIST_ENTRY(proc) p_list;			 // 空闲列表链接（空闲列表锁保护）
 	TAILQ_HEAD(thread_tailq_head, thread) p_threads; // 拥有的线程队列（进程锁保护）
 
 	state_t p_status;	  // 进程状态（进程锁保护）
@@ -59,8 +59,7 @@ typedef void (*argv_callback_t)(char *kstr_arr[]);
 
 void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack);
 void proc_recycleupt(proc_t *p);
-stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
-		    argv_callback_t callback);
+stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp, argv_callback_t callback);
 
 void proc_create(const char *name, const void *bin, size_t size);
 u64 td_fork(thread_t *td, u64 childsp, u64 ptid, u64 tls, u64 ctid);
@@ -70,11 +69,11 @@ void proc_destroy(proc_t *p, err_t exitcode);
 void proc_free(proc_t *p);
 
 // 相关宏
-#define PROC_CREATE(program, name)                                                                 \
-	({                                                                                         \
-		extern char binary_##program[];                                                    \
-		extern int binary_##program##_size;                                                \
-		proc_create(name, binary_##program, binary_##program##_size);                      \
+#define PROC_CREATE(program, name)                                                                                     \
+	({                                                                                                             \
+		extern char binary_##program[];                                                                        \
+		extern int binary_##program##_size;                                                                    \
+		proc_create(name, binary_##program, binary_##program##_size);                                          \
 	})
 
 #define plist_critical_enter(plist) mtx_lock(&(plist)->pl_lock)

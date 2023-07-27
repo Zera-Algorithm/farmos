@@ -7,9 +7,9 @@
 #include <mm/vmtools.h>
 #include <param.h>
 #include <proc/proc.h>
+#include <proc/procarg.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
-#include <proc/procarg.h>
 
 threadq_t thread_runq;
 threadq_t thread_freeq;
@@ -121,7 +121,6 @@ void proc_recycleupt(proc_t *p) {
 	p->p_brk = 0;
 }
 
-
 /**
  * @brief 将给定的进程运行参数压入用户栈
  * @param td 线程指针
@@ -130,23 +129,20 @@ void proc_recycleupt(proc_t *p) {
  * @param argv 用户空间内的参数指针
  * @param envp 用户空间内的环境变量指针。为0表示没有环境变量
  */
-stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
-		    argv_callback_t callback) {
+stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp, argv_callback_t callback) {
 	pte_t *src_pt = td->td_proc->p_pt;
 	// argv和envp需要并列在一个数组里面，以实现头部的对齐
 	char **argvbuf = kmalloc(MAXARG * sizeof(char *));
 
 	// 1. 拷入argv数组
-	u64 len_argv =
-	    push_uarg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf, callback);
+	u64 len_argv = push_uarg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf, callback);
 
 	// 2. 拷入envp数组
-	push_uarg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv,
-			NULL);
+	push_uarg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv, NULL);
 
 	// 测试拷入内核的参数(参数列表需要以NULL结尾)
-	u64 len_envp = push_karg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL},
-				       &td->td_trapframe.sp, argvbuf + len_argv);
+	u64 len_envp =
+	    push_karg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL}, &td->td_trapframe.sp, argvbuf + len_argv);
 
 	u64 total_len = len_argv + len_envp;
 	argc = len_argv - 1;

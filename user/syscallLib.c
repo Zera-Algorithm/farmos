@@ -187,8 +187,7 @@ int dup2(int old, int new) {
 	return syscall(SYS_dup3, old, new, 0);
 }
 
-int mount(const char *special, const char *dir, const char *fstype, unsigned long flags,
-	  const void *data) {
+int mount(const char *special, const char *dir, const char *fstype, unsigned long flags, const void *data) {
 	return syscall(SYS_mount, special, dir, fstype, flags, data);
 }
 

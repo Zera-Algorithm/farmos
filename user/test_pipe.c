@@ -26,8 +26,7 @@ const char *data = "  Write to pipe successfully. -----------------"
 		   "----------------------------||||||||||||||||||||||||||||||||||||||||"
 		   "||||||||||||||||| I\'m ZRP!\n";
 
-int mount(const char *special, const char *dir, const char *fstype, unsigned long flags,
-	  const void *data);
+int mount(const char *special, const char *dir, const char *fstype, unsigned long flags, const void *data);
 
 char buf2[512];
 void test_pipe_zrp(void) {

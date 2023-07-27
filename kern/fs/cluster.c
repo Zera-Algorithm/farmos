@@ -68,8 +68,7 @@ err_t clusterInit(FileSystem *fs) {
  */
 static u64 clusterSec(FileSystem *fs, u64 cluster) {
 	const int cluster_first_sec = 2;
-	return fs->superBlock.first_data_sec +
-	       (cluster - cluster_first_sec) * fs->superBlock.bpb.sec_per_clus;
+	return fs->superBlock.first_data_sec + (cluster - cluster_first_sec) * fs->superBlock.bpb.sec_per_clus;
 }
 
 /**
@@ -204,8 +203,7 @@ static void clusterZero(FileSystem *fs, u64 cluster) {
  * @brief 分配一个扇区，并将其内容清空
  */
 u64 clusterAlloc(FileSystem *fs, u64 prev) {
-	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2;
-	     cluster++) {
+	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2; cluster++) {
 		if (fatRead(fs, cluster) == 0) {
 			if (prev != 0) {
 				fatWrite(fs, prev, cluster);

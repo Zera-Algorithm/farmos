@@ -36,8 +36,8 @@ static Buffer *bufAlloc(u32 dev, u64 blockno) {
 		// 如果已经被缓存，直接返回 todo:lock
 		if (buf->dev == dev && buf->blockno == blockno) {
 			buf->refcnt++;
-			log(BUF_MODULE, "BufAlloc HIT: <dev: %d, blockno: %d> in Buffer[%d][%d]\n",
-			    dev, blockno, group, buf - bufferGroups[group].buf);
+			log(BUF_MODULE, "BufAlloc HIT: <dev: %d, blockno: %d> in Buffer[%d][%d]\n", dev, blockno, group,
+			    buf - bufferGroups[group].buf);
 			return buf;
 		}
 	}
@@ -50,8 +50,8 @@ static Buffer *bufAlloc(u32 dev, u64 blockno) {
 			buf->blockno = blockno;
 			buf->valid = 0;
 			buf->refcnt = 1;
-			log(BUF_MODULE, "BufAlloc MISS: <dev: %d, blockno: %d> in Buffer[%d][%d]\n",
-			    dev, blockno, group, buf - bufferGroups[group].buf);
+			log(BUF_MODULE, "BufAlloc MISS: <dev: %d, blockno: %d> in Buffer[%d][%d]\n", dev, blockno,
+			    group, buf - bufferGroups[group].buf);
 			return buf;
 		}
 	}

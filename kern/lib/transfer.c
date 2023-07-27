@@ -14,8 +14,8 @@ typedef err_t (*user_kernel_callback_t)(void *uptr, void *kptr, size_t len, void
  * @param callback 负责复制数据的函数，返回非 0 表示停止复制
  * @param cow 如果为 1，表示需要对用户地址 uptr 进行写时复制
  */
-static void userToKernel(Pte *upd, u64 uptr, void *kptr, size_t len,
-			 user_kernel_callback_t callback, bool cow, void *arg) {
+static void userToKernel(Pte *upd, u64 uptr, void *kptr, size_t len, user_kernel_callback_t callback, bool cow,
+			 void *arg) {
 	u64 uoff = uptr % PAGE_SIZE;
 	int r;
 

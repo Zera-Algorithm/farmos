@@ -34,7 +34,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 	// va是ELF中指定的该段要被加载到的地址
 	u64 va = ph->p_vaddr;
 	size_t fileSize = ph->p_filesz; // 文件内数据的长度
-	size_t memSize = ph->p_memsz; // 实际加载到内存的数据的长度，memSize始终大于等于fileSize
+	size_t memSize = ph->p_memsz;	// 实际加载到内存的数据的长度，memSize始终大于等于fileSize
 
 	// 所有段的权限应至少包括：有效、可读、用户
 	u32 perm = PTE_V | PTE_R | PTE_U;
@@ -55,8 +55,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 	size_t i;
 	u64 offset = va - PGROUNDDOWN(va);
 	if (offset != 0) {
-		if ((r = mapPage(data, va, offset, perm, binary,
-				 MIN(fileSize, PAGE_SIZE - offset))) != 0) {
+		if ((r = mapPage(data, va, offset, perm, binary, MIN(fileSize, PAGE_SIZE - offset))) != 0) {
 			return r;
 		}
 	}
@@ -64,8 +63,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 	// 2. 把剩余的binary内容（文件内的）加载进内存
 	// i = 已写入的长度
 	for (i = offset ? MIN(fileSize, PAGE_SIZE - offset) : 0; i < fileSize; i += PAGE_SIZE) {
-		if ((r = mapPage(data, va + i, 0, perm, binary + i,
-				 MIN(fileSize - i, PAGE_SIZE))) != 0) {
+		if ((r = mapPage(data, va + i, 0, perm, binary + i, MIN(fileSize - i, PAGE_SIZE))) != 0) {
 			return r;
 		}
 	}

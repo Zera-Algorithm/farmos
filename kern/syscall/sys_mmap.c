@@ -73,9 +73,8 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	mtx_lock(&cur_proc()->p_lock);
 
 	// 打印参数
-	log(LEVEL_GLOBAL,
-	    "mmap: start = %lx, len = %lx, prot = %x, flags = %lx, fd = %d, off = %d\n", start, len,
-	    prot, flags, fd, off);
+	log(LEVEL_GLOBAL, "mmap: start = %lx, len = %lx, prot = %x, flags = %lx, fd = %d, off = %d\n", start, len, prot,
+	    flags, fd, off);
 
 	int r = 0;
 	u64 perm = 0;

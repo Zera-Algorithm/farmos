@@ -31,13 +31,12 @@ int faccessat(Dirent *dir, char *path, int mode, int flags);
 
 int find_fs_of_dir(FileSystem *fs, void *data);
 void sync_dirent_rawdata_back(Dirent *dirent);
-int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset,
-		   longEntSet *longSet);
+int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset, longEntSet *longSet);
 int dir_alloc_file(Dirent *dir, Dirent **file, char *name);
 void dirent_get_path(Dirent *dirent, char *path);
 void init_root_fs();
-int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile,
-	      char *lastelem, longEntSet *longSet);
+int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile, char *lastelem,
+	      longEntSet *longSet);
 
 void dput_path(Dirent *file);
 void dget_path(Dirent *file);

@@ -10,26 +10,27 @@ int main() {
 	printf("test_busybox started!\n");
 	int wstatus = 0;
 
-	char *const *argvs[] = {// busybox测试
-				// (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
-				// libc-test的static测试点和dynamic测试点
-				// (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
-				// (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
-				// (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
+	char *const *argvs[] = {
+	    // busybox测试
+	    // (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
+	    // libc-test的static测试点和dynamic测试点
+	    // (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
+	    // (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
-				(char *const[]) {"/libc-bench", NULL},
+	    (char *const[]){"/libc-bench", NULL},
 
-				// 命令行测试
-				// (char *const[]) {"/busybox", "ash", NULL},
-				// lua测试：pass
-				// (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
-				// (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
+	    // 命令行测试
+	    // (char *const[]) {"/busybox", "ash", NULL},
+	    // lua测试：pass
+	    // (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 
-				// lmbench测试
-				// (char *const[]) {"/busybox", "ash", "lmbench_testcode.sh", NULL},
-				// 动态链接库测试
-				// (char *const[]){"./runtest.exe", "-w", "entry-dynamic.exe", "argv", NULL},
-				NULL};
+	    // lmbench测试
+	    // (char *const[]) {"/busybox", "ash", "lmbench_testcode.sh", NULL},
+	    // 动态链接库测试
+	    // (char *const[]){"./runtest.exe", "-w", "entry-dynamic.exe", "argv", NULL},
+	    NULL};
 
 	/*
 	// libc-test的static测试点

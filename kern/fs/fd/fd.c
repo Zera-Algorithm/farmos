@@ -86,8 +86,7 @@ int closeFd(int fd) {
 		warn("close param fd is wrong, please check\n");
 		return -EBADF;
 	} else {
-		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
-		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
+		if (cur_proc_fs_struct()->fdList[fd] < 0 || cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
 			warn("kern fd is wrong, please check\n");
 			return -EBADF;
 		} else {
@@ -273,8 +272,7 @@ size_t readv(int fd, const struct iovec *iov, int iovcnt) {
 	for (int i = 0; i < iovcnt; i++) {
 		// iov数组在用户态，需要copyIn读入
 		copy_in(cur_proc_pt(), (u64)(&iov[i]), &iov_temp, sizeof(struct iovec));
-		len = pfd->fd_dev->dev_read(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len,
-					    pfd->offset);
+		len = pfd->fd_dev->dev_read(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len, pfd->offset);
 		if (len < 0) {
 			// 读取出现问题，直接返回错误值
 			mtx_unlock_sleep(&pfd->lock);
@@ -383,8 +381,7 @@ size_t writev(int fd, const struct iovec *iov, int iovcnt) {
 		if (iov_temp.iov_len == 0) {
 			continue;
 		}
-		len = pfd->fd_dev->dev_write(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len,
-					     pfd->offset);
+		len = pfd->fd_dev->dev_write(pfd, (u64)iov_temp.iov_base, iov_temp.iov_len, pfd->offset);
 		if (len < 0) {
 			// 写入出现问题，直接返回错误值
 			mtx_unlock_sleep(&pfd->lock);
@@ -471,10 +468,8 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
 		return -EBADF;
 	} else {
-		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
-		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
-			warn("kern fd(%d) is wrong, please check\n",
-			     cur_proc_fs_struct()->fdList[fd]);
+		if (cur_proc_fs_struct()->fdList[fd] < 0 || cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
+			warn("kern fd(%d) is wrong, please check\n", cur_proc_fs_struct()->fdList[fd]);
 			return -EBADF;
 		} else {
 			int kFd = cur_proc_fs_struct()->fdList[fd];
@@ -496,10 +491,8 @@ Fd *get_kfd_by_fd(int fd) {
 		warn("write param fd(%d) is wrong, please check\n", fd);
 		return NULL;
 	} else {
-		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
-		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
-			warn("kern fd(%d) is wrong, please check\n",
-			     cur_proc_fs_struct()->fdList[fd]);
+		if (cur_proc_fs_struct()->fdList[fd] < 0 || cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
+			warn("kern fd(%d) is wrong, please check\n", cur_proc_fs_struct()->fdList[fd]);
 			return NULL;
 		} else {
 			int kfd = cur_proc_fs_struct()->fdList[fd];

@@ -222,8 +222,8 @@ void print_str(fmt_callback_t out, void *data, const char *s, int length, int la
 	}
 }
 
-void print_num(fmt_callback_t out, void *data, unsigned long u, int base, int neg_flag, int length,
-	       int ladjust, char padc, int upcase) {
+void print_num(fmt_callback_t out, void *data, unsigned long u, int base, int neg_flag, int length, int ladjust,
+	       char padc, int upcase) {
 	/* algorithm :
 	 *  1. prints the number from left to right in reverse form.
 	 *  2. fill the remaining spaces with padc if length is longer than

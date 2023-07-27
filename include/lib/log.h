@@ -36,29 +36,29 @@ void _warn(const char *, int, const char *, const char *, ...);
 /**
  * @brief 日志输出
  */
-#define log(level, ...)                                                                            \
-	do {                                                                                       \
-		if ((level) >= LOG_LEVEL) {                                                        \
-			_log(__FILE__, __LINE__, __func__, __VA_ARGS__);                           \
-		}                                                                                  \
+#define log(level, ...)                                                                                                \
+	do {                                                                                                           \
+		if ((level) >= LOG_LEVEL) {                                                                            \
+			_log(__FILE__, __LINE__, __func__, __VA_ARGS__);                                               \
+		}                                                                                                      \
 	} while (0)
 
 /**
  * @brief 警告日志输出
  */
-#define warn(...)                                                                                  \
-	if (!DISABLE_WARN)                                                                         \
-		do {                                                                               \
-			_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                          \
+#define warn(...)                                                                                                      \
+	if (!DISABLE_WARN)                                                                                             \
+		do {                                                                                                   \
+			_warn(__FILE__, __LINE__, __func__, __VA_ARGS__);                                              \
 	} while (0)
 
-#define unwrap(expr)                                                                               \
-	do {                                                                                       \
-		typeof(expr) __r = (expr);                                                         \
-		if (__r != 0) {                                                                    \
-			warn("'" #expr "' returned %d\n", __r);                                    \
-			return __r;                                                                \
-		}                                                                                  \
+#define unwrap(expr)                                                                                                   \
+	do {                                                                                                           \
+		typeof(expr) __r = (expr);                                                                             \
+		if (__r != 0) {                                                                                        \
+			warn("'" #expr "' returned %d\n", __r);                                                        \
+			return __r;                                                                                    \
+		}                                                                                                      \
 	} while (0)
 
 #include <lib/error.h>

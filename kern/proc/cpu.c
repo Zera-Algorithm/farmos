@@ -44,13 +44,11 @@ void cpu_idle() {
 		}
 
 		TAILQ_FOREACH (td, &thread_sleepq.tq_head, td_sleepq) {
-			warn("sleepq: thread %s is sleeping on \"%s\"\n", td->td_name,
-			     td->td_wmesg);
+			warn("sleepq: thread %s is sleeping on \"%s\"\n", td->td_name, td->td_wmesg);
 			if (strncmp(td->td_wmesg, "mtx_file", 9) == 0) {
 				mutex_t *mtx_sleep = (mutex_t *)td->td_wchan;
 				thread_t *td = mtx_sleep->mtx_owner;
-				warn("lock %s's holder: %s\n", mtx_sleep->mtx_lock_object.lo_name,
-				     td->td_name);
+				warn("lock %s's holder: %s\n", mtx_sleep->mtx_lock_object.lo_name, td->td_name);
 			}
 		}
 

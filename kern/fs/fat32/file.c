@@ -153,8 +153,7 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 		mtx_unlock_sleep(&mtx_file);
 		return 0;
 	} else if (off + n > file->file_size) {
-		warn("read too much. shorten read length from %d to %d!\n", n,
-		     file->file_size - off);
+		warn("read too much. shorten read length from %d to %d!\n", n, file->file_size - off);
 		n = file->file_size - off;
 	}
 	assert(n != 0);
@@ -176,8 +175,7 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 	clusIndex += 1;
 	clus = fatRead(file->file_system, clus);
 	for (; end >= clusIndex * clusSize; clusIndex++) {
-		clusterRead(file->file_system, clus, 0, (void *)(dst + len), MIN(clusSize, n - len),
-			    user);
+		clusterRead(file->file_system, clus, 0, (void *)(dst + len), MIN(clusSize, n - len), user);
 		clus = fatRead(file->file_system, clus);
 		len += MIN(clusSize, n - len);
 	}
@@ -246,8 +244,7 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	clusIndex += 1;
 	clus = fatRead(file->file_system, clus);
 	for (; end >= clusIndex * clusSize; clusIndex++) {
-		clusterWrite(file->file_system, clus, 0, (void *)(src + len),
-			     MIN(clusSize, n - len), user);
+		clusterWrite(file->file_system, clus, 0, (void *)(src + len), MIN(clusSize, n - len), user);
 		clus = fatRead(file->file_system, clus);
 		len += MIN(clusSize, n - len);
 	}

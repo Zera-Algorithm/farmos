@@ -6,13 +6,13 @@
 #define STDERR 2
 
 //#define TEST_START(x) puts(x)
-#define TEST_START(x)                                                                              \
-	puts("========== START ");                                                                 \
-	puts(x);                                                                                   \
+#define TEST_START(x)                                                                                                  \
+	puts("========== START ");                                                                                     \
+	puts(x);                                                                                                       \
 	puts(" ==========\n");
-#define TEST_END(x)                                                                                \
-	puts("========== END ");                                                                   \
-	puts(x);                                                                                   \
+#define TEST_END(x)                                                                                                    \
+	puts("========== END ");                                                                                       \
+	puts(x);                                                                                                       \
 	puts(" ==========\n");
 
 #define stdin STDIN
@@ -33,14 +33,14 @@ int putchar(int);
 int puts(const char *s);
 void printf(const char *fmt, ...);
 
-#define panic_on(expr)                                                                             \
-	do {                                                                                       \
-		int r = (expr);                                                                    \
-		if (r) {                                                                           \
-			printf("panic at %s:%d: %d\n", __FILE__, __LINE__, r);                     \
-			while (1)                                                                  \
-				;                                                                  \
-		}                                                                                  \
+#define panic_on(expr)                                                                                                 \
+	do {                                                                                                           \
+		int r = (expr);                                                                                        \
+		if (r) {                                                                                               \
+			printf("panic at %s:%d: %d\n", __FILE__, __LINE__, r);                                         \
+			while (1)                                                                                      \
+				;                                                                                      \
+		}                                                                                                      \
 	} while (0)
 
 #endif // __STDIO_H__

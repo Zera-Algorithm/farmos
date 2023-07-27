@@ -26,8 +26,7 @@ extern mutex_t mtx_file;
  * @note 目前设计为仅在初始化时使用，因此使用file_read读取，无需外部加锁
  * @return 读取的内容长度。若为0，表示读到末尾
  */
-int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset,
-		   longEntSet *longSet) {
+int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offset, longEntSet *longSet) {
 	mtx_lock_sleep(&mtx_file);
 
 	char direntBuf[DIRENT_SIZE];

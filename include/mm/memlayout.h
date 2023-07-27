@@ -63,7 +63,6 @@
 #define MMAP_END 0x800000000
 #define U_DYNAMIC_SO_START 0x800000000
 
-
 // BELOW TO BE CLASSIFIED (TODO)
 
 // Physical memory layout

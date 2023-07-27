@@ -19,10 +19,10 @@
 #include <proc/cpu.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
+#include <proc/tsleep.h>
 #include <riscv.h>
 #include <signal/signal.h>
 #include <types.h>
-#include <proc/tsleep.h>
 
 volatile static int started = 0;
 // 用于记录当前哪个核已被启动

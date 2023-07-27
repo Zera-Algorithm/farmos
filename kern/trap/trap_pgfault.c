@@ -10,8 +10,7 @@ void trap_pgfault() {
 	thread_t *td = cpu_this()->cpu_running;
 	if (page_fault_handler(r_stval() & ~(PAGE_SIZE - 1))) {
 		// 页错误处理失败，发送 SIGSEGV 信号
-		warn("(stack: %lx) page fault on tid = %d[%s], kill it.\n", TD_USTACK, td->td_tid,
-		     td->td_name);
+		warn("(stack: %lx) page fault on tid = %d[%s], kill it.\n", TD_USTACK, td->td_tid, td->td_name);
 		sig_send_proc(td->td_proc, SIGSEGV);
 	} else {
 		// 页错误处理成功，继续执行

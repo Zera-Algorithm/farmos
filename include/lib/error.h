@@ -18,26 +18,26 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 /**
  * @brief 错误日志输出
  */
-#define error(...)                                                                                 \
-	do {                                                                                       \
-		_error(__FILE__, __LINE__, __func__, __VA_ARGS__);                                 \
+#define error(...)                                                                                                     \
+	do {                                                                                                           \
+		_error(__FILE__, __LINE__, __func__, __VA_ARGS__);                                                     \
 	} while (0)
 
 #define panic(...) _error(__FILE__, __LINE__, __func__, __VA_ARGS__)
 
-#define panic_on(expr)                                                                             \
-	do {                                                                                       \
-		int r = (expr);                                                                    \
-		if (r != 0) {                                                                      \
-			panic("'" #expr "' returned %d\n", r);                                     \
-		}                                                                                  \
+#define panic_on(expr)                                                                                                 \
+	do {                                                                                                           \
+		int r = (expr);                                                                                        \
+		if (r != 0) {                                                                                          \
+			panic("'" #expr "' returned %d\n", r);                                                         \
+		}                                                                                                      \
 	} while (0)
 
-#define assert(expr)                                                                               \
-	do {                                                                                       \
-		if (!(expr)) {                                                                     \
-			panic("'" #expr "'");                                                      \
-		}                                                                                  \
+#define assert(expr)                                                                                                   \
+	do {                                                                                                           \
+		if (!(expr)) {                                                                                         \
+			panic("'" #expr "'");                                                                          \
+		}                                                                                                      \
 	} while (0)
 
 #endif

@@ -49,8 +49,7 @@ static char *excCause[] = {"Instruction address misaligned",
 
 #define hart_tf_uva(hartid) (((trapframe_t *)TRAPFRAME) + (hartid))
 
-#define entry_user_ret(tf, satp)                                                                   \
-	(((void (*)(trapframe_t *, u64))(TRAMPOLINE + (userRet - trampoline)))(tf, (satp)))
+#define entry_user_ret(tf, satp) (((void (*)(trapframe_t *, u64))(TRAMPOLINE + (userRet - trampoline)))(tf, (satp)))
 
 static register_t utrap_info() {
 	// 获取中断或异常的原因并输出

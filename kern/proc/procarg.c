@@ -1,11 +1,11 @@
-#include <types.h>
-#include <proc/procarg.h>
-#include <param.h>
-#include <proc/proc.h>
+#include <lib/error.h>
+#include <lib/string.h>
 #include <lib/transfer.h>
 #include <mm/kmalloc.h>
-#include <lib/string.h>
-#include <lib/error.h>
+#include <param.h>
+#include <proc/proc.h>
+#include <proc/procarg.h>
+#include <types.h>
 
 // 初始化栈区域
 /**
@@ -113,8 +113,8 @@ static void free_kstr_array(char *kstr_arr[]) {
  * @param callback 用于处理内核字符串参数数组的回调函数
  * @return 返回arg_buf的长度
  */
-int push_uarg_array(pte_t *in_pt, pte_t *out_pt, char **arg_array, u64 *p_sp,
-			   char *arg_buf[], argv_callback_t callback) {
+int push_uarg_array(pte_t *in_pt, pte_t *out_pt, char **arg_array, u64 *p_sp, char *arg_buf[],
+		    argv_callback_t callback) {
 	char *kstr_arr[MAXARG + 1];
 	int arg_count;
 

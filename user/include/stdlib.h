@@ -6,8 +6,8 @@ void panic(char *);
 #define WEXITSTATUS(s) (((s)&0xff00) >> 8)
 
 #ifndef assert
-#define assert(f)                                                                                  \
-	if (!(f))                                                                                  \
+#define assert(f)                                                                                                      \
+	if (!(f))                                                                                                      \
 	panic("\n --- Assert Fatal ! ---\n")
 #endif
 

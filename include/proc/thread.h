@@ -14,8 +14,8 @@ typedef struct proc proc_t;
 #define SLEEP_DEBUG
 
 typedef struct thread {
-	mutex_t td_lock; // 线程锁（已被全局初始化）
-	proc_t *td_proc; // 线程所属进程（不保护，线程初始化后只读）
+	mutex_t td_lock;	       // 线程锁（已被全局初始化）
+	proc_t *td_proc;	       // 线程所属进程（不保护，线程初始化后只读）
 	TAILQ_ENTRY(thread) td_plist;  // 所属进程的线程链表链接（进程锁保护）
 	TAILQ_ENTRY(thread) td_runq;   // 运行队列链接（线程锁保护）
 	TAILQ_ENTRY(thread) td_sleepq; // 睡眠队列链接（线程锁保护）
@@ -23,17 +23,17 @@ typedef struct thread {
 	pid_t td_tid;		       // 线程 id（不保护，线程初始化后只读）
 	state_t td_status;	       // 线程状态（线程锁保护）
 
-#define td_startzero td_name // 清零属性区域开始指针
+#define td_startzero td_name	   // 清零属性区域开始指针
 	char td_name[MAXPATH + 1]; // 线程名（不保护，线程初始化后只读） todo fork时溢出
 	ptr_t td_wchan;		   // 线程睡眠等待的地址（线程锁保护）
-	const char *td_wmesg; // 线程睡眠等待的原因（线程锁保护）
-	u64 td_exitcode;      // 线程退出码（线程锁保护）
-	sigevent_t *td_sig;   // 线程当前正在处理的信号（线程锁保护）
-	trapframe_t td_trapframe; // 用户态上下文（不保护，该指针的值线程初始化后只读）
-	context_t td_context;	// 内核态上下文（不保护，只被当前线程访问）
-	bool td_killed;		// 线程是否被杀死（线程锁保护）
-	sigset_t td_cursigmask; // 线程正在处理的信号屏蔽字（线程锁保护）
-	u64 td_ctid;		// 清空tid地址标识
+	const char *td_wmesg;	   // 线程睡眠等待的原因（线程锁保护）
+	u64 td_exitcode;	   // 线程退出码（线程锁保护）
+	sigevent_t *td_sig;	   // 线程当前正在处理的信号（线程锁保护）
+	trapframe_t td_trapframe;  // 用户态上下文（不保护，该指针的值线程初始化后只读）
+	context_t td_context;	   // 内核态上下文（不保护，只被当前线程访问）
+	bool td_killed;		   // 线程是否被杀死（线程锁保护）
+	sigset_t td_cursigmask;	   // 线程正在处理的信号屏蔽字（线程锁保护）
+	u64 td_ctid;		   // 清空tid地址标识
 #define td_startcopy td_sigmask
 	sigset_t td_sigmask; // 线程信号屏蔽字（线程锁保护）
 #define td_endcopy td_kstack

@@ -16,8 +16,7 @@
 u8 initcode[] = {0x01, 0xa0, 0x01, 0x00};
 
 const char *testProcName[] = {
-    "init",	 "testProc1", "testProc2", "testProc3",
-    "testProc4", "testProc5", "testProc6", "testProc7",
+    "init", "testProc1", "testProc2", "testProc3", "testProc4", "testProc5", "testProc6", "testProc7",
 };
 
 // deprecated
@@ -32,8 +31,7 @@ void testProcRun(int index) {
 	// 4. 映射代码段
 	void *code = (void *)vmAlloc();
 	memcpy(code, initcode, sizeof(initcode));
-	panic_on(
-	    ptMap(proc->td_pt, 0, (u64)code, PTE_R | PTE_X | PTE_U)); // 需要设置PTE_U允许用户访问
+	panic_on(ptMap(proc->td_pt, 0, (u64)code, PTE_R | PTE_X | PTE_U)); // 需要设置PTE_U允许用户访问
 	assert(pteToPa(ptLookup(proc->td_pt, 0)) == (u64)code);
 
 	// 5. 设置Trapframe

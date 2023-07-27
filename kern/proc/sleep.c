@@ -6,8 +6,8 @@
 // 当需要调试某个睡眠的线程时，设置其睡眠原因为 # 开头的字符串
 #define sleep_debug(...)                                                                                               \
 	do {                                                                                                           \
-		if (td->td_wmesg && td->td_wmesg[0] == '#') {                                                                                   \
-			log(SLEEP_MODULE, __VA_ARGS__);     \
+		if (td->td_wmesg && td->td_wmesg[0] == '#') {                                                          \
+			log(SLEEP_MODULE, __VA_ARGS__);                                                                \
 		}                                                                                                      \
 	} while (0)
 

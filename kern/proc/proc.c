@@ -45,8 +45,7 @@ proc_t *proc_alloc() { // static
 	return p;
 }
 
-static void proc_uvminit(proc_t *p, thread_t *inittd, const char *name, const void *bin,
-			 size_t size) {
+static void proc_uvminit(proc_t *p, thread_t *inittd, const char *name, const void *bin, size_t size) {
 	// 初始化用户地址空间
 	proc_initustack(p, inittd, TD_USTACK);
 

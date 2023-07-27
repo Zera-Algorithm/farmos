@@ -36,8 +36,8 @@ static void *pmInitPush(u64 start, u64 size, u64 *freemem) {
 void pmmInit() {
 	// 第一部分：读取设备信息，获取内存信息，初始化内存页数组
 	log(MM_GLOBAL, "Physical Memory Init Start: End = 0x%0lx\n", end);
-	u64 freemem = PGROUNDUP((u64)end); // 空闲内存页的起始地址
-	npage = memInfo.size / PAGE_SIZE;  // 内存页数
+	u64 freemem = PGROUNDUP((u64)end);			     // 空闲内存页的起始地址
+	npage = memInfo.size / PAGE_SIZE;			     // 内存页数
 	pages = pmInitPush(freemem, npage * sizeof(Page), &freemem); // 初始化内存页数组
 
 	// 为 VirtIO 驱动分配连续的两页

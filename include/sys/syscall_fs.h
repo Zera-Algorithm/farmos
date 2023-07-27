@@ -34,12 +34,12 @@ typedef struct iovec {
 
 // 用于fstatat的flags
 #define AT_SYMLINK_NOFOLLOW 0x100 /* Do not follow symbolic links.  */
-#define AT_REMOVEDIR                                                                               \
-	0x200			/* Remove directory instead of                                     \
+#define AT_REMOVEDIR                                                                                                   \
+	0x200			/* Remove directory instead of                                                         \
 				   unlinking file.  */
 #define AT_SYMLINK_FOLLOW 0x400 /* Follow symbolic links.  */
-#define AT_NO_AUTOMOUNT                                                                            \
-	0x800		     /* Suppress terminal automount                                        \
+#define AT_NO_AUTOMOUNT                                                                                                \
+	0x800		     /* Suppress terminal automount                                                            \
 				traversal.  */
 #define AT_EMPTY_PATH 0x1000 /* Allow empty relative pathname.  */
 
@@ -84,9 +84,9 @@ struct pollfd {
 // for getfd and setfd
 #define FD_CLOEXEC 1
 
-#define __FSID_T_TYPE                                                                              \
-	struct {                                                                                   \
-		int __val[2];                                                                      \
+#define __FSID_T_TYPE                                                                                                  \
+	struct {                                                                                                       \
+		int __val[2];                                                                                          \
 	}
 
 struct statfs {

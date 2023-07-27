@@ -215,8 +215,8 @@ void dput_path(Dirent *file) {
  * @param pfile 文件本身
  * @param lastelem 如果恰好找到了文件的上一级目录的位置，则返回最后未匹配的那个项目的名称(legacy)
  */
-int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile,
-	      char *lastelem, longEntSet *longSet) {
+int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent **pfile, char *lastelem,
+	      longEntSet *longSet) {
 	char *p;
 	char name[MAX_NAME_LEN];
 	Dirent *dir, *file, *tmp;

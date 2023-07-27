@@ -1,8 +1,8 @@
 #include <dev/timer.h>
 #include <futex/futex.h>
 #include <lib/log.h>
-#include <proc/tsleep.h>
 #include <proc/thread.h>
+#include <proc/tsleep.h>
 
 futexevent_t futexevents[FUTEXEVENTS_MAX];
 
@@ -64,4 +64,3 @@ void futexevent_free_and_wake(futexevent_t *fe) {
 
 	twakeup(fe);
 }
-

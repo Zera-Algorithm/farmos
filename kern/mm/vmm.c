@@ -68,8 +68,7 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 		} else {
 			// 如果不存在，创建下一级页表
 			if (create) {
-				log(LEVEL_MODULE, "\tcreate a page for level %d in va 0x%016lx\n",
-				    i, va);
+				log(LEVEL_MODULE, "\tcreate a page for level %d in va 0x%016lx\n", i, va);
 				Page *newPage = pmAlloc();
 				pmPageIncRef(newPage);
 				// 将新页表的物理地址写入当前页表项

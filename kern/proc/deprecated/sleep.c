@@ -68,8 +68,7 @@ void wakeupProc() {
 			}
 
 			// 该进程睡眠时间已超过设定时间
-			if (proc->procTime.procSleepBegin + proc->procTime.procSleepClocks <=
-			    curTime) {
+			if (proc->procTime.procSleepBegin + proc->procTime.procSleepClocks <= curTime) {
 				pick = 1;
 
 				// 将此进程从睡眠队列中移除，加入到调度队列

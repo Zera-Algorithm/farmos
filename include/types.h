@@ -43,10 +43,10 @@ typedef pte_t Pte;
 
 #define offsetof(type, member) ((size_t) & ((type *)0)->member)
 
-#define container_of(ptr, type, member)                                                            \
-	({                                                                                         \
-		const typeof(((type *)0)->member) *__mptr = (ptr);                                 \
-		(type *)((char *)__mptr - offsetof(type, member));                                 \
+#define container_of(ptr, type, member)                                                                                \
+	({                                                                                                             \
+		const typeof(((type *)0)->member) *__mptr = (ptr);                                                     \
+		(type *)((char *)__mptr - offsetof(type, member));                                                     \
 	})
 
 #define rangeof(type, start, end) (offsetof(type, end) - offsetof(type, start))
@@ -68,22 +68,22 @@ typedef unsigned long uint64;
  * @brief 返回两数中最小的那个
  * @note 这里我们使用typeof(_a) __a = (_a); 是为了避免多次执行_a（_a可能是一个有后效的函数）
  */
-#define MIN(_a, _b)                                                                                \
-	({                                                                                         \
-		typeof(_a) __a = (_a);                                                             \
-		typeof(_b) __b = (_b);                                                             \
-		__a <= __b ? __a : __b;                                                            \
+#define MIN(_a, _b)                                                                                                    \
+	({                                                                                                             \
+		typeof(_a) __a = (_a);                                                                                 \
+		typeof(_b) __b = (_b);                                                                                 \
+		__a <= __b ? __a : __b;                                                                                \
 	})
 
 /**
  * @brief 返回两数中最大的那个
  * @note 这里我们使用typeof(_a) __a = (_a); 是为了避免多次执行_a（_a可能是一个有后效的函数）
  */
-#define MAX(_a, _b)                                                                                \
-	({                                                                                         \
-		typeof(_a) __a = (_a);                                                             \
-		typeof(_b) __b = (_b);                                                             \
-		__a >= __b ? __a : __b;                                                            \
+#define MAX(_a, _b)                                                                                                    \
+	({                                                                                                             \
+		typeof(_a) __a = (_a);                                                                                 \
+		typeof(_b) __b = (_b);                                                                                 \
+		__a >= __b ? __a : __b;                                                                                \
 	})
 
 #endif

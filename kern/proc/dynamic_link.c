@@ -1,13 +1,13 @@
-#include <proc/procarg.h>
-#include <proc/proc.h>
-#include <lib/elf.h>
-#include <lib/log.h>
-#include <lib/error.h>
-#include <lib/string.h>
-#include <proc/dynamic_link.h>
-#include <proc/thread.h>
 #include <fs/kload.h>
+#include <lib/elf.h>
+#include <lib/error.h>
+#include <lib/log.h>
+#include <lib/string.h>
 #include <mm/kmalloc.h>
+#include <proc/dynamic_link.h>
+#include <proc/proc.h>
+#include <proc/procarg.h>
+#include <proc/thread.h>
 
 // 将动态链接库映射到虚拟地址空间
 static void map_dynamic_so(thread_t *td, const void *binary, size_t size) {
@@ -26,8 +26,7 @@ static void map_dynamic_so(thread_t *td, const void *binary, size_t size) {
 		if (new_ph.p_type == PT_LOAD) {
 			// libc.so是位置无关的库，可以将其虚拟地址空间平移到U_DYNAMIC_SO_START位置
 			new_ph.p_vaddr += U_DYNAMIC_SO_START;
-			panic_on(loadElfSegment(&new_ph, binary + new_ph.p_off, loadDataMapper,
-						td->td_proc->p_pt));
+			panic_on(loadElfSegment(&new_ph, binary + new_ph.p_off, loadDataMapper, td->td_proc->p_pt));
 		}
 	}
 
@@ -71,7 +70,6 @@ u64 load_dynamic_so(thread_t *td, const void *binary, size_t size, const ElfHead
 	return so_base;
 }
 
-
 // 解析ELF文件信息，以填充辅助数组
 void parseElf(thread_t *td, const void *binary, size_t size, stack_arg_t *parg) {
 	const ElfHeader *elf = getElfFrom(binary, size);
@@ -103,7 +101,7 @@ void parseElf(thread_t *td, const void *binary, size_t size, stack_arg_t *parg) 
 	u64 dynamic_base = load_dynamic_so(td, binary, size, elf);
 
 	// 16bytes 随机字符串
-	char u_rand_bytes[16] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+	char u_rand_bytes[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 	u64 uaddr_rand = push_data(td->td_proc->p_pt, &td->td_trapframe.sp, u_rand_bytes, 16, true);
 	// 3. 拷入辅助数组
 	/**
@@ -124,7 +122,8 @@ void parseElf(thread_t *td, const void *binary, size_t size, stack_arg_t *parg) 
 	// 不启动安全模式，从环境变量加载动态链接库地址
 	append_auxiliary_vector(parg->argvbuf, (u64[]){AT_SECURE, 0}, &parg->total_len);
 	append_auxiliary_vector(parg->argvbuf, (u64[]){AT_RANDOM, uaddr_rand}, &parg->total_len);
-	append_auxiliary_vector(parg->argvbuf, (u64[]){AT_EXECFN, (u64)parg->argvbuf[0]}, &parg->total_len); // 程序的名称
+	append_auxiliary_vector(parg->argvbuf, (u64[]){AT_EXECFN, (u64)parg->argvbuf[0]},
+				&parg->total_len); // 程序的名称
 	append_auxiliary_vector(parg->argvbuf, (u64[]){AT_NULL, AT_NULL}, &parg->total_len);
 	// reference: glibc
 

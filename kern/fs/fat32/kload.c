@@ -3,13 +3,13 @@
 #include <lib/elf.h>
 #include <lib/error.h>
 #include <lib/log.h>
-#include <lib/string.h>
 #include <lib/printf.h>
+#include <lib/string.h>
 #include <lock/mutex.h>
 #include <mm/vmm.h>
-#include <proc/sched.h>
 #include <proc/interface.h>
 #include <proc/proc.h>
+#include <proc/sched.h>
 #include <proc/thread.h>
 #include <types.h>
 
@@ -18,7 +18,7 @@
  */
 
 #define MAX_KLOAD_FILE 10
-#define FILEID_TO_KVA(fileid) (KERNEL_TEMP + (fileid) * 0x10000000ul)
+#define FILEID_TO_KVA(fileid) (KERNEL_TEMP + (fileid)*0x10000000ul)
 
 static struct {
 	Dirent *file;
@@ -55,7 +55,6 @@ static void free_fileid(int fileid) {
 	mtx_unlock_sleep(&mtx_file_load);
 }
 
-
 static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 	int fileid = alloc_fileid();
 
@@ -79,10 +78,9 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 	file_read(file, 0, (u64)_binary, 0, _size);
 
 	// if (strncmp(file->name, "libc.so", 8) == 0) {
-	// 	if (((char*)_binary)[0] == 0x7f && ((char*)_binary)[1] == 'E' && ((char*)_binary)[2] == 'L' && ((char*)_binary)[3] == 'F') {
-	// 		log(DEBUG, "map dynamic libc.so\n");
-	// 	} else {
-	// 		panic("file's first clus = %d", file->first_clus);
+	// 	if (((char*)_binary)[0] == 0x7f && ((char*)_binary)[1] == 'E' && ((char*)_binary)[2] == 'L' &&
+	// ((char*)_binary)[3] == 'F') { 		log(DEBUG, "map dynamic libc.so\n"); 	} else { 		panic("file's first clus = %d",
+	// file->first_clus);
 	// 	}
 	// }
 
@@ -153,8 +151,8 @@ void *file_map(thread_t *td, Dirent *file, u64 va, size_t len, int perm, int fil
 	size_t i;
 	u64 offset = va - PGROUNDDOWN(va);
 	if (offset != 0) {
-		if ((r = loadDataMapper(get_proc_pt(td), va, offset, perm, binary,
-					MIN(len, PAGE_SIZE - offset))) != 0) {
+		if ((r = loadDataMapper(get_proc_pt(td), va, offset, perm, binary, MIN(len, PAGE_SIZE - offset))) !=
+		    0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
 		}
@@ -163,8 +161,7 @@ void *file_map(thread_t *td, Dirent *file, u64 va, size_t len, int perm, int fil
 	// 4.2 把剩余的binary内容（文件内的）加载进内存
 	// i = 已写入的长度
 	for (i = offset ? MIN(len, PAGE_SIZE - offset) : 0; i < len; i += PAGE_SIZE) {
-		if ((r = loadDataMapper(get_proc_pt(td), va + i, 0, perm, binary + i,
-					MIN(len - i, PAGE_SIZE))) != 0) {
+		if ((r = loadDataMapper(get_proc_pt(td), va + i, 0, perm, binary + i, MIN(len - i, PAGE_SIZE))) != 0) {
 			warn("map error! r = %d\n", r);
 			return (void *)-1;
 		}

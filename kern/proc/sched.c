@@ -19,8 +19,7 @@ void schedule() {
 		panic("schedule: cpu_lk_depth %d\n", cpu_this()->cpu_lk_depth);
 	}
 	if (cpu_this()->cpu_running->td_lock.mtx_depth != 1) {
-		panic("schedule: td_lock.mtx_depth %d\n",
-		      cpu_this()->cpu_running->td_lock.mtx_depth);
+		panic("schedule: td_lock.mtx_depth %d\n", cpu_this()->cpu_running->td_lock.mtx_depth);
 	}
 	assert(cpu_this()->cpu_running->td_status != RUNNING);
 	/**
@@ -58,8 +57,7 @@ static thread_t *sched_runnable(thread_t *old) {
 		if (old->td_status == RUNNABLE) {
 			TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
 		} else if (old->td_status == SLEEPING) {
-			log(SLEEP_MODULE, "Thread %s(%d) sleeping on %x\n", old->td_name,
-			    old->td_tid, old->td_wchan);
+			log(SLEEP_MODULE, "Thread %s(%d) sleeping on %x\n", old->td_name, old->td_tid, old->td_wchan);
 		}
 		mtx_unlock(&old->td_lock);
 	}
