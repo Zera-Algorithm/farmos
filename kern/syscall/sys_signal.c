@@ -117,7 +117,7 @@ int sys_kill(int pid, int sig) {
 
 int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout) {
 	thread_t *td = cpu_this()->cpu_running;
-	
+
 	sigset_t sigset = {0};
 	if (usigset) {
 		copy_in(td->td_proc->p_pt, usigset, &sigset, sizeof(sigset_t));
@@ -130,7 +130,8 @@ int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout) {
 
 	mtx_lock(&td->td_lock);
 	siginfo_t info = {0};
-	sig_timedwait(td, &sigset, &info, TS_USEC(timeout));
+	// TODO: change / 10 back
+	sig_timedwait(td, &sigset, &info, TS_USEC(timeout) / 1000);
 	mtx_unlock(&td->td_lock);
 
 	if (uinfo) {

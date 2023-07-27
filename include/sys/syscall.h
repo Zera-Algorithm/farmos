@@ -13,6 +13,7 @@ void syscall_entry(trapframe_t *tf);
 err_t sys_map(u64 start, u64 len, u64 perm);
 err_t sys_brk(u64 addr);
 int sys_madvise(void *addr, size_t length, int advice);
+int sys_membarrier(int cmd, int flags);
 
 struct rlimit;
 
@@ -70,6 +71,7 @@ int sys_utimensat(int dirfd, u64 pathname, u64 pTime, int flags);
 off_t sys_lseek(int fd, off_t offset, int whence);
 int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned int flags);
 int sys_statfs(u64 ppath, struct statfs *buf);
+int sys_ftruncate(int fd, off_t length);
 
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);

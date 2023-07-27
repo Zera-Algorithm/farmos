@@ -8,9 +8,9 @@
 
 err_t sys_map(u64 start, u64 len, u64 perm) {
 	u64 from = PGROUNDDOWN(start);
-	u64 to = PGROUNDUP(start + len);
+	u64 to = PGROUNDUP(start + len - 1);
 	pte_t *pt = cur_proc_pt();
-	for (u64 va = from; va <= to; va += PAGE_SIZE) {
+	for (u64 va = from; va < to; va += PAGE_SIZE) {
 		// 若虚拟地址对应的物理地址不存在，则分配一个物理页
 		if (pteToPa(ptLookup(pt, va)) == 0) {
 			u64 pa = vmAlloc();
@@ -52,7 +52,8 @@ err_t sys_brk(u64 addr) {
 	} else {
 		// 伸长堆
 		td->td_brk = addr;
-		ret = sys_map(cur_brk + 1, addr - cur_brk, PTE_R | PTE_W | PTE_U);
+		// TODO: 在后续测试中校验边界点的设定是否正确
+		ret = sys_map(cur_brk, addr - cur_brk, PTE_R | PTE_W | PTE_U);
 		mtx_unlock(&td->td_proc->p_lock);
 		if (ret < 0)
 			return ret;
@@ -67,5 +68,10 @@ err_t sys_brk(u64 addr) {
  */
 int sys_madvise(void *addr, size_t length, int advice) {
 	warn("sys_madvise not implemented!\n");
+	return 0;
+}
+
+int sys_membarrier(int cmd, int flags) {
+	warn("sys_membarrier not implemented!\n");
 	return 0;
 }

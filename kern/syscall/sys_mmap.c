@@ -160,11 +160,11 @@ err_t sys_msync(u64 addr, size_t length, int flags) {
 // 仅仅改变映射了的页的属性
 err_t sys_mprotect(u64 addr, size_t len, int prot) {
 	u64 from = PGROUNDDOWN(addr);
-	u64 to = PGROUNDUP(addr + len);
+	u64 to = PGROUNDUP(addr + len - 1);
 	u64 perm = get_perm_by_prot(prot);
 
 	pte_t *pt = cur_proc_pt();
-	for (u64 va = from; va <= to; va += PAGE_SIZE) {
+	for (u64 va = from; va < to; va += PAGE_SIZE) {
 		// 若虚拟地址对应的物理地址不存在，则跳过
 		u64 pa = pteToPa(ptLookup(pt, va));
 		if (pa == 0)

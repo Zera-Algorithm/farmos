@@ -103,6 +103,7 @@ void utrap_entry() {
 			warn("uncaught exception.\n");
 			printReg(&td->td_trapframe);
 			warn("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
+
 			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
 			// cpu的输出变为乱码，访问excCause数组出现load page fault
 			// 可能与参数的数目过多有关系，因此将输出分拆为两段
@@ -158,8 +159,8 @@ void utrap_return() {
 	sstatus |= SSTATUS_SPIE; // SPIE = 1: 开中断
 	w_sstatus(sstatus);
 
-	log(LEVEL_GLOBAL, "tid = %lx, before utrap return, a0 = 0x%lx\n",
-	    cpu_this()->cpu_running->td_tid, harttf->a0);
+	// log(LEVEL_GLOBAL, "tid = %lx, before utrap return, a0 = 0x%lx\n",
+	//     cpu_this()->cpu_running->td_tid, harttf->a0);
 
 	// ue5: 计算用户页表 SATP 并跳转至汇编用户态异常出口
 	u64 user_satp = MAKE_SATP(td->td_proc->p_pt);

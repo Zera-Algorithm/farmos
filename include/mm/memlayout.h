@@ -58,6 +58,12 @@
 // 可访问内存的起始位置
 #define MEMBASE 0x80000000ul
 
+// 用户程序的地址空间
+#define MMAP_START 0x600000000
+#define MMAP_END 0x800000000
+#define U_DYNAMIC_SO_START 0x800000000
+
+
 // BELOW TO BE CLASSIFIED (TODO)
 
 // Physical memory layout

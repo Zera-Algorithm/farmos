@@ -44,19 +44,22 @@ typedef struct proclist {
 extern proc_t procs[NPROC];
 extern proclist_t proc_freelist;
 
-// 处理argv参数的回调函数
-typedef void (*argv_callback_t)(char *kstr_arr[]);
-
 void proc_init();
 proc_t *proc_alloc();
 void proc_addtd(proc_t *p, thread_t *td);
 
+typedef struct stack_arg stack_arg_t;
+
 void proc_initupt(proc_t *p);
-void proc_initucode(proc_t *p, thread_t *inittd, const void *bin, size_t size);
+void proc_initucode_by_file(proc_t *p, thread_t *inittd, char *pathbuf, stack_arg_t *parg);
+void proc_initucode_by_binary(proc_t *p, thread_t *inittd, const void *bin, size_t size, stack_arg_t *parg);
+
+typedef struct stack_arg stack_arg_t;
+typedef void (*argv_callback_t)(char *kstr_arr[]);
 
 void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack);
 void proc_recycleupt(proc_t *p);
-void proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
+stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u64 envp,
 		    argv_callback_t callback);
 
 void proc_create(const char *name, const void *bin, size_t size);

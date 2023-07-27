@@ -51,7 +51,7 @@ static void proc_uvminit(proc_t *p, thread_t *inittd, const char *name, const vo
 	proc_initustack(p, inittd, TD_USTACK);
 
 	// 加载代码段
-	proc_initucode(p, inittd, bin, size);
+	proc_initucode_by_binary(p, inittd, bin, size, NULL);
 
 	// 初始化用户线程信息
 	assert(strlen(name) <= MAXPATH);
@@ -81,8 +81,9 @@ void proc_create(const char *name, const void *bin, size_t size) {
 	// 设置初始化线程
 	inittd->td_status = RUNNABLE;
 
-	// 初始化参数
-	proc_setustack(inittd, p->p_pt, 0, NULL, 0, NULL);
+	// Note：ProcCreate不需要将参数压栈
+	// // 初始化参数
+	// proc_setustack(inittd, p->p_pt, 0, NULL, 0, NULL);
 
 	// 将初始线程加入调度队列
 	tdq_critical_enter(&thread_runq);

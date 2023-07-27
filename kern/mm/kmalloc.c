@@ -117,6 +117,7 @@ void *kmalloc(size_t size) {
 		warn("kalloc: object of size %d is used up, try to extend a page\n",
 		     malloc_config[i].size);
 		extend_heap(&malloc_config[i]);
+		header = malloc_config[i].head;
 	}
 	malloc_config[i].head = header->next;
 	// TODO: 需要判断header+1的内存地址是否紧跟着header
