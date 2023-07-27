@@ -7,6 +7,7 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lock/mutex.h>
+#include <sys/errno.h>
 
 extern mutex_t mtx_file;
 
@@ -15,12 +16,21 @@ int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
 	mtx_lock_sleep(&mtx_file);
 
 	// 1. 寻找mount的目录
-	Dirent *dir = getFile(baseDir, dirPath);
+	Dirent *dir;
+	int ret = getFile(baseDir, dirPath, &dir);
 
-	if (dir == NULL) {
+	if (ret < 0) {
 		warn("dir %s is not found!\n", dirPath);
 		mtx_unlock_sleep(&mtx_file);
-		return -1;
+		return ret;
+	}
+
+	// 检查dir是否是目录
+	if (!IS_DIRECTORY(&(dir->raw_dirent))) {
+		warn("dir %s is not a directory!\n", dirPath);
+		file_close(dir);
+		mtx_unlock_sleep(&mtx_file);
+		return -ENOTDIR;
 	}
 
 	// 2. 寻找mount的文件
@@ -29,11 +39,12 @@ int mount_fs(char *special, Dirent *baseDir, char *dirPath) {
 	if (strncmp(special, "/dev/vda2", 10) == 0) {
 		image = NULL;
 	} else {
-		image = getFile(baseDir, special);
-		if (image == NULL) {
+		ret = getFile(baseDir, special, &image);
+		if (ret < 0) {
 			warn("image %s is not found!\n", special);
+			file_close(dir);
 			mtx_unlock_sleep(&mtx_file);
-			return -1;
+			return ret;
 		}
 	}
 
@@ -56,11 +67,12 @@ int umount_fs(char *dirPath, Dirent *baseDir) {
 	mtx_lock_sleep(&mtx_file);
 
 	// 1. 寻找mount的目录
-	Dirent *dir = getFile(baseDir, dirPath);
-	if (dir == NULL) {
+	Dirent *dir;
+	int ret = getFile(baseDir, dirPath, &dir);
+	if (ret < 0) {
 		warn("dir %s is not found!\n", dirPath);
 		mtx_unlock_sleep(&mtx_file);
-		return -1;
+		return ret;
 	}
 
 	// 2. 擦除目录的标记
@@ -69,7 +81,7 @@ int umount_fs(char *dirPath, Dirent *baseDir) {
 	if (mntPoint == NULL || dir->parent_dirent != NULL) {
 		warn("unmounted dir!\n");
 		mtx_unlock_sleep(&mtx_file);
-		return -1;
+		return -EINVAL; // 传入的不是挂载点
 	}
 	mntPoint->head = NULL;
 
@@ -78,12 +90,13 @@ int umount_fs(char *dirPath, Dirent *baseDir) {
 	if (fs == NULL) {
 		warn("can\'t find fs of dir %s!\n", dirPath);
 		mtx_unlock_sleep(&mtx_file);
-		return -1;
+		return -EINVAL;
 	}
 
-	// 4. 关闭fs镜像（如果有），并卸载fs
+	// 4. 关闭fs镜像（如果有）和挂载点，并卸载fs
 	if (fs->image != NULL) {
 		file_close(fs->image);
+		file_close(dir);
 	}
 	deAllocFs(fs);
 

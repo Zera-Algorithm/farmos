@@ -2,8 +2,8 @@
 #define _FS_H
 
 #include <fs/fat32.h>
+#include <fs/file_time.h>
 #include <lib/queue.h>
-#include <lock/sleeplock.h>
 #include <mm/memlayout.h>
 #include <types.h>
 
@@ -16,7 +16,7 @@ typedef struct SuperBlock SuperBlock;
 LIST_HEAD(DirentList, Dirent);
 
 // 对应目录、文件、设备
-typedef enum dirent_type { DIRENT_DIR, DIRENT_FILE, DIRENT_DEV } dirent_type_t;
+typedef enum dirent_type { DIRENT_DIR, DIRENT_FILE, DIRENT_CHARDEV, DIRENT_BLKDEV } dirent_type_t;
 
 struct TwicePointer {
 	u32 cluster[PAGE_SIZE / sizeof(u32)];
@@ -36,6 +36,8 @@ typedef struct DirentPointer {
 
 // 用于调试Dirent引用计数次数的开关
 // #define REFCNT_DEBUG
+
+struct file_time;
 
 // FarmOS Dirent
 struct Dirent {
@@ -64,6 +66,9 @@ struct Dirent {
 	// 标记是文件、目录还是设备文件（仅在文件系统中出现，不出现在磁盘中）
 	u32 type;
 
+	// 文件的时间戳
+	struct file_time time;
+
 	// 设备结构体，可以通过该结构体完成对文件的读写
 	struct FileDev *dev;
 
@@ -81,10 +86,8 @@ struct Dirent {
 	u32 linkcnt; // 链接计数
 	u32 refcnt;  // 引用计数
 
-#ifdef REFCNT_DEBUG
 	char *holders[64];
 	int holder_cnt;
-#endif
 };
 
 // 有当前dirent引用时不变的项（只读，无需加锁）：parent_dirent, name, file_system,

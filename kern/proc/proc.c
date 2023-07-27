@@ -51,7 +51,7 @@ static void proc_uvminit(proc_t *p, thread_t *inittd, const char *name, const vo
 	proc_initustack(p, inittd, TD_USTACK);
 
 	// 加载代码段
-	proc_initucode(p, inittd, bin, size);
+	proc_initucode_by_binary(p, inittd, bin, size, NULL);
 
 	// 初始化用户线程信息
 	assert(strlen(name) <= MAXPATH);
@@ -81,8 +81,9 @@ void proc_create(const char *name, const void *bin, size_t size) {
 	// 设置初始化线程
 	inittd->td_status = RUNNABLE;
 
-	// 初始化参数
-	proc_setustack(inittd, p->p_pt, 0, NULL, 0);
+	// Note：ProcCreate不需要将参数压栈
+	// // 初始化参数
+	// proc_setustack(inittd, p->p_pt, 0, NULL, 0, NULL);
 
 	// 将初始线程加入调度队列
 	tdq_critical_enter(&thread_runq);
@@ -136,7 +137,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 			proc_free(child);
 		} else {
 			warn("haven't implement init, child %d is still alive\n", child->p_pid);
-			child->p_parent = 0;
+			child->p_parent = &procs[PID_TO_INDEX(PID_INIT)];
 			// child->td_parent = TID_INIT;
 			// todo: insert to init's childlist and wake up init
 		}
@@ -145,6 +146,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 
 	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
 	if (p->p_pid != PID_INIT) {
+		warn("proc %08x destroying, send SIGCHLD to parent %08x\n", p->p_pid, p->p_parent->p_pid);
 		sig_send_proc(p->p_parent, SIGCHLD);
 		wakeup(p->p_parent);
 	}

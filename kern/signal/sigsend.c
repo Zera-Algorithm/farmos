@@ -14,6 +14,9 @@ bool sig_td_canhandle(thread_t *td, int signo) {
 }
 
 void sig_send_td(thread_t *td, int signo) {
+	// warn("%lx send signal %d to thread %lx\n", cpu_this()->cpu_running->td_tid, signo,
+	//      td->td_tid);
+
 	assert(td != NULL);
 	mtx_lock(&td->td_lock);
 	sigevent_t *se = sigevent_alloc(signo);
@@ -24,6 +27,11 @@ void sig_send_td(thread_t *td, int signo) {
 void sig_send_proc(proc_t *p, int signo) {
 	assert(p != NULL);
 	proc_lock(p);
+	if (p->p_status == ZOMBIE) {
+		proc_unlock(p);
+		warn("sig_send_proc: process %08x is zombie\n", p->p_pid);
+		return;
+	}
 
 	// 先争取找到可以立马处理的线程
 	thread_t *td;
@@ -40,6 +48,9 @@ void sig_send_proc(proc_t *p, int signo) {
 	}
 
 	// 如果没有找到可以处理该信号的线程，就发送给主线程
+	if (TAILQ_EMPTY(&p->p_threads)) {
+		panic("sig_send_proc: no thread in process %08x\n", p->p_pid);
+	}
 	td = TAILQ_FIRST(&p->p_threads);
 	mtx_lock(&td->td_lock);
 	sig_send_td(td, signo);

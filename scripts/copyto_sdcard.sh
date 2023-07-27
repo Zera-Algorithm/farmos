@@ -7,6 +7,7 @@
 cd /home/zrp/farmos
 sudo mount sdcard.img sdcard
 sudo cp $1 sdcard
+sync
 sleep 1
 sudo umount sdcard
 cp sdcard.img fs.img

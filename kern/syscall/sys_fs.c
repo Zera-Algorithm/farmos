@@ -1,5 +1,6 @@
 #include <fs/fd.h>
 #include <fs/file.h>
+#include <fs/file_time.h>
 #include <fs/kload.h>
 #include <fs/pipe.h>
 #include <fs/thread_fs.h>
@@ -42,7 +43,7 @@ int sys_dup3(int fd_old, int fd_new) {
 	return dup3(fd_old, fd_new);
 }
 
-int sys_getcwd(u64 buf, int size) {
+u64 sys_getcwd(u64 buf, int size) {
 	void *kptr = cur_proc_fs_struct()->cwd;
 	copyOut(buf, kptr, MIN(256, size));
 	return buf;
@@ -60,22 +61,40 @@ int sys_pipe2(u64 pfd) {
 }
 
 int sys_chdir(u64 path) {
-	char kbuf[MAX_NAME_LEN];
+	char kbuf[MAX_NAME_LEN], new_cwd[MAX_NAME_LEN];
 	copyInStr(path, kbuf, MAX_NAME_LEN);
 	thread_fs_t *thread_fs = cur_proc_fs_struct();
 
 	if (kbuf[0] == '/') {
 		// 绝对路径
-		strncpy(thread_fs->cwd, kbuf, MAX_NAME_LEN);
-		assert(strlen(thread_fs->cwd) + 3 < MAX_NAME_LEN);
-		strcat(thread_fs->cwd, "/"); // 保证cwd是一个目录
+		strncpy(new_cwd, kbuf, MAX_NAME_LEN);
+		assert(strlen(new_cwd) + 3 < MAX_NAME_LEN);
+		strcat(new_cwd, "/"); // 保证cwd是一个目录
 	} else {
 		// 相对路径
 		// 保证操作之前cwd以"/"结尾
-		assert(strlen(thread_fs->cwd) + strlen(kbuf) + 3 < MAX_NAME_LEN);
-		strcat(thread_fs->cwd, kbuf);
-		strcat(thread_fs->cwd, "/");
+		strncpy(new_cwd, thread_fs->cwd, MAX_NAME_LEN);
+		assert(strlen(new_cwd) + strlen(kbuf) + 3 < MAX_NAME_LEN);
+		strcat(new_cwd, kbuf);
+		strcat(new_cwd, "/");
 	}
+
+	// 检查new_cwd是否指向有效的目录
+	Dirent *cwd_dirent;
+	int ret = getFile(NULL, new_cwd, &cwd_dirent);
+	if (ret < 0) {
+		return ret;
+	} else if (!IS_DIRECTORY(&cwd_dirent->raw_dirent)) {
+		file_close(cwd_dirent);
+		return -ENOTDIR;
+	}
+
+	if (thread_fs->cwd_dirent != NULL) {
+		file_close(thread_fs->cwd_dirent);
+	}
+
+	strncpy(thread_fs->cwd, new_cwd, MAX_NAME_LEN);
+	thread_fs->cwd_dirent = cwd_dirent;
 	return 0;
 }
 
@@ -221,13 +240,17 @@ int sys_fcntl(int fd, int cmd, int arg) {
 	mtx_lock_sleep(&kfd->lock);
 
 	switch (cmd) {
-	// 目前Linux只规定了FD_CLOEXEC用于fcntl的set/get fd
+	// 目前Linux只规定了 FD_CLOEXEC 用于 fcntl 的 set/get fd
+	// FD_CLOEXEC标志对应了fd->flags的__O_CLOEXEC位
 	// TODO: 在exec时实现根据fd的FD_CLOEXEC flag来决定是关闭还是保留
 	case FCNTL_GETFD:
-		ret = kfd->flags & FD_CLOEXEC;
+		ret = (kfd->flags & __O_CLOEXEC) ? FD_CLOEXEC : 0;
 		break;
 	case FCNTL_SETFD:
-		kfd->flags |= (arg & FD_CLOEXEC);
+		if (arg & FD_CLOEXEC)
+			kfd->flags |= __O_CLOEXEC;
+		else
+			kfd->flags &= ~__O_CLOEXEC;
 		break;
 	case FCNTL_GET_FILE_STATUS: // 等同于F_GETFL
 		ret = kfd->flags;
@@ -258,13 +281,29 @@ int sys_fcntl(int fd, int cmd, int arg) {
 int sys_utimensat(int dirfd, u64 pathname, u64 pTime, int flags) {
 	Dirent *dir, *file;
 	char path[MAX_NAME_LEN];
-	unwrap(getDirentByFd(dirfd, &dir, NULL));
-	copyInStr(pathname, path, MAX_NAME_LEN);
+	int ret;
 
-	file = getFile(dir, path);
-	if (file == NULL)
-		return -ENOENT;
-	else {
+	unwrap(getDirentByFd(dirfd, &dir, NULL));
+	if (pathname != 0) {
+		copyInStr(pathname, path, MAX_NAME_LEN);
+		ret = getFile(dir, path, &file);
+	} else {
+		ret = getFile(dir, NULL, &file);
+	}
+
+	if (ret < 0)
+		return ret;
+	else if (pTime) {
+		struct timespec times[2];
+		copyIn(pTime, (void *)times, sizeof(times));
+		file_set_timestamp(file, ACCESS_TIME, &times[0]);
+		file_set_timestamp(file, MODIFY_TIME, &times[1]);
+		file_close(file);
+		return 0;
+	} else {
+		// pTime == 0
+		file_update_timestamp(file, ACCESS_TIME);
+		file_update_timestamp(file, MODIFY_TIME);
 		file_close(file);
 		return 0;
 	}
@@ -279,4 +318,65 @@ int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned
 	copyInStr(newpath, newpathStr, MAX_NAME_LEN);
 
 	return renameat2(olddir, oldpathStr, newdir, newpathStr, flags);
+}
+
+// position read，从特定位置开始读取文件
+size_t sys_pread64(int fd, u64 buf, size_t count, off_t offset) {
+	return pread64(fd, buf, count, offset);
+}
+
+size_t sys_pwrite64(int fd, u64 buf, size_t count, off_t offset) {
+	return pwrite64(fd, buf, count, offset);
+}
+
+#define MSDOS_SUPER_MAGIC 0x4d44 /* MD */
+
+int sys_statfs(u64 ppath, struct statfs *buf) {
+	Dirent *file;
+	char path[MAX_NAME_LEN];
+	copyInStr(ppath, path, MAX_NAME_LEN);
+	struct statfs statfs;
+
+	memset(&statfs, 0, sizeof(statfs));
+	int ret = getFile(NULL, path, &file);
+	if (ret < 0) {
+		return ret;
+	} else {
+		FileSystem *fs = file->file_system;
+
+		assert(fs != NULL);
+		statfs.f_type = MSDOS_SUPER_MAGIC;
+		statfs.f_bsize = fs->superBlock.bytes_per_clus;
+		statfs.f_blocks = fs->superBlock.bpb.tot_sec / fs->superBlock.bpb.sec_per_clus;
+		statfs.f_bfree = statfs.f_blocks / 2;		 // 虚构的空闲块数
+		statfs.f_bavail = statfs.f_blocks / 2;		 // 虚构的空闲块数
+		statfs.f_files = 100000;			 // 虚构的文件数
+		statfs.f_ffree = 10000;				 // 虚构的空闲file node数
+		statfs.f_fsid.val[0] = statfs.f_fsid.val[1] = 0; // fsid，一般不用
+		statfs.f_namelen = MAX_NAME_LEN;
+		statfs.f_frsize = 0; // unknown
+		statfs.f_flags = 0;  // 无需处理
+
+		copyOut((u64)buf, &statfs, sizeof(statfs));
+		file_close(file);
+		return 0;
+	}
+}
+
+// 改变文件的大小
+int sys_ftruncate(int fd, off_t length) {
+	Dirent *file;
+	unwrap(getDirentByFd(fd, &file, NULL));
+
+	extern mutex_t mtx_file;
+	mtx_lock(&mtx_file);
+
+	if (length <= file->file_size) {
+		fshrink(file, length);
+	} else {
+		fileExtend(file, length);
+	}
+
+	mtx_unlock(&mtx_file);
+	return 0;
 }

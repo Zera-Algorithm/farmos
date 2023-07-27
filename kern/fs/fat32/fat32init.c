@@ -93,7 +93,7 @@ void init_root_fs() {
 	extern FileSystem *fatFs;
 	extern mutex_t mtx_fs;
 	mtx_init(&mtx_fs, "fs", false, MTX_SPIN);
-	mtx_init(&mtx_file, "mtx_file", false, MTX_SLEEP | MTX_RECURSE);
+	mtx_init(&mtx_file, "mtx_file", true, MTX_SLEEP | MTX_RECURSE);
 
 	allocFs(&fatFs);
 
@@ -103,7 +103,7 @@ void init_root_fs() {
 	fat32_init(fatFs);
 }
 
-void init_dev_fs() {
+static void init_dev_fs() {
 	makeDirAt(fatFs->root, "/dev", 0);
 
 	// 这两个暂时用空文件代替
@@ -123,14 +123,14 @@ void init_dev_fs() {
 
 	file1->dev = &file_dev_null;
 	file2->dev = &file_dev_zero;
-	file1->type = DIRENT_DEV;
-	file2->type = DIRENT_DEV;
+	file1->type = DIRENT_CHARDEV;
+	file2->type = DIRENT_CHARDEV;
 
 	file_close(file1);
 	file_close(file2);
 }
 
-void init_proc_fs() {
+static void init_proc_fs() {
 	makeDirAt(fatFs->root, "/proc", 0);
 
 	extern initcall_t __initcall_fs_start[], __initcall_fs_end[];
@@ -143,4 +143,23 @@ void init_proc_fs() {
 		log(LEVEL_GLOBAL, "executing initcall #%d\n", fn - __initcall_fs_start);
 		(*fn)();
 	}
+}
+
+static void init_fs_other() {
+	makeDirAt(fatFs->root, "/bin", 0);
+	panic_on(create_file_and_close("/bin/ls"));
+
+	makeDirAt(fatFs->root, "/etc", 0);
+	makeDirAt(fatFs->root, "/tmp", 0);
+
+	// 将默认的动态链接库链接到/lib目录
+	makeDirAt(fatFs->root, "/lib", 0);
+	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
+	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
+}
+
+void init_files() {
+	init_dev_fs();
+	init_proc_fs();
+	init_fs_other();
 }

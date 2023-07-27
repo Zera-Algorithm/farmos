@@ -11,6 +11,8 @@ typedef struct sigset {
 	u8 ss_byte[(SIGNAL_MAX + 7) / 8];
 } sigset_t;
 
+// signo从1开始
+
 static inline void sigset_init(sigset_t *set) {
 	for (int i = 0; i < sizeof(set->ss_byte); i++) {
 		set->ss_byte[i] = 0;
@@ -18,16 +20,19 @@ static inline void sigset_init(sigset_t *set) {
 }
 
 static inline void sigset_set(sigset_t *set, int signo) {
+	signo -= 1;
 	assert(0 <= signo && signo < SIGNAL_MAX);
 	set->ss_byte[signo / 8] |= 1 << (signo % 8);
 }
 
 static inline void sigset_clear(sigset_t *set, int signo) {
+	signo -= 1;
 	assert(0 <= signo && signo < SIGNAL_MAX);
 	set->ss_byte[signo / 8] &= ~(1 << (signo % 8));
 }
 
 static inline bool sigset_isset(sigset_t *set, int signo) {
+	signo -= 1;
 	assert(0 <= signo && signo < SIGNAL_MAX);
 	return set->ss_byte[signo / 8] & (1 << (signo % 8));
 }

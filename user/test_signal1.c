@@ -21,7 +21,7 @@ void handler(int num) {
 	printf("depth = %d ended!\n", global);
 }
 
-int main(int argc, char **argv) {
+int main() {
 	sigset_t set;
 	sigset_init(&set);
 	struct sigaction sig;

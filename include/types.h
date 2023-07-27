@@ -35,6 +35,7 @@ typedef u32 pid_t;
 typedef u32 uid_t;
 typedef u64 sigval_t;
 typedef u32 socklen_t;
+typedef u64 rlim_t;
 
 // FarmOS 页表项
 typedef pte_t Pte;

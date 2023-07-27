@@ -32,6 +32,7 @@ typedef struct timespec {
 
 // 工具
 
-#define TV_USEC(tv) ((tv).tv_sec * 1000000 + (tv).tv_usec)
+#define TV_USEC(tv) ((tv).tv_sec * 1000000ul + (tv).tv_usec)
+#define TS_USEC(ts) ((ts).tv_sec * 1000000ul + (ts).tv_nsec / 1000ul)
 
 #endif // _TIME_H

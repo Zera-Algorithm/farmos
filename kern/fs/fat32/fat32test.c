@@ -9,8 +9,8 @@
 char buf[8192];
 void fat32Test() {
 	// 测试读取文件
-	Dirent *file = getFile(NULL, "/text.txt");
-	assert(file != NULL);
+	Dirent *file;
+	panic_on(getFile(NULL, "/text.txt", &file));
 	panic_on(file_read(file, 0, (u64)buf, 0, file->file_size) < 0);
 	printf("%s\n", buf);
 
@@ -40,8 +40,7 @@ void fat32Test() {
 	panic_on(file_write(file, 0, (u64)str2, 0, strlen(str2) + 1) < 0);
 
 	// 读取刚创建的文件
-	file = getFile(NULL, "/zrp123456789zrp.txt");
-	assert(file != NULL);
+	panic_on(getFile(NULL, "/zrp123456789zrp.txt", &file));
 	panic_on(file_read(file, 0, (u64)buf, 0, file->file_size) < 0);
 	printf("file zrp.txt: %s\n", buf);
 

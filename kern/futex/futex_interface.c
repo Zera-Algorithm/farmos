@@ -3,10 +3,11 @@
 #include <lib/transfer.h>
 #include <mm/vmm.h>
 #include <proc/cpu.h>
-#include <proc/sleep.h>
+#include <proc/tsleep.h>
 #include <proc/thread.h>
 #include <sys/errno.h>
 #include <sys/time.h>
+#include <dev/timer.h>
 
 static u64 uaddr_to_pa(pte_t *pt, u64 uaddr) {
 	pte_t pte = ptLookup(pt, uaddr);
@@ -14,21 +15,40 @@ static u64 uaddr_to_pa(pte_t *pt, u64 uaddr) {
 	return pteToPa(pte) + (uaddr & (PAGE_SIZE - 1));
 }
 
-err_t futex_wait(u64 uaddr, u64 val, u64 utimeout) {
-	// todo checkval
+static u32 get_val(thread_t *td, u64 uaddr) {
+	u32 val;
+	copy_in(td->td_proc->p_pt, uaddr, &val, sizeof(u32));
+	return val;
+}
+
+err_t futex_wait(u64 uaddr, u32 val, u64 utimeout) {
 	thread_t *td = cpu_this()->cpu_running;
-	timeval_t tv = {0, 0};
+	timespec_t ts = {0, 0};
 	if (utimeout) {
-		copy_in(td->td_proc->p_pt, utimeout, &tv, sizeof(timeval_t));
+		copy_in(td->td_proc->p_pt, utimeout, &ts, sizeof(timespec_t));
 	}
 	// 获取一个等待事件（获取了使用队列锁）
 	u64 upa = uaddr_to_pa(td->td_proc->p_pt, uaddr);
-	futexevent_t *fe = futexevent_alloc(upa, td->td_tid, TV_USEC(tv)); // todo timeout
+	futexevent_t *fe = futexevent_alloc(upa, td->td_tid, TS_USEC(ts)); // todo timeout
+
+	// 检查值
+	u32 curval = get_val(td, uaddr);
+	if (val != curval) {
+		warn("futex_wait: val not match: %x != %x\n", val, curval);
+		futexevent_free_and_wake(fe);
+		feq_critical_exit(&fe_usedq);
+		return -EAGAIN;
+	}
+
+
 	// 睡眠（释放了使用队列锁）
-	sleep(fe, &fe_usedq.ftxq_lock, utimeout ? "futex_wait_timeout" : "futex_wait");
+	err_t r = tsleep(fe, &fe_usedq.ftxq_lock, utimeout ? "#futex_wait_timeout" : "#futex_wait", fe->ftx_waketime);
 	// 释放使用队列锁并返回
 	feq_critical_exit(&fe_usedq);
-	return 0;
+	if (r) {
+		warn("futex_wait: tsleep failed: %d\n", r);
+	}
+	return r;
 }
 
 err_t futex_wake(u64 uaddr, u64 wakecnt) {
