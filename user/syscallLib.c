@@ -219,3 +219,12 @@ int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val
 int gettid() {
 	return syscall(SYS_gettid);
 }
+
+int getitimer(int which, struct itimerval *curr_value) {
+	return syscall(SYS_getitimer, which, curr_value);
+}
+
+int setitimer(int which, const struct itimerval *new_value,
+				struct itimerval *old_value) {
+	return syscall(SYS_setitimer, which, new_value, old_value);
+}

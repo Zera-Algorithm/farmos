@@ -109,7 +109,7 @@ void itimer_check() {
 
 	itimer_info_t *itimer, *tmp;
 	LIST_FOREACH_PARTIAL_DEL(itimer, &itimer_list.itimer_head) {
-		if (itimer->start + itimer->last_time >= now) {
+		if (itimer->start + itimer->last_time <= now) {
 			// 到期
 			warn("itimer of thread %s is expired, send signal\n", itimer->td->td_name);
 			sig_send_td(itimer->td, SIGALRM);

@@ -58,7 +58,7 @@ u64 load_dynamic_so(thread_t *td, const void *binary, size_t size, const ElfHead
 		}
 	}
 	if (!is_find) {
-		log(DEBUG, "no dynamic so\n");
+		log(PROC_GLOBAL, "no dynamic so\n");
 		return 0;
 	}
 
@@ -92,7 +92,7 @@ void parseElf(thread_t *td, const void *binary, size_t size, stack_arg_t *parg) 
 				// 说明段表在此段中
 				va_segtable = ph->p_vaddr + (phtable_off - ph->p_off);
 				find_segtable = 1;
-				warn("we find va of segment table = 0x%lx\n", va_segtable);
+				log(PROC_GLOBAL, "we find va of segment table = 0x%lx\n", va_segtable);
 				break;
 			}
 		}

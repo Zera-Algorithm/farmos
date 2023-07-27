@@ -219,7 +219,7 @@ void fileExtend(struct Dirent *file, int newSize) {
 int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	mtx_lock_sleep(&mtx_file);
 
-	log(LEVEL_GLOBAL, "write file: %s\n", file->name);
+	log(FS_MODULE, "write file: %s\n", file->name);
 	assert(n != 0);
 
 	// Note: 支持off在任意位置的写入（允许超过file->size），[file->size, off)的部分将被填充为0

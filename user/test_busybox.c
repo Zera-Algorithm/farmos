@@ -12,7 +12,11 @@ int main() {
 
 	char *const *argvs[] = {
 				// unixbench little test
-				(char *const[]) {"/syscall", "1", "getpid", NULL},
+				// (char *const[]) {"/pipe", "1", NULL},
+
+				// unixbench big test
+				(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},
+
 				// busybox测试
 				// (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 				// libc-test的static测试点和dynamic测试点
@@ -20,7 +24,7 @@ int main() {
 				// (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
 				// (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
-				(char *const[]) {"/libc-bench", NULL},
+				// (char *const[]) {"/libc-bench", NULL},
 
 				// 命令行测试
 				// (char *const[]) {"/busybox", "ash", NULL},

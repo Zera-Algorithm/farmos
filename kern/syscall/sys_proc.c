@@ -90,7 +90,7 @@ static void exec_elf_callback(char *kstr_arr[]) {
 		strcat(buf, kstr_arr[i]);
 		strcat(buf, " ");
 	}
-	log(LEVEL_GLOBAL, "%s\n", buf);
+	log(PROC_GLOBAL, "%s\n", buf);
 
 	// td改名，加后缀
 	thread_t *td = cpu_this()->cpu_running;

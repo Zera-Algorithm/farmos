@@ -114,7 +114,7 @@ void main() {
 #else
 		PROC_CREATE(test_busybox, "test_busybox");
 #endif
-		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_setitimer, "test_setitimer");
 		// PROC_CREATE(test_while, "test_while");
 		// PROC_CREATE(test_futex, "test_futex");
 
