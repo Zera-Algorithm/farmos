@@ -28,6 +28,7 @@ int renameat2(Dirent *oldDir, char *oldPath, Dirent *newDir, char *newPath, u32 
 int makeDirAt(Dirent *baseDir, char *path, int mode);
 void fileStat(struct Dirent *file, struct kstat *pKStat);
 int faccessat(Dirent *dir, char *path, int mode, int flags);
+void fs_sync();
 
 int find_fs_of_dir(FileSystem *fs, void *data);
 void sync_dirent_rawdata_back(Dirent *dirent);

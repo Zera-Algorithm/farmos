@@ -3,7 +3,7 @@
 #include <lock/mutex.h>
 #include <types.h>
 
-#define PIPE_BUF_SIZE 256
+#define PIPE_BUF_SIZE 2048
 struct thread;
 
 struct Pipe {

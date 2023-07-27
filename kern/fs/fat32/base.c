@@ -21,22 +21,22 @@
  * @brief 计数文件的簇数
  */
 int countClusters(struct Dirent *file) {
-	log(LEVEL_GLOBAL, "count Cluster begin!\n");
+	log(FS_MODULE, "count Cluster begin!\n");
 
 	int clus = file->first_clus;
 	int i = 0;
 	if (clus == 0) {
-		log(LEVEL_GLOBAL, "cluster is 0!\n");
+		log(FS_MODULE, "cluster is 0!\n");
 		return 0;
 	}
 	// 如果文件不包含任何块，则直接返回0即可。
 	else {
 		while (FAT32_NOT_END_CLUSTER(clus)) {
-			log(LEVEL_GLOBAL, "clus is %d\n", clus);
+			log(FS_MODULE, "clus is %d\n", clus);
 			clus = fatRead(file->file_system, clus);
 			i += 1;
 		}
-		log(LEVEL_GLOBAL, "count Cluster end!\n");
+		log(FS_MODULE, "count Cluster end!\n");
 		return i;
 	}
 }
