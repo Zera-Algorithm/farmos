@@ -103,6 +103,7 @@ int socket(int domain, int type, int protocol) {
 	socket->addr.family = domain;
 	socket->type = type;
 	socket->bufferAddr = (void *)kvmAlloc();
+	socket->tid = cpu_this()->cpu_running->td_tid;
 	TAILQ_INIT(&socket->messages);
 
 	int sfd = fdAlloc();
@@ -117,7 +118,8 @@ int socket(int domain, int type, int protocol) {
 	fds[sfd].dirent = NULL;
 	fds[sfd].pipe = NULL;
 	fds[sfd].type = dev_socket;
-	fds[sfd].flags = O_RDWR;
+	u64 other_flags = type & ~0xf; // 除了类型之外的其他flags
+	fds[sfd].flags = O_RDWR | other_flags;
 	fds[sfd].offset = 0;
 	fds[sfd].fd_dev = &fd_dev_socket;
 	fds[sfd].socket = socket;
@@ -138,6 +140,7 @@ int socket(int domain, int type, int protocol) {
 int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
 	SocketAddr socketaddr;
 	copyIn((u64)p_sockectaddr, &socketaddr, sizeof(SocketAddr));
+	warn("bind addr: %d, %d, %d\n", socketaddr.family, socketaddr.addr, socketaddr.port);
 
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -220,9 +223,11 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	// 尝试唤醒服务端，以等待队列指针作为chan
 	wakeup(target_socket->waiting_queue);
 
-	//  释放服务端target_socket的锁，客户端进入睡眠，等待服务端唤醒客户端
-	sleep(&target_socket->waiting_queue[pos], &target_socket->lock,
-	      "connecting... waiting for target socket to accept\n");
+	if (local_socket->tid != target_socket->tid) {
+		//  释放服务端target_socket的锁，客户端进入睡眠，等待服务端唤醒客户端
+		sleep(&target_socket->waiting_queue[pos], &target_socket->lock,
+			"connecting... waiting for target socket to accept\n");
+	}
 
 	mtx_unlock(&target_socket->lock);
 
@@ -230,7 +235,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 }
 
 int accept(int sockfd, SocketAddr *p_addr, socklen_t * addrlen) {
-	SocketAddr addr; 
+	SocketAddr addr;
 
 	int newUerFd;
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
@@ -285,9 +290,10 @@ static void gen_local_socket_addr(SocketAddr * socket_addr) {
 static Socket *find_listening_socket(const SocketAddr *addr) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
-		if (sockets[i].used && 
+		if (sockets[i].used &&
 			sockets[i].addr.family == addr->family &&
-		    sockets[i].addr.addr == addr->addr && sockets[i].addr.port == addr->port &&
+		    // sockets[i].addr.addr == addr->addr &&
+			sockets[i].addr.port == addr->port &&
 		    sockets[i].listening) {
 			mtx_unlock(&sockets[i].lock);
 			return &sockets[i];
@@ -301,12 +307,13 @@ static Socket *find_listening_socket(const SocketAddr *addr) {
 static Socket *remote_find_peer_socket(const Socket *local_socket) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
-		if ( sockets[i].used && 
+		if ( sockets[i].used &&
 			sockets[i].addr.family == local_socket->target_addr.family &&
 		    sockets[i].addr.port == local_socket->target_addr.port &&
-		    sockets[i].addr.addr == local_socket->target_addr.addr &&
-		    sockets[i].target_addr.port == local_socket->addr.port &&
-		    sockets[i].target_addr.addr == local_socket->addr.addr) {
+		    // sockets[i].addr.addr == local_socket->target_addr.addr &&
+		    sockets[i].target_addr.port == local_socket->addr.port // &&
+		    // sockets[i].target_addr.addr == local_socket->addr.addr
+			) {
 			mtx_unlock(&sockets[i].lock);
 			return &sockets[i];
 		}
@@ -476,7 +483,7 @@ static Message * message_alloc() {
 	if (TAILQ_EMPTY(&message_free_list)) {
 		warn("no free message struct\n");
 		return NULL;
-	} 
+	}
 	message = TAILQ_FIRST(&message_free_list);
 	TAILQ_REMOVE(&message_free_list, message, message_link);
 	mtx_unlock(&mtx_messages);
@@ -493,11 +500,11 @@ static Message * message_alloc() {
 static Socket * find_remote_socket(SocketAddr * addr, int self_type) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
-		if ( sockets[i].used && 
+		if ( sockets[i].used &&
 			sockets[i].type == self_type &&
 			sockets[i].addr.family == addr->family &&
-		    sockets[i].addr.port == addr->port &&
-		    sockets[i].addr.addr == addr->addr
+		    sockets[i].addr.port == addr->port // &&
+		    // sockets[i].addr.addr == addr->addr
 		) {
 			mtx_unlock(&sockets[i].lock);
 			return &sockets[i];
@@ -542,9 +549,10 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 	mtx_lock(&local_socket->lock);
 	while (message == NULL) {
 		TAILQ_FOREACH (mes, &local_socket->messages, message_link) {
-			if (mes->addr == src_addr->addr &&
-				mes->family == src_addr->family &&
-				mes->port == src_addr->port) {
+			if (
+				// mes->addr == socketaddr.addr &&
+				mes->family == socketaddr.family &&
+				mes->port == socketaddr.port) {
 					message = mes;
 					break;
 				}
@@ -558,13 +566,13 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 			copyOut((u64)buffer, message->bufferAddr,  min_size);
 		}
 	}
-	
+
 	TAILQ_REMOVE(&local_socket->messages, message, message_link);
 
 	mtx_unlock(&local_socket->lock);
 
 	message_free(message);
-	
+
 	return min_size;
 
 }
@@ -579,9 +587,10 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 	}
 
 	Socket *local_socket = fds[sfd].socket;
-	
+
 	SocketAddr socketaddr;
 	copyIn((u64)dst_addr, &socketaddr, sizeof(SocketAddr));
+	warn("sendto addr: %x, port: %d\n", socketaddr.addr, socketaddr.port);
 
 	Socket * target_socket = find_remote_socket(&socketaddr, local_socket->type);
 
@@ -617,10 +626,10 @@ int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
 		warn("target fd is not a socket fd, please check\n");
 		return -1;
-	} 
+	}
 
 	Socket *local_socket = fds[sfd].socket;
-	
+
     copyOut((u64)addr, &local_socket->addr, sizeof(SocketAddr));
     return 0;
 }
@@ -628,7 +637,7 @@ int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen) {
 	int size = 4;
 	int val;
-	
+
 	if (lever == SOL_SOCKET) {
 		if (optname == SO_RCVBUF) {
 			val = 131072;

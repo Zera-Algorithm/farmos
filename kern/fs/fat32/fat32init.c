@@ -108,7 +108,6 @@ static void init_dev_fs() {
 
 	// 这两个暂时用空文件代替
 	panic_on(create_file_and_close("/dev/random"));
-	panic_on(create_file_and_close("/dev/urandom"));
 	panic_on(create_file_and_close("/dev/rtc"));
 	panic_on(create_file_and_close("/dev/rtc0"));
 	makeDirAt(fatFs->root, "/dev/misc", 0);

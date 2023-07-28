@@ -62,6 +62,7 @@ typedef struct Socket {
 	void *bufferAddr;
 	SocketState state;
 	// bool is_close; 由首先关闭连接的socket来写另一socket的is_close属性
+	u64 tid; // 归属的tid
 
 	Message_list messages;
 } Socket;
