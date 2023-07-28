@@ -515,7 +515,7 @@ static Socket * find_remote_socket(SocketAddr * addr, int self_type, int socket_
 		mtx_unlock(&sockets[i].lock);
 	}
 	return NULL;
-}
+} // TODO type判断还有些问题
 
 static void message_free(Message * message) {
 	message->message_link.tqe_next = NULL;
