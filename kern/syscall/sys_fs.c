@@ -254,7 +254,8 @@ static inline int check_pselect_r(int fd) {
 static inline int check_pselect_w(int fd) {
 	Fd *kfd = get_kfd_by_fd(fd);
 	int ret;
-	if (kfd != NULL) {
+	if (kfd == NULL) {
+		warn("pselect6: fd %d not found\n", fd);
 		return -EBADF;
 	}
 	mtx_lock_sleep(&kfd->lock);

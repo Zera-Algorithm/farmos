@@ -105,6 +105,7 @@ int sys_sendto(int sockfd, const void * buffer, size_t len, int flags, const Soc
 int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
 int sys_getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
 int sys_setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
+int sys_getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);

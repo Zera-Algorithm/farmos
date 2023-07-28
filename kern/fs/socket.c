@@ -11,6 +11,7 @@
 #include <proc/sleep.h>
 #include <lib/queue.h>
 #include <proc/tsleep.h>
+#include <sys/errno.h>
 
 static uint socket_bitmap[SOCKET_COUNT / 32] = {0};
 Socket sockets[SOCKET_COUNT];
@@ -137,6 +138,18 @@ int socket(int domain, int type, int protocol) {
 	socket->state.is_close = false;
 	mtx_unlock(&socket->state.state_lock);
 	return usfd;
+}
+
+static inline int get_socket_by_fd(int sockfd, Socket **socket) {
+	int sfd = cur_proc_fs_struct()->fdList[sockfd];
+
+	if (sfd >= 0 && fds[sfd].type != dev_socket) {
+		warn("target fd is not a socket fd, please check\n");
+		return -EBADF;
+	} // 检查Fd类型是否匹配
+
+	*socket = fds[sfd].socket;
+	return 0;
 }
 
 int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
@@ -379,8 +392,9 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	Socket *localSocket = fd->socket;
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket == NULL) {
-		panic("socket write error: can\'t find target socket.\n");
-		// asm volatile("ebreak");
+		warn("socket write error: can\'t find target socket.\n");
+		// 原因可能是远端已关闭
+		return -EPIPE;
 	}
 
 	mtx_lock(&targetSocket->lock);
@@ -393,7 +407,7 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 				mtx_unlock(&localSocket->state.state_lock);
 				mtx_unlock(&targetSocket->lock);
 				warn("socket writer can\'t write more.\n");
-				return -1;
+				return -EPIPE;
 			} else {
 				mtx_unlock(&localSocket->state.state_lock);
 
@@ -646,6 +660,18 @@ int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 
     copyOut((u64)addr, &local_socket->addr, sizeof(SocketAddr));
     return 0;
+}
+
+int getpeername(int sockfd, SocketAddr * addr, socklen_t *addrlen) {
+	Socket *localSocket;
+	unwrap(get_socket_by_fd(sockfd, &localSocket));
+	// Socket *targetSocket = remote_find_peer_socket(localSocket);
+	// assert(targetSocket != NULL);
+	socklen_t len = sizeof(SocketAddr);
+
+	if (addr) copyOut((u64)addr, &localSocket->target_addr, sizeof(SocketAddr));
+	if (addrlen) copyOut((u64)addrlen, &len, sizeof(len));
+	return 0;
 }
 
 int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen) {

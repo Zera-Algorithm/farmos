@@ -72,6 +72,7 @@ static syscall_function_t sys_table[] = {
     [SYS_recvfrom] = {sys_recvfrom, "recvfrom"},
     [SYS_sendto] = {sys_sendto, "sendto"},
     [SYS_getsockname] = {sys_getsocketname, "getsockname"},
+	[SYS_getpeername] = {sys_getpeername, "getpeername"},
     [SYS_getsockopt] = {sys_getsockopt, "getsockopt"},
     [SYS_setsockopt] = {sys_setsockopt, "setsockopt"},
 	[SYS_membarrier] = {sys_membarrier, "membarrier"},

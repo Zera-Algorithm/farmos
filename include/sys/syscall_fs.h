@@ -113,7 +113,15 @@ typedef struct fd_set {
 	u64 fds_bits[FD_SETSIZE / (8 * sizeof(long))];
 } fd_set;
 
-#define FD_ISSET(fd, set) ((set)->fds_bits[(fd) / (8 * sizeof(long))] & (1L << ((fd) % (8 * sizeof(long)))))
+#define FD_ISSET(fd, set) ((set)->fds_bits[(fd) / (8 * sizeof(long))] & (1UL << ((fd) % (8 * sizeof(long)))))
+
+static inline void FD_SET(int fd, fd_set *set) {
+	set->fds_bits[fd / (8 * sizeof(long))] |= (1UL << (fd % (8 * sizeof(long))));
+}
+
+static inline void FD_CLR(int fd, fd_set *set) {
+	set->fds_bits[fd / (8 * sizeof(long))] &= ~(1UL << (fd % (8 * sizeof(long))));
+}
 
 #define FD_SET_FOREACH(fd, set)                                                                    \
 	for (fd = 0; fd < FD_SETSIZE; fd++)                                                       \
