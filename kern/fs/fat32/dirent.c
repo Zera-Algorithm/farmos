@@ -44,8 +44,8 @@ Dirent *dirent_alloc() {
 
 	panic_on(LIST_EMPTY(&dirent_free_list));
 	Dirent *dirent = LIST_FIRST(&dirent_free_list);
-	// TODO: 需要初始化dirent的睡眠锁
 	LIST_REMOVE(dirent, dirent_link);
+	memset(dirent, 0, sizeof(Dirent));
 
 	mtx_unlock(&mtx_dirent);
 	return dirent;

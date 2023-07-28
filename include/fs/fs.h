@@ -18,20 +18,29 @@ LIST_HEAD(DirentList, Dirent);
 // 对应目录、文件、设备
 typedef enum dirent_type { DIRENT_DIR, DIRENT_FILE, DIRENT_CHARDEV, DIRENT_BLKDEV } dirent_type_t;
 
+#define PAGE_NCLUSNO (PAGE_SIZE / sizeof(u32))
+
+// 二级指针
 struct TwicePointer {
-	u32 cluster[PAGE_SIZE / sizeof(u32)];
+	u32 cluster[PAGE_NCLUSNO];
 };
 
+// 三级指针
 struct ThirdPointer {
 	struct TwicePointer *ptr[PAGE_SIZE / sizeof(struct TwicePointer *)];
 };
 
 // 指向簇列表的指针
 typedef struct DirentPointer {
+	/*
 	// 一级指针
 	u32 first[10];
 	struct TwicePointer *second[10];
 	struct ThirdPointer *third;
+	*/
+	// 简化：只使用二级指针
+	struct TwicePoiner *second[128]; // cluster大小为512B时支持64M的文件
+	bool valid;
 } DirentPointer;
 
 // 用于调试Dirent引用计数次数的开关

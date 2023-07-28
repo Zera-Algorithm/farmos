@@ -12,6 +12,7 @@
 #include <lib/string.h>
 #include <lock/mutex.h>
 #include <sys/errno.h>
+#include <mm/vmm.h>
 
 /**
  * @brief mtx_file是负责维护磁盘file访问互斥性的锁。
@@ -68,6 +69,28 @@ int get_file_raw(Dirent *baseDir, char *path, Dirent **pfile) {
 			mtx_unlock_sleep(&mtx_file);
 			return 0;
 		}
+	}
+
+	// 首次打开，更新pointer
+	if (!file->pointer.valid) {
+		int clus = file->first_clus;
+		DirentPointer *fileptr = &file->pointer;
+		for (int i = 0; FAT32_NOT_END_CLUSTER(clus); i++) {
+
+			// 更新pointer值
+			u32 index1 = i / PAGE_NCLUSNO;
+			u32 index2 = i % PAGE_NCLUSNO;
+			if (fileptr->second[index1] == NULL) {
+				fileptr->second[index1] = kvmAlloc();
+				memset(fileptr->second[index1], 0, PAGE_SIZE);
+			}
+			struct TwicePointer *twicep = fileptr->second[index1];
+			twicep->cluster[index2] = clus;
+
+			// 查询下一级簇号
+			clus = fatRead(file->file_system, clus);
+		}
+		file->pointer.valid = 1;
 	}
 
 	int r = walk_path(fs, path, baseDir, 0, &file, 0, &longSet);
@@ -127,14 +150,16 @@ void file_close(Dirent *file) {
 }
 
 /**
- * @brief 返回文件file第fileClusNo块簇的簇号
+ * @brief 返回文件file第fileClusNo块簇的簇号。从0开始计数
  */
 static u32 fileGetClusterNo(Dirent *file, int fileClusNo) {
-	int clus = file->first_clus;
-	for (int i = 0; i <= fileClusNo - 1; i++) {
-		clus = fatRead(file->file_system, clus);
-	}
-	return clus;
+	u32 ind1 = fileClusNo / PAGE_NCLUSNO;
+	u32 ind2 = fileClusNo % PAGE_NCLUSNO;
+	struct TwicePointer *twicep = file->pointer.second[ind1];
+	assert(twicep != NULL); // 假设要查找的文件肯定有第fileClusNo个簇
+	u32 ret = twicep->cluster[ind2];
+	assert(ret != 0); // 假设要查找的文件肯定有第fileClusNo个簇
+	return ret;
 }
 
 // 补充两个不获取锁的_file_read_nolock和_file_write_nolock，以供连续写入时使用
