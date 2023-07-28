@@ -3,8 +3,12 @@
 
 #include <types.h>
 
+#define USEC_PER_SEC 1000000ul
+#define NSEC_PER_SEC 1000000000ul
+
 // 每us的时钟数
-#define CLOCK_PER_USEC 10
+#define CLOCK_PER_SEC 10000000ul
+#define CLOCK_PER_USEC (CLOCK_PER_SEC / USEC_PER_SEC)
 #define NSEC_PER_CLOCK 100
 
 // 中断时间间隔为0.05s(20Hz)

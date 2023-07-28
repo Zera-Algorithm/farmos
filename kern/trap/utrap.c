@@ -95,9 +95,9 @@ void utrap_entry() {
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
 			syscall_entry(&td->td_trapframe);
-		} else if (exc_code == EXCCODE_PAGE_FAULT) {
-			// 页错误，属于内核线程范畴，允许中断 todo
-			trap_pgfault();
+		} else if (exc_code == EXCCODE_STORE_PAGE_FAULT || exc_code == EXCCODE_LOAD_PAGE_FAULT) {
+			// 页错误
+			trap_pgfault(td, exc_code);
 		} else {
 			// 其他情况
 			warn("uncaught exception.\n");
@@ -107,7 +107,7 @@ void utrap_entry() {
 			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
 			// cpu的输出变为乱码，访问excCause数组出现load page fault
 			// 可能与参数的数目过多有关系，因此将输出分拆为两段
-			warn("\tcpu: %d\n"
+			printf("\tcpu: %d\n"
 			     "\tExcCode: %d\n"
 			     "\tCause: %s\n"
 			     "\tSepc: 0x%016lx (kern/kernel.asm)\n"

@@ -5,11 +5,13 @@
 #include <sys/syscall.h>
 #include <trap/trap.h>
 #include <proc/tsleep.h>
+#include <signal/itimer.h>
 
 void ktrap_timer() {
 	log(DEFAULT, "timer interrupt on CPU %d!\n", cpu_this_id());
 	handler_timer_int();
 	tsleep_check();
+	itimer_check();
 }
 
 void utrap_timer() {

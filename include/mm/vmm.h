@@ -16,10 +16,12 @@
 
 // 用户定义标识
 #define PTE_COW (1 << 8) // 写时复制位
+#define PTE_PASSIVE (1 << 9) // 被动映射位
 
 // 基于 Sv39 的页表结构
 #define PTE_PPNSHIFT (10ull)		      // 页表项中物理页号的偏移量
 #define PTE_PPNMASK ((~0ull) << PTE_PPNSHIFT) // 页表项中物理页号的掩码
+#define PTE_PERMMASK (~PTE_PPNMASK)	      // 页表项中权限位的掩码
 #define PAGE_LEVELS (3ull)		      // 页表级数
 #define PAGE_INDEX_LEN (9ull)		      // 页表项索引长度
 #define PAGE_INDEX_MAX (1ull << PAGE_INDEX_LEN)

@@ -1,6 +1,7 @@
 #include <lib/elf.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lib/printf.h>
 #include <lib/transfer.h>
 #include <mm/kmalloc.h>
 #include <mm/vmm.h>
@@ -102,15 +103,20 @@ void proc_initupt(proc_t *p) {
  * @brief 分配并初始化一个新的用户空间栈
  * @note 申请了新的用户栈，并将其映射到用户页表，同时初始化用户栈指针
  */
-void proc_initustack(proc_t *p, thread_t *inittd, u64 ustack) {
+void proc_initustack(proc_t *p, thread_t *inittd) {
 	// 分配用户栈空间
-	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
+	for (int i = 0; i < TD_USTACK_INIT_PAGE_NUM; i++) {
 		u64 pa = vmAlloc();
-		u64 va = ustack + i * PAGE_SIZE;
+		u64 va = TD_USTACK_INIT_BOTTOM + i * PAGE_SIZE;
 		panic_on(ptMap(p->p_pt, va, pa, PTE_R | PTE_W | PTE_U));
 	}
+	// 分配可拓展的用户栈空间
+	for (int i = 0; i < TD_USTACK_EXTEND_PAGE_NUM; i++) {
+		u64 va = TD_USTACK_BOTTOM + i * PAGE_SIZE;
+		panic_on(ptMap(p->p_pt, va, 0, PTE_R | PTE_W | PTE_U | PTE_PASSIVE));
+	}
 	// 初始化用户栈空间指针
-	inittd->td_trapframe.sp = ustack + TD_USTACK_SIZE;
+	inittd->td_trapframe.sp = USTACKTOP;
 	p->p_brk = 0;
 }
 
@@ -141,12 +147,13 @@ stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u6
 	    push_uarg_array(src_pt, argpt, argv, &td->td_trapframe.sp, argvbuf, callback);
 
 	// 2. 拷入envp数组
-	push_uarg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv,
+	u64 len_envp = push_uarg_array(src_pt, argpt, (char **)envp, &td->td_trapframe.sp, argvbuf + len_argv,
 			NULL);
 
-	// 测试拷入内核的参数(参数列表需要以NULL结尾)
-	u64 len_envp = push_karg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL},
-				       &td->td_trapframe.sp, argvbuf + len_argv);
+	// 加环境变量不能在内核exec时候加，而是需要在用户态exec（test——busybox）时候加
+	// 否则容易重复加环境变量
+	// u64 len_envp = push_karg_array(argpt, (char *[]){"LD_LIBRARY_PATH=/", NULL},
+	// 			       &td->td_trapframe.sp, argvbuf + len_argv);
 
 	u64 total_len = len_argv + len_envp;
 	argc = len_argv - 1;

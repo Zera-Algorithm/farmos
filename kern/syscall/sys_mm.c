@@ -11,15 +11,9 @@ err_t sys_map(u64 start, u64 len, u64 perm) {
 	u64 to = PGROUNDUP(start + len - 1);
 	pte_t *pt = cur_proc_pt();
 	for (u64 va = from; va < to; va += PAGE_SIZE) {
-		// 若虚拟地址对应的物理地址不存在，则分配一个物理页
+		// 使用被动调页机制，若对应虚拟地址没有映射则添加被动映射
 		if (pteToPa(ptLookup(pt, va)) == 0) {
-			u64 pa = vmAlloc();
-			// 如果没有多余内存可供分配，则返回错误
-			if (pa == 0) {
-				warn("sys_map: vmAlloc failed!\n");
-				return -1;
-			}
-			panic_on(ptMap(pt, va, pa, perm));
+			panic_on(ptMap(pt, va, 0, PTE_PASSIVE | perm));
 		}
 	}
 	return 0;

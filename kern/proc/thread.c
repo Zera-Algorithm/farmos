@@ -86,6 +86,8 @@ void td_destroy(err_t exitcode) {
 
 	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
 
+	// todo 线程残留的信号和futex
+
 	// 将线程从进程链表中移除
 	proc_lock(td->td_proc);
 	TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);

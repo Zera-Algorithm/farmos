@@ -80,6 +80,8 @@ int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize);
 int sys_tkill(int tid, int sig);
 int sys_kill(int pid, int sig);
 int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout);
+int sys_setitimer(int which, u64 new_value, u64 old_value);
+int sys_getitimer(int which, u64 curr_value);
 
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);

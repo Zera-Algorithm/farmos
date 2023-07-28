@@ -41,24 +41,26 @@ static stack_arg_t copy_arg(proc_t *p, thread_t *exectd, char **argv, u64 envp, 
 
 	// 将旧的用户栈映射到临时页表上
 	// 分配临时页表，将旧的用户栈迁移到临时页表
-	pte_t *temppt = (pte_t *)kvmAlloc();
-	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
-		u64 stackva = TD_USTACK + i * PAGE_SIZE;
-		u64 pa = vmAlloc();
-		panic_on(ptMap(temppt, stackva, pa, PTE_R | PTE_W | PTE_U));
-	}
+	proc_t tempp = {.p_pt = (pte_t*)kvmAlloc()};
+	thread_t temptd = {.td_proc = &tempp};
+	proc_initustack(&tempp, &temptd);
 
-	exectd->td_trapframe.sp = TD_USTACK + TD_USTACK_SIZE;
-	stack_arg_t ret = proc_setustack(exectd, temppt, argc_count(p->p_pt, argv), argv, envp, callback);
+	exectd->td_trapframe.sp = USTACKTOP;
+	stack_arg_t ret = proc_setustack(exectd, tempp.p_pt, argc_count(p->p_pt, argv), argv, envp, callback);
 
-	// 回收临时页表
+	// 迁移新的用户栈到旧的页表
 	for (int i = 0; i < TD_USTACK_PAGE_NUM; i++) {
-		u64 stackva = TD_USTACK + i * PAGE_SIZE;
+		u64 stackva = TD_USTACK_BOTTOM + i * PAGE_SIZE;
+		// 解引用并释放旧页表上已过时的栈
 		panic_on(ptUnmap(p->p_pt, stackva));
-		u64 pa = pteToPa(ptLookup(temppt, stackva));
-		panic_on(ptMap(p->p_pt, stackva, pa, PTE_R | PTE_W | PTE_U));
+		// 将新页表上的栈映射到旧页表上
+		pte_t pte = ptLookup(tempp.p_pt, stackva);
+		u64 pa = pteToPa(pte);
+		u64 perm = PTE_PERM(pte);
+		panic_on(ptMap(p->p_pt, stackva, pa, perm));
 	}
-	pdWalk(temppt, vmUnmapper, kvmUnmapper, NULL);
+	// 回收临时页表
+	pdWalk(tempp.p_pt, vmUnmapper, kvmUnmapper, NULL);
 	return ret;
 }
 
@@ -90,7 +92,7 @@ static void exec_elf_callback(char *kstr_arr[]) {
 		strcat(buf, kstr_arr[i]);
 		strcat(buf, " ");
 	}
-	log(LEVEL_GLOBAL, "%s\n", buf);
+	log(PROC_GLOBAL, "%s\n", buf);
 
 	// td改名，加后缀
 	thread_t *td = cpu_this()->cpu_running;
