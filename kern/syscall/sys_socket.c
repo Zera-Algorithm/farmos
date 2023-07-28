@@ -32,6 +32,10 @@ int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 	return getsocketname(sockfd, addr, addrlen);
 }
 
+int sys_getpeername(int sockfd, SocketAddr * addr, socklen_t *addrlen) {
+	return getpeername(sockfd, addr, addrlen);
+}
+
 int sys_getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen) {
 	return getsockopt(sockfd, lever, optname, optval, optlen);
 }

@@ -11,6 +11,7 @@
 #include <proc/sleep.h>
 #include <lib/queue.h>
 #include <proc/tsleep.h>
+#include <sys/errno.h>
 
 static uint socket_bitmap[SOCKET_COUNT / 32] = {0};
 Socket sockets[SOCKET_COUNT];
@@ -103,6 +104,7 @@ int socket(int domain, int type, int protocol) {
 	socket->addr.family = domain;
 	socket->type = type;
 	memset(&socket->target_addr, 0, sizeof(SocketAddr));
+	socket->waiting_h = socket->waiting_t = 0;
 	socket->bufferAddr = (void *)kvmAlloc();
 	socket->tid = cpu_this()->cpu_running->td_tid;
 	TAILQ_INIT(&socket->messages);
@@ -138,10 +140,22 @@ int socket(int domain, int type, int protocol) {
 	return usfd;
 }
 
+static inline int get_socket_by_fd(int sockfd, Socket **socket) {
+	int sfd = cur_proc_fs_struct()->fdList[sockfd];
+
+	if (sfd >= 0 && fds[sfd].type != dev_socket) {
+		warn("target fd is not a socket fd, please check\n");
+		return -EBADF;
+	} // 检查Fd类型是否匹配
+
+	*socket = fds[sfd].socket;
+	return 0;
+}
+
 int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
 	SocketAddr socketaddr;
 	copyIn((u64)p_sockectaddr, &socketaddr, sizeof(SocketAddr));
-	warn("bind addr: %d, %d, %d\n", socketaddr.family, socketaddr.addr, socketaddr.port);
+	warn("bind addr: family = %d, addr = %d, port = %d\n", socketaddr.family, socketaddr.addr, socketaddr.port);
 
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -190,6 +204,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	SocketAddr addr;
 	copyIn((u64)p_addr, &addr, sizeof(SocketAddr));
 
+	warn("Thread %s: connect sockfd = %d, family = %d, port = %d, addr = %lx\n", cpu_this()->cpu_running->td_name, sockfd, addr.family, addr.port, addr.addr);
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
@@ -292,7 +307,7 @@ static Socket *find_listening_socket(const SocketAddr *addr) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if (sockets[i].used &&
-			sockets[i].addr.family == addr->family &&
+			// sockets[i].addr.family == addr->family && // family可能未必相同，可以一个是INET一个是INET6
 		    // sockets[i].addr.addr == addr->addr &&
 			sockets[i].addr.port == addr->port &&
 		    sockets[i].listening) {
@@ -310,7 +325,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 		mtx_lock(&sockets[i].lock);
 		if ( sockets[i].used &&
 			local_socket - sockets != i &&
-			sockets[i].addr.family == local_socket->target_addr.family &&
+			// sockets[i].addr.family == local_socket->target_addr.family &&
 		    sockets[i].addr.port == local_socket->target_addr.port &&
 		    // sockets[i].addr.addr == local_socket->target_addr.addr &&
 		    sockets[i].target_addr.port == local_socket->addr.port // &&
@@ -326,6 +341,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 }
 
 static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	warn("Thread %s: socket read, fd = %d, n = %d\n", cpu_this()->cpu_running->td_name, fd - fds, n);
 	int i;
 	char ch;
 	char *readPos;
@@ -356,6 +372,7 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		readPos =
 		    (char *)(localSocket->bufferAddr + ((localSocket->socketReadPos) % PAGE_SIZE));
 		ch = *readPos;
+		// TODO：成批拷贝，加快速度。否则会将时间浪费在查页表上
 		copyOut((buf + i), &ch, 1);
 		localSocket->socketReadPos++;
 	}
@@ -368,11 +385,17 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	warn("thread %s: socket write, fd = %d, n = %d\n", cpu_this()->cpu_running->td_name, fd - fds, n);
 	int i = 0;
 	char ch;
 	char *writePos;
 	Socket *localSocket = fd->socket;
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
+	if (targetSocket == NULL) {
+		warn("socket write error: can\'t find target socket.\n");
+		// 原因可能是远端已关闭
+		return -EPIPE;
+	}
 
 	mtx_lock(&targetSocket->lock);
 
@@ -384,7 +407,7 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 				mtx_unlock(&localSocket->state.state_lock);
 				mtx_unlock(&targetSocket->lock);
 				warn("socket writer can\'t write more.\n");
-				return -1;
+				return -EPIPE;
 			} else {
 				mtx_unlock(&localSocket->state.state_lock);
 
@@ -459,6 +482,8 @@ void socketFree(int socketNum) {
 } // TODO free socket时需要释放messages剩余的message
 
 static int fd_socket_close(struct Fd *fd) {
+	warn("thread %s: socket close, fd = %d\n", cpu_this()->cpu_running->td_name, fd - fds);
+
 	Socket *localSocket = fd->socket;
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket != NULL) {
@@ -505,7 +530,7 @@ static Socket * find_remote_socket(SocketAddr * addr, int self_type, int socket_
 		if ( sockets[i].used &&
 			i != socket_index && // 不能找到自己
 			sockets[i].type == self_type &&
-			sockets[i].addr.family == addr->family &&
+			// sockets[i].addr.family == addr->family &&
 		    sockets[i].addr.port == addr->port // &&
 		    // sockets[i].addr.addr == addr->addr
 		) {
@@ -554,7 +579,7 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 		TAILQ_FOREACH (mes, &local_socket->messages, message_link) {
 			if (
 				// mes->addr == socketaddr.addr &&
-				mes->family == socketaddr.family &&
+				// mes->family == socketaddr.family &&
 				mes->port == socketaddr.port) {
 					message = mes;
 					break;
@@ -637,6 +662,18 @@ int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
     return 0;
 }
 
+int getpeername(int sockfd, SocketAddr * addr, socklen_t *addrlen) {
+	Socket *localSocket;
+	unwrap(get_socket_by_fd(sockfd, &localSocket));
+	// Socket *targetSocket = remote_find_peer_socket(localSocket);
+	// assert(targetSocket != NULL);
+	socklen_t len = sizeof(SocketAddr);
+
+	if (addr) copyOut((u64)addr, &localSocket->target_addr, sizeof(SocketAddr));
+	if (addrlen) copyOut((u64)addrlen, &len, sizeof(len));
+	return 0;
+}
+
 int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen) {
 	int size = 4;
 	int val;
@@ -656,4 +693,61 @@ int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * op
 
 int setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen) {
 	return 0;
+}
+
+/**
+ * @brief 可以读返回1，否则为0
+ * 1. 如果是监听的socket(listening)，那么返回当前是否有等待的连接
+ * 2. 如果是普通的socket，那么返回当前是否有数据可读，或者说socket是否关闭
+ *  2.1 TCP 检查buffer是否为空
+ *  2.2 UDP 检查消息队列是否为空
+ */
+int socket_read_check(struct Fd *fd) {
+	Socket *socket = fd->socket;
+	int ret;
+	mtx_lock(&socket->lock);
+
+	if (socket->listening) {
+		ret = (socket->waiting_h != socket->waiting_t);
+	} else if ((socket->type & 0xf) == SOCK_STREAM) {
+		// TCP
+		mtx_lock(&socket->state.state_lock);
+		ret = ((socket->socketReadPos != socket->socketWritePos) || (socket->state.is_close));
+		mtx_unlock(&socket->state.state_lock);
+	} else {
+		// UDP
+		ret = (!TAILQ_EMPTY(&socket->messages));
+	}
+
+	mtx_unlock(&socket->lock);
+	return ret;
+}
+
+
+/**
+ * @brief 可以写返回1，否则为0
+ * 1. 如果是监听的socket，返回0
+ * 1. 如果是普通的socket，那么返回当前是否可写入数据，或者说socket是否关闭
+ *  2.1 TCP 检查buffer是否为满
+ *  2.2 UDP 返回1（UDP始终可以发送）
+ */
+int socket_write_check(struct Fd* fd) {
+	Socket *socket = fd->socket;
+	int ret;
+	mtx_lock(&socket->lock);
+
+	if (socket->listening) {
+		ret = 0;
+	} else if ((socket->type & 0xf) == SOCK_STREAM) {
+		// TCP
+		mtx_lock(&socket->state.state_lock);
+		ret = ((socket->socketWritePos - socket->socketReadPos != PAGE_SIZE) || (socket->state.is_close));
+		mtx_unlock(&socket->state.state_lock);
+	} else {
+		// UDP
+		ret = 1;
+	}
+
+	mtx_unlock(&socket->lock);
+	return ret;
 }

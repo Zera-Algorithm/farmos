@@ -72,6 +72,7 @@ static syscall_function_t sys_table[] = {
     [SYS_recvfrom] = {sys_recvfrom, "recvfrom"},
     [SYS_sendto] = {sys_sendto, "sendto"},
     [SYS_getsockname] = {sys_getsocketname, "getsockname"},
+	[SYS_getpeername] = {sys_getpeername, "getpeername"},
     [SYS_getsockopt] = {sys_getsockopt, "getsockopt"},
     [SYS_setsockopt] = {sys_setsockopt, "setsockopt"},
 	[SYS_membarrier] = {sys_membarrier, "membarrier"},
@@ -86,6 +87,9 @@ static syscall_function_t sys_table[] = {
     [SYS_futex] = {sys_futex, "futex"},
     [SYS_statfs] = {sys_statfs, "statfs"},
     [SYS_rt_sigtimedwait] = {sys_sigtimedwait, "sigtimedwait"},
+	[SYS_getsid] = {sys_getsid, "getsid"},
+	[SYS_setsid] = {sys_setsid, "setsid"},
+	[SYS_pselect6] = {sys_pselect6, "pselect6"},
 };
 
 /**
@@ -100,10 +104,10 @@ void syscall_entry(trapframe_t *tf) {
     thread_t *td = cpu_this()->cpu_running;
 
 	if (sys_func != NULL && sys_func->name != NULL) {
-		if (sysno != SYS_write && sysno != SYS_brk)
+		if (sysno != SYS_brk)
 			log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
 		    	td->td_name, sys_func->name, tf->epc);
-        if (sysno != SYS_write && sysno != SYS_brk)
+        if (sysno != SYS_brk)
         	log(LEVEL_GLOBAL, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
 	}
 
@@ -131,8 +135,8 @@ void syscall_entry(trapframe_t *tf) {
 	if ((i64)tf->a0 < 0) {
 		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
-    if (sysno != SYS_write && sysno != SYS_brk)
-    	log(LEVEL_GLOBAL, "Thread %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
+    if (sysno != SYS_brk)
+    	log(LEVEL_GLOBAL, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
 
 	// // S态时间审计
 	// u64 endTime = getTime();

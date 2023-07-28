@@ -106,4 +106,25 @@ struct statfs {
 	i64 f_spare[4]; // 保留位
 };
 
+// used by pselect
+#define FD_SETSIZE 1024
+
+typedef struct fd_set {
+	u64 fds_bits[FD_SETSIZE / (8 * sizeof(long))];
+} fd_set;
+
+#define FD_ISSET(fd, set) ((set)->fds_bits[(fd) / (8 * sizeof(long))] & (1UL << ((fd) % (8 * sizeof(long)))))
+
+static inline void FD_SET(int fd, fd_set *set) {
+	set->fds_bits[fd / (8 * sizeof(long))] |= (1UL << (fd % (8 * sizeof(long))));
+}
+
+static inline void FD_CLR(int fd, fd_set *set) {
+	set->fds_bits[fd / (8 * sizeof(long))] &= ~(1UL << (fd % (8 * sizeof(long))));
+}
+
+#define FD_SET_FOREACH(fd, set)                                                                    \
+	for (fd = 0; fd < FD_SETSIZE; fd++)                                                       \
+		if (FD_ISSET(fd, set))
+
 #endif

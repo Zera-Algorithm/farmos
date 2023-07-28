@@ -185,6 +185,20 @@ u64 sys_nanosleep(u64 pTimeSpec) {
 	return 0;
 }
 
+# define TIMER_ABSTIME			1
+// request是nanosleep类型的指针
+u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain) {
+	timeval_t timeVal;
+	copyIn(request, &timeVal, sizeof(timeVal));
+	if (flags & TIMER_ABSTIME) {
+		// 以绝对时间睡眠
+		tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal));
+	} else {
+		tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal) + getUSecs());
+	}
+	return 0;
+}
+
 void sys_sched_yield() {
 	yield();
 }
@@ -267,5 +281,13 @@ int sys_prlimit64(pid_t pid, int resource, const struct rlimit *pnew_limit,
 			return 0; // 返回0以避免评测出错
 		}
 	}
+	return 0;
+}
+
+pid_t sys_getsid(pid_t pid) {
+	return 0;
+}
+
+pid_t sys_setsid() {
 	return 0;
 }

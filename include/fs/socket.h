@@ -14,6 +14,7 @@
 #define AF_UNIX 1  /* Unix domain sockets 		*/
 #define AF_LOCAL 1 /* POSIX name for AF_UNIX	*/
 #define AF_INET 2
+#define AF_INET6	10
 
 #define SOCK_STREAM 1
 #define SOCK_DGRAM 2
@@ -67,6 +68,7 @@ typedef struct Socket {
 	Message_list messages;
 } Socket;
 
+struct Fd;
 
 void socket_init();
 int socket(int domain, int type, int protocol);
@@ -81,5 +83,8 @@ int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * op
 int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
 int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen);
 int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen);
+int socket_read_check(struct Fd *fd);
+int socket_write_check(struct Fd* fd);
+int getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
 
 #endif
