@@ -277,7 +277,9 @@ static inline int check_pselect_w(int fd) {
 int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout,
 				u64 sigmask) {
 	int fd, r;
+	int func_ret = 0;
 	fd_set readfds, writefds, exceptfds;
+	fd_set readfds_cur, writefds_cur, exceptfds_cur;
 	memset(&readfds, 0, sizeof(readfds));
 	memset(&writefds, 0, sizeof(writefds));
 	memset(&exceptfds, 0, sizeof(exceptfds));
@@ -290,37 +292,71 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 	if (p_timeout) copyIn(p_timeout, &timeout, sizeof(timeout));
 
 	u64 start = getUSecs();
-	u64 timeout_us = TS_USEC(timeout);
+	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
+
+	// debug
+	log(LEVEL_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
+	log(LEVEL_GLOBAL, "readfds: \n");
+	FD_SET_FOREACH(fd, &readfds) {
+		log(LEVEL_GLOBAL, "%d\n", fd);
+	}
+	log(LEVEL_GLOBAL, "\n");
+
+	log(LEVEL_GLOBAL, "writefds: \n");
+	FD_SET_FOREACH(fd, &writefds) {
+		log(LEVEL_GLOBAL, "%d\n", fd);
+	}
+	log(LEVEL_GLOBAL, "\n");
+	// debug end
 
 	while (1) {
+		// 创建一套临时的fds数组，用于记录轮询情况
+		readfds_cur = readfds;
+		writefds_cur = writefds;
+		exceptfds_cur = exceptfds;
+
 		int tot = 0; // 就绪的fd数目
 		log(FS_GLOBAL, "readfds: \n");
-		FD_SET_FOREACH(fd, &readfds) {
+		FD_SET_FOREACH(fd, &readfds_cur) {
 			log(FS_GLOBAL, "%d\n", fd);
 			r = check_pselect_r(fd);
-			if (r < 0) return r;
+			if (r < 0) {
+				return r;
+			} else if (r == 0) {
+				FD_CLR(fd, &readfds_cur);
+			} else {
+				FD_SET(fd, &readfds_cur);
+				log(LEVEL_GLOBAL, "Thread %s: FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
+			}
 			tot += r;
 		}
 		log(FS_GLOBAL, "\n");
 
 		log(FS_GLOBAL, "writefds: \n");
-		FD_SET_FOREACH(fd, &writefds) {
+		FD_SET_FOREACH(fd, &writefds_cur) {
 			log(FS_GLOBAL, "%d\n", fd);
 			r = check_pselect_w(fd);
-			if (r < 0) return r;
+			if (r < 0) {
+				return r;
+			} else if (r == 0) {
+				FD_CLR(fd, &writefds_cur);
+			} else {
+				FD_SET(fd, &writefds_cur);
+			}
 			tot += r;
 		}
 		log(FS_GLOBAL, "\n");
 
 		// 暂时省略
 		// log(FS_GLOBAL, "exceptfds: \n");
-		// FD_SET_FOREACH(fd, &exceptfds) {
+		// FD_SET_FOREACH(fd, &exceptfds_cur) {
 		// 	log(FS_GLOBAL, "%d\n", fd);
 		// }
 		// log(FS_GLOBAL, "\n");
 
 		if (tot > 0) {
-			return tot;
+			func_ret = tot;
+			break;
 		} else {
 			// 小睡10ms
 			tsleep(&timeout, NULL, "pselect", 10000);
@@ -328,12 +364,17 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 
 		// 超时退出
 		u64 now = getUSecs();
-		if (timeout_us != 0 && now - start >= timeout_us) {
+		if (timeout_us == 0 || now - start >= timeout_us) {
+			func_ret = 0;
 			break;
 		}
 	}
 
-	return 0;
+	// 将轮询状况返回
+	if (p_readfds) copyOut(p_readfds, &readfds_cur, sizeof(readfds_cur));
+	if (p_writefds) copyOut(p_writefds, &writefds_cur, sizeof(writefds_cur));
+	if (p_exceptfds) copyOut(p_exceptfds, &exceptfds_cur, sizeof(exceptfds_cur));
+	return func_ret;
 }
 
 
@@ -481,7 +522,7 @@ int sys_ftruncate(int fd, off_t length) {
 	unwrap(getDirentByFd(fd, &file, NULL));
 
 	extern mutex_t mtx_file;
-	mtx_lock(&mtx_file);
+	mtx_lock_sleep(&mtx_file);
 
 	if (length <= file->file_size) {
 		fshrink(file, length);
@@ -489,6 +530,6 @@ int sys_ftruncate(int fd, off_t length) {
 		fileExtend(file, length);
 	}
 
-	mtx_unlock(&mtx_file);
+	mtx_unlock_sleep(&mtx_file);
 	return 0;
 }

@@ -103,6 +103,7 @@ int socket(int domain, int type, int protocol) {
 	socket->addr.family = domain;
 	socket->type = type;
 	memset(&socket->target_addr, 0, sizeof(SocketAddr));
+	socket->waiting_h = socket->waiting_t = 0;
 	socket->bufferAddr = (void *)kvmAlloc();
 	socket->tid = cpu_this()->cpu_running->td_tid;
 	TAILQ_INIT(&socket->messages);
@@ -141,7 +142,7 @@ int socket(int domain, int type, int protocol) {
 int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
 	SocketAddr socketaddr;
 	copyIn((u64)p_sockectaddr, &socketaddr, sizeof(SocketAddr));
-	warn("bind addr: %d, %d, %d\n", socketaddr.family, socketaddr.addr, socketaddr.port);
+	warn("bind addr: family = %d, addr = %d, port = %d\n", socketaddr.family, socketaddr.addr, socketaddr.port);
 
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -190,6 +191,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	SocketAddr addr;
 	copyIn((u64)p_addr, &addr, sizeof(SocketAddr));
 
+	warn("Thread %s: connect sockfd = %d, family = %d, port = %d, addr = %lx\n", cpu_this()->cpu_running->td_name, sockfd, addr.family, addr.port, addr.addr);
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
@@ -292,7 +294,7 @@ static Socket *find_listening_socket(const SocketAddr *addr) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if (sockets[i].used &&
-			sockets[i].addr.family == addr->family &&
+			// sockets[i].addr.family == addr->family && // family可能未必相同，可以一个是INET一个是INET6
 		    // sockets[i].addr.addr == addr->addr &&
 			sockets[i].addr.port == addr->port &&
 		    sockets[i].listening) {
@@ -310,7 +312,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 		mtx_lock(&sockets[i].lock);
 		if ( sockets[i].used &&
 			local_socket - sockets != i &&
-			sockets[i].addr.family == local_socket->target_addr.family &&
+			// sockets[i].addr.family == local_socket->target_addr.family &&
 		    sockets[i].addr.port == local_socket->target_addr.port &&
 		    // sockets[i].addr.addr == local_socket->target_addr.addr &&
 		    sockets[i].target_addr.port == local_socket->addr.port // &&
@@ -326,6 +328,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 }
 
 static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	warn("Thread %s: socket read, fd = %d, n = %d\n", cpu_this()->cpu_running->td_name, fd - fds, n);
 	int i;
 	char ch;
 	char *readPos;
@@ -369,11 +372,16 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	warn("thread %s: socket write, fd = %d, n = %d\n", cpu_this()->cpu_running->td_name, fd - fds, n);
 	int i = 0;
 	char ch;
 	char *writePos;
 	Socket *localSocket = fd->socket;
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
+	if (targetSocket == NULL) {
+		panic("socket write error: can\'t find target socket.\n");
+		// asm volatile("ebreak");
+	}
 
 	mtx_lock(&targetSocket->lock);
 
@@ -460,6 +468,8 @@ void socketFree(int socketNum) {
 } // TODO free socket时需要释放messages剩余的message
 
 static int fd_socket_close(struct Fd *fd) {
+	warn("thread %s: socket close, fd = %d\n", cpu_this()->cpu_running->td_name, fd - fds);
+
 	Socket *localSocket = fd->socket;
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket != NULL) {
@@ -506,7 +516,7 @@ static Socket * find_remote_socket(SocketAddr * addr, int self_type, int socket_
 		if ( sockets[i].used &&
 			i != socket_index && // 不能找到自己
 			sockets[i].type == self_type &&
-			sockets[i].addr.family == addr->family &&
+			// sockets[i].addr.family == addr->family &&
 		    sockets[i].addr.port == addr->port // &&
 		    // sockets[i].addr.addr == addr->addr
 		) {
@@ -555,7 +565,7 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 		TAILQ_FOREACH (mes, &local_socket->messages, message_link) {
 			if (
 				// mes->addr == socketaddr.addr &&
-				mes->family == socketaddr.family &&
+				// mes->family == socketaddr.family &&
 				mes->port == socketaddr.port) {
 					message = mes;
 					break;

@@ -285,11 +285,9 @@ int sys_prlimit64(pid_t pid, int resource, const struct rlimit *pnew_limit,
 }
 
 pid_t sys_getsid(pid_t pid) {
-	warn("unimplemented sys_getsid\n");
 	return 0;
 }
 
 pid_t sys_setsid() {
-	warn("unimplemented sys_setsid\n");
 	return 0;
 }
