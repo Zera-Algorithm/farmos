@@ -86,6 +86,9 @@ static syscall_function_t sys_table[] = {
     [SYS_futex] = {sys_futex, "futex"},
     [SYS_statfs] = {sys_statfs, "statfs"},
     [SYS_rt_sigtimedwait] = {sys_sigtimedwait, "sigtimedwait"},
+	[SYS_getsid] = {sys_getsid, "getsid"},
+	[SYS_setsid] = {sys_setsid, "setsid"},
+	[SYS_pselect6] = {sys_pselect6, "pselect6"},
 };
 
 /**

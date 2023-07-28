@@ -356,6 +356,7 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		readPos =
 		    (char *)(localSocket->bufferAddr + ((localSocket->socketReadPos) % PAGE_SIZE));
 		ch = *readPos;
+		// TODO：成批拷贝，加快速度。否则会将时间浪费在查页表上
 		copyOut((buf + i), &ch, 1);
 		localSocket->socketReadPos++;
 	}
@@ -656,4 +657,61 @@ int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * op
 
 int setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen) {
 	return 0;
+}
+
+/**
+ * @brief 可以读返回1，否则为0
+ * 1. 如果是监听的socket(listening)，那么返回当前是否有等待的连接
+ * 2. 如果是普通的socket，那么返回当前是否有数据可读，或者说socket是否关闭
+ *  2.1 TCP 检查buffer是否为空
+ *  2.2 UDP 检查消息队列是否为空
+ */
+int socket_read_check(struct Fd *fd) {
+	Socket *socket = fd->socket;
+	int ret;
+	mtx_lock(&socket->lock);
+
+	if (socket->listening) {
+		ret = (socket->waiting_h != socket->waiting_t);
+	} else if ((socket->type & 0xf) == SOCK_STREAM) {
+		// TCP
+		mtx_lock(&socket->state.state_lock);
+		ret = ((socket->socketReadPos != socket->socketWritePos) || (socket->state.is_close));
+		mtx_unlock(&socket->state.state_lock);
+	} else {
+		// UDP
+		ret = (!TAILQ_EMPTY(&socket->messages));
+	}
+
+	mtx_unlock(&socket->lock);
+	return ret;
+}
+
+
+/**
+ * @brief 可以写返回1，否则为0
+ * 1. 如果是监听的socket，返回0
+ * 1. 如果是普通的socket，那么返回当前是否可写入数据，或者说socket是否关闭
+ *  2.1 TCP 检查buffer是否为满
+ *  2.2 UDP 返回1（UDP始终可以发送）
+ */
+int socket_write_check(struct Fd* fd) {
+	Socket *socket = fd->socket;
+	int ret;
+	mtx_lock(&socket->lock);
+
+	if (socket->listening) {
+		ret = 0;
+	} else if ((socket->type & 0xf) == SOCK_STREAM) {
+		// TCP
+		mtx_lock(&socket->state.state_lock);
+		ret = ((socket->socketWritePos - socket->socketReadPos != PAGE_SIZE) || (socket->state.is_close));
+		mtx_unlock(&socket->state.state_lock);
+	} else {
+		// UDP
+		ret = 1;
+	}
+
+	mtx_unlock(&socket->lock);
+	return ret;
 }

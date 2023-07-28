@@ -32,6 +32,8 @@ u64 sys_getuid();
 u64 sys_set_tid_address(u64 pTid);
 int sys_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit,
 		  struct rlimit *old_limit);
+pid_t sys_getsid(pid_t pid);
+pid_t sys_setsid();
 
 // 系统信息（sys_info）
 void sys_uname(u64 upuname);
@@ -72,6 +74,7 @@ off_t sys_lseek(int fd, off_t offset, int whence);
 int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned int flags);
 int sys_statfs(u64 ppath, struct statfs *buf);
 int sys_ftruncate(int fd, off_t length);
+int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
 
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);

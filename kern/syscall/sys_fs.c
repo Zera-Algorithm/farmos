@@ -18,6 +18,8 @@
 #include <sys/syscall.h>
 #include <sys/syscall_fs.h>
 #include <sys/time.h>
+#include <dev/timer.h>
+#include <proc/tsleep.h>
 
 int sys_write(int fd, u64 buf, size_t count) {
 	return write(fd, buf, count);
@@ -224,6 +226,116 @@ int sys_ppoll(u64 p_fds, int nfds, u64 tmo_p, u64 sigmask) {
 	}
 	return ret;
 }
+
+/**
+ * @brief 检查fd是否可以读取。可以返回1，不可以返回0，失败返回负数
+ */
+static inline int check_pselect_r(int fd) {
+	Fd *kfd = get_kfd_by_fd(fd);
+	int ret;
+	if (kfd == NULL) {
+		return -EBADF;
+	}
+	mtx_lock_sleep(&kfd->lock);
+
+	// 目前只处理socket和其他
+	if (kfd->type == dev_socket) {
+		ret = socket_read_check(kfd);
+	} else {
+		ret = 1;
+	}
+	mtx_unlock_sleep(&kfd->lock);
+	return ret;
+}
+
+/**
+ * @brief 检查fd是否可以写入。可以返回1，不可以返回0，失败返回负数
+ */
+static inline int check_pselect_w(int fd) {
+	Fd *kfd = get_kfd_by_fd(fd);
+	int ret;
+	if (kfd != NULL) {
+		return -EBADF;
+	}
+	mtx_lock_sleep(&kfd->lock);
+
+	// 目前只处理socket和其他
+	if (kfd->type == dev_socket) {
+		ret = socket_write_check(kfd);
+	} else {
+		ret = 1;
+	}
+	mtx_unlock_sleep(&kfd->lock);
+	return ret;
+}
+
+/**
+ * 原型：int pselect6(int nfds, fd_set *readfds, fd_set *writefds,
+                   fd_set *exceptfds, const struct timespec *timeout,
+                   const sigset_t *sigmask) {
+ */
+int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout,
+				u64 sigmask) {
+	int fd, r;
+	fd_set readfds, writefds, exceptfds;
+	memset(&readfds, 0, sizeof(readfds));
+	memset(&writefds, 0, sizeof(writefds));
+	memset(&exceptfds, 0, sizeof(exceptfds));
+
+	struct timespec timeout;
+	memset(&timeout, 0, sizeof(timeout));
+	if (p_readfds) copyIn(p_readfds, &readfds, sizeof(readfds));
+	if (p_writefds) copyIn(p_writefds, &writefds, sizeof(writefds));
+	if (p_exceptfds) copyIn(p_exceptfds, &exceptfds, sizeof(exceptfds));
+	if (p_timeout) copyIn(p_timeout, &timeout, sizeof(timeout));
+
+	u64 start = getUSecs();
+	u64 timeout_us = TS_USEC(timeout);
+
+	while (1) {
+		int tot = 0; // 就绪的fd数目
+		log(FS_GLOBAL, "readfds: \n");
+		FD_SET_FOREACH(fd, &readfds) {
+			log(FS_GLOBAL, "%d\n", fd);
+			r = check_pselect_r(fd);
+			if (r < 0) return r;
+			tot += r;
+		}
+		log(FS_GLOBAL, "\n");
+
+		log(FS_GLOBAL, "writefds: \n");
+		FD_SET_FOREACH(fd, &writefds) {
+			log(FS_GLOBAL, "%d\n", fd);
+			r = check_pselect_w(fd);
+			if (r < 0) return r;
+			tot += r;
+		}
+		log(FS_GLOBAL, "\n");
+
+		// 暂时省略
+		// log(FS_GLOBAL, "exceptfds: \n");
+		// FD_SET_FOREACH(fd, &exceptfds) {
+		// 	log(FS_GLOBAL, "%d\n", fd);
+		// }
+		// log(FS_GLOBAL, "\n");
+
+		if (tot > 0) {
+			return tot;
+		} else {
+			// 小睡10ms
+			tsleep(&timeout, NULL, "pselect", 10000);
+		}
+
+		// 超时退出
+		u64 now = getUSecs();
+		if (timeout_us != 0 && now - start >= timeout_us) {
+			break;
+		}
+	}
+
+	return 0;
+}
+
 
 /**
  * @brief 控制文件描述符的属性
