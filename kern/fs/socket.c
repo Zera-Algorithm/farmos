@@ -10,6 +10,7 @@
 #include <proc/interface.h>
 #include <proc/sleep.h>
 #include <lib/queue.h>
+#include <proc/tsleep.h>
 
 static uint socket_bitmap[SOCKET_COUNT / 32] = {0};
 Socket sockets[SOCKET_COUNT];
@@ -29,6 +30,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket);
 static Socket *find_listening_socket(const SocketAddr *addr);
 static Message * message_alloc();
 static Socket * find_remote_socket(SocketAddr * addr, int type);
+static void message_free(Message * message);
 
 struct FdDev fd_dev_socket = {
     .dev_id = 's',
@@ -423,6 +425,14 @@ void socketFree(int socketNum) {
 	memset(&socket->addr, 0, sizeof(SocketAddr));
 	memset(&socket->target_addr, 0, sizeof(SocketAddr));
 	memset(socket->waiting_queue, 0, (sizeof(SocketAddr) * PENDING_COUNT));
+
+	Message * message;
+	while (!TAILQ_EMPTY(&socket->messages)) {
+		message = TAILQ_FIRST(&socket->messages);
+		TAILQ_REMOVE(&socket->messages, message, message_link);
+		message_free(message);
+	}
+
 	mtx_unlock(&socket->lock);
 
 	mtx_lock(&socket->state.state_lock);
@@ -474,7 +484,8 @@ static Message * message_alloc() {
 	message->message_link.tqe_next= NULL;
 	message->message_link.tqe_prev = NULL;
 	message->bufferAddr = (void *)kvmAlloc(65535);
-	
+	message->length = 0;
+
 	return message;
 }
 
@@ -496,9 +507,24 @@ static Socket * find_remote_socket(SocketAddr * addr, int self_type) {
 	return NULL;
 }
 
+static void message_free(Message * message) {
+	message->message_link.tqe_next = NULL;
+	message->message_link.tqe_prev = NULL;
+	message->family = 0;
+	message->port = 0;
+	message->addr = 0;
+	message->length = 0;
+	kvmFree((u64) message->bufferAddr);
+
+	mtx_lock(&mtx_messages);
+	TAILQ_INSERT_TAIL(&message_free_list, message, message_link);
+	mtx_unlock(&mtx_messages);
+}
 
 int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen) {
-	//TODO read完后释放socket
+	// int r;
+	int min_size;
+
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
@@ -511,13 +537,36 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 	SocketAddr socketaddr;
 	copyIn((u64)src_addr, &socketaddr, sizeof(SocketAddr));
 
+	Message * message = NULL;
+	Message * mes;
 	mtx_lock(&local_socket->lock);
-	// while ()
+	while (message == NULL) {
+		TAILQ_FOREACH (mes, &local_socket->messages, message_link) {
+			if (mes->addr == src_addr->addr &&
+				mes->family == src_addr->family &&
+				mes->port == src_addr->port) {
+					message = mes;
+					break;
+				}
+		}
+		if (message == NULL) {
+			// TODO
+			sleep(&local_socket->messages, &local_socket->lock,
+			      "wait another UDP socket to write");
+		} else {
+			min_size = MIN(len, message->length);
+			copyOut((u64)buffer, message->bufferAddr,  min_size);
+		}
+	}
 	
+	TAILQ_REMOVE(&local_socket->messages, message, message_link);
+
 	mtx_unlock(&local_socket->lock);
+
+	message_free(message);
 	
-	return 0;
-	// TODO
+	return min_size;
+
 }
 
 int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen) {
@@ -552,6 +601,7 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 
 	int min_len = MIN(len, 65535);
 	copyIn((u64)buffer, message->bufferAddr, min_len);
+	message->length = min_len;
 
 	mtx_lock(&target_socket->lock);
 	TAILQ_INSERT_TAIL(&target_socket->messages, message, message_link);
@@ -560,7 +610,7 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 	return min_len;
 }
 
-int getSocketName(int sockfd, SocketAddr * addr, socklen_t addrlen) {
+int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 
     int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -576,14 +626,18 @@ int getSocketName(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 }
 
 int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen) {
-	int len;
-	copyOut((u64)optlen, &len, sizeof(socklen_t));
+	int size = 4;
+	int val;
+	
 	if (lever == SOL_SOCKET) {
 		if (optname == SO_RCVBUF) {
-
+			val = 131072;
+			copyOut((u64)optval, &val, sizeof(socklen_t));
 		} else if (optname == SO_SNDBUF) {
-
+			val = 16384;
+			copyOut((u64)optval, &val, sizeof(socklen_t));
 		}
+		copyOut((u64)optlen, &size, sizeof(socklen_t));
 	}
 	return 0;
 }

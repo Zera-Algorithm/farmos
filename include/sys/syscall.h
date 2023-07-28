@@ -95,6 +95,11 @@ int sys_bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
 int sys_listen(int sockfd, int backlog);
 int sys_connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
 int sys_accept(int sockfd, SocketAddr *addr);
+int sys_recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen);
+int sys_sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen);
+int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
+int sys_getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
+int sys_setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);

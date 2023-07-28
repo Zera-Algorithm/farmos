@@ -41,6 +41,7 @@ typedef	struct Message {
 	u16 port;	// 发送方的port
 	u32 addr;	// 发送方的addr
 	void * bufferAddr;
+	u64 length;
 } Message;
 
 typedef TAILQ_HEAD(Message_list, Message) Message_list;
@@ -76,7 +77,7 @@ void socketFree(int socketNum);
 
 int setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
 int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
-int getSocketName(int sockfd, SocketAddr * addr, socklen_t addrlen);
+int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
 int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen);
 int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen);
 
