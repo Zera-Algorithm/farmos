@@ -115,18 +115,24 @@ static void init_dev_fs() {
 
 	extern struct FileDev file_dev_null;
 	extern struct FileDev file_dev_zero;
+	extern struct FileDev file_dev_urandom;
 
-	Dirent *file1, *file2;
+	Dirent *file1, *file2, *file3;
 	panic_on(createFile(fatFs->root, "/dev/null", &file1));
 	panic_on(createFile(fatFs->root, "/dev/zero", &file2));
+	panic_on(createFile(fatFs->root, "/dev/urandom", &file3));
 
 	file1->dev = &file_dev_null;
 	file2->dev = &file_dev_zero;
+	file3->dev = &file_dev_urandom;
+
 	file1->type = DIRENT_CHARDEV;
 	file2->type = DIRENT_CHARDEV;
+	file3->type = DIRENT_CHARDEV;
 
 	file_close(file1);
 	file_close(file2);
+	file_close(file3);
 }
 
 static void init_proc_fs() {

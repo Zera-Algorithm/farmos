@@ -16,8 +16,8 @@ int main() {
 
 	    // (char *const[]){"./runtest.exe", "-w", "entry-dynamic.exe", "socket", NULL},
 		// iperf
-	    (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL},
-	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-b", "1000G", NULL},
+	    (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL}, // server
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-b", "1000G", NULL}, // client
 
 
 		// libc-bench测试

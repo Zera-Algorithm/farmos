@@ -29,7 +29,7 @@ static void gen_local_socket_addr();
 static Socket *remote_find_peer_socket(const Socket *local_socket);
 static Socket *find_listening_socket(const SocketAddr *addr);
 static Message * message_alloc();
-static Socket * find_remote_socket(SocketAddr * addr, int type);
+static Socket * find_remote_socket(SocketAddr * addr, int type, int socket_index);
 static void message_free(Message * message);
 
 struct FdDev fd_dev_socket = {
@@ -102,6 +102,7 @@ int socket(int domain, int type, int protocol) {
 	socket->used = true;
 	socket->addr.family = domain;
 	socket->type = type;
+	memset(&socket->target_addr, 0, sizeof(SocketAddr));
 	socket->bufferAddr = (void *)kvmAlloc();
 	socket->tid = cpu_this()->cpu_running->td_tid;
 	TAILQ_INIT(&socket->messages);
@@ -308,6 +309,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if ( sockets[i].used &&
+			local_socket - sockets != i &&
 			sockets[i].addr.family == local_socket->target_addr.family &&
 		    sockets[i].addr.port == local_socket->target_addr.port &&
 		    // sockets[i].addr.addr == local_socket->target_addr.addr &&
@@ -497,10 +499,11 @@ static Message * message_alloc() {
 }
 
 
-static Socket * find_remote_socket(SocketAddr * addr, int self_type) {
+static Socket * find_remote_socket(SocketAddr * addr, int self_type, int socket_index) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if ( sockets[i].used &&
+			i != socket_index && // 不能找到自己
 			sockets[i].type == self_type &&
 			sockets[i].addr.family == addr->family &&
 		    sockets[i].addr.port == addr->port // &&
@@ -592,7 +595,7 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 	copyIn((u64)dst_addr, &socketaddr, sizeof(SocketAddr));
 	warn("sendto addr: %x, port: %d\n", socketaddr.addr, socketaddr.port);
 
-	Socket * target_socket = find_remote_socket(&socketaddr, local_socket->type);
+	Socket * target_socket = find_remote_socket(&socketaddr, local_socket->type, local_socket - sockets);
 
 	if (target_socket == NULL) {
 		warn("target addr socket doesn't exists\n");
