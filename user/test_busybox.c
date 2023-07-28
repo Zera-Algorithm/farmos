@@ -21,7 +21,7 @@ int main() {
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 	    // libc-test的static测试点和dynamic测试点
 	    (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
-	    // (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
+	    (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
 	    // (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
 		// lua测试：pass
