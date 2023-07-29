@@ -6,14 +6,21 @@
 #include <proc/thread.h>
 #include <sys/syscall.h>
 
+#define PASSIVE_THRESHOLD 0x1800000
+
 err_t sys_map(u64 start, u64 len, u64 perm) {
 	u64 from = PGROUNDDOWN(start);
 	u64 to = PGROUNDUP(start + len - 1);
 	pte_t *pt = cur_proc_pt();
 	for (u64 va = from; va < to; va += PAGE_SIZE) {
-		// 使用被动调页机制，若对应虚拟地址没有映射则添加被动映射
 		if (pteToPa(ptLookup(pt, va)) == 0) {
-			panic_on(ptMap(pt, va, 0, PTE_PASSIVE | perm));
+			if (va < PASSIVE_THRESHOLD) {
+				// 使用主动调页机制，若对应虚拟地址没有映射则添加主动映射
+				panic_on(ptMap(pt, va, vmAlloc(), perm));
+			} else {
+				// 使用被动调页机制，若对应虚拟地址没有映射则添加被动映射
+				panic_on(ptMap(pt, va, 0, PTE_PASSIVE | perm));
+			}
 		}
 	}
 	return 0;

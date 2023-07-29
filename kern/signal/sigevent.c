@@ -16,7 +16,7 @@ mutex_t sigevent_lock;
 
 void sig_init() {
 	// 初始化信号事件
-	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN);
+	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN | MTX_RECURSE);
 	for (int i = NSIG - 1; i >= 0; i--) {
 		TAILQ_INSERT_HEAD(&sigevent_freeq, &sigevents[i], se_link);
 	}
@@ -41,6 +41,16 @@ void sigevent_free(sigevent_t *se) {
 	// 确保remove掉，然后memset
 	memset(se, 0, sizeof(sigevent_t));
 	TAILQ_INSERT_HEAD(&sigevent_freeq, se, se_link);
+	mtx_unlock(&sigevent_lock);
+}
+
+void sigevent_freetd(thread_t *td) {
+	mtx_lock(&sigevent_lock);
+	sigevent_t *se;
+	while ((se = TAILQ_FIRST(&td->td_sigqueue)) != NULL) {
+		sigeventq_remove(td, se);
+		sigevent_free(se);
+	}
 	mtx_unlock(&sigevent_lock);
 }
 
