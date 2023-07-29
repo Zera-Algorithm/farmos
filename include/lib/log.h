@@ -29,7 +29,7 @@
 #define LOG_LEVEL 111
 #define DEBUG 11
 
-#define DISABLE_WARN 0
+#define DISABLE_WARN 1
 
 // 日志输出函数
 void _log(const char *, int, const char *, const char *, ...);

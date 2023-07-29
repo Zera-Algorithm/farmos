@@ -19,3 +19,8 @@ int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3) 
 		return -1;
 	}
 }
+
+u64 sys_get_robust_list() {
+	warn("unimplemented get_robust_list\n");
+	return 0;
+}

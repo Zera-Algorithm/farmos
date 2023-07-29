@@ -112,6 +112,7 @@ static void init_dev_fs() {
 	panic_on(create_file_and_close("/dev/rtc0"));
 	makeDirAt(fatFs->root, "/dev/misc", 0);
 	panic_on(create_file_and_close("/dev/misc/rtc"));
+	makeDirAt(fatFs->root, "/dev/shm", 0);
 
 	extern struct FileDev file_dev_null;
 	extern struct FileDev file_dev_zero;
