@@ -10,19 +10,11 @@ Pte *kernPd;
 
 // 纯接口函数
 
-inline Pte paToPte(u64 pa) {
-	return (pa >> PAGE_SHIFT) << PTE_PPNSHIFT;
-}
-
-inline u64 pteToPa(Pte pte) {
-	return (pte >> PTE_PPNSHIFT) << PAGE_SHIFT;
-}
-
-inline Pte pageToPte(Page *p) {
+static inline Pte pageToPte(Page *p) {
 	return paToPte(MEMBASE) + (pageToPpn(p) << PTE_PPNSHIFT);
 }
 
-inline Page *pteToPage(Pte pte) {
+static inline Page *pteToPage(Pte pte) {
 	assert(pteToPa(pte) > MEMBASE);
 	return paToPage(pteToPa(pte));
 }

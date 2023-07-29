@@ -512,7 +512,7 @@ Fd *get_kfd_by_fd(int fd) {
 
 int getdents64(int fd, u64 buf, int len) {
 	Dirent *dir, *file;
-	int kernFd, ret, offset;
+	int kernFd = 0, ret, offset;
 	unwrap(getDirentByFd(fd, &dir, &kernFd));
 
 	DirentUser *direntUser = kmalloc(DIRENT_USER_SIZE);

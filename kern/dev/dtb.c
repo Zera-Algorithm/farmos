@@ -50,7 +50,7 @@ void parserFdtHeader(struct FDTHeader *fdtHeader) {
 	log(LEVEL_MODULE, "size_dt_struct    = %d\n", fdtHeader->size_dt_struct);
 }
 
-inline uint32 readBigEndian32(void *p) {
+static inline uint32 readBigEndian32(void *p) {
 	uint32 ret = 0;
 	char *p1 = (char *)p, *p2 = (char *)(&ret);
 	p2[0] = p1[3];
@@ -60,7 +60,7 @@ inline uint32 readBigEndian32(void *p) {
 	return ret;
 }
 
-inline uint64 readBigEndian64(void *p) {
+static inline uint64 readBigEndian64(void *p) {
 	uint64 ret = 0;
 	char *p1 = (char *)p, *p2 = (char *)(&ret);
 	p2[0] = p1[7];

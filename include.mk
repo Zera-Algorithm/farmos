@@ -47,9 +47,9 @@ QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 # 加载的是一个virtio块设备
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
-RELEASE_CFLAGS   := $(CFLAGS) -O2
+RELEASE_CFLAGS   := $(CFLAGS) -O3
 RELEASE_LDFLAGS  := $(LDFLAGS) -O --gc-sections
-DEBUG_CFLAGS     := $(CFLAGS) -O -g -ggdb
+DEBUG_CFLAGS     := $(CFLAGS) -O0 -g -ggdb
 
 # 设为release模式，会使用O2优化
 # 设为debug模式，开O1

@@ -100,10 +100,9 @@ void utrap_entry() {
 			trap_pgfault(td, exc_code);
 		} else {
 			// 其他情况
-			warn("uncaught exception.\n");
+			printf("uncaught exception.\n");
 			printReg(&td->td_trapframe);
-			warn("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
-
+			printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
 			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
 			// cpu的输出变为乱码，访问excCause数组出现load page fault
 			// 可能与参数的数目过多有关系，因此将输出分拆为两段
@@ -113,6 +112,9 @@ void utrap_entry() {
 			     "\tSepc: 0x%016lx (kern/kernel.asm)\n"
 			     "\tStval(bad memory address): 0x%016lx\n",
 			     cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
+			printf("[Page Fault] "
+			"%s(t:%08x|p:%08x) badva=%lx, pte=%lx\n", 
+			td->td_name, td->td_tid, td->td_proc->p_pid, r_stval(), ptLookup(td->td_proc->p_pt, r_stval()));
 			sys_exit(-1); // errcode todo
 		}
 	}

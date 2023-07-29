@@ -70,6 +70,14 @@ err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
 	return 0;
 }
 
+void sigaction_free(proc_t *p) {
+	memset(&sigactions[p - procs], 0, sizeof(sigactions[0]));
+}
+
+void sigaction_clone(proc_t *p, proc_t *childp) {
+	memcpy(&sigactions[childp - procs], &sigactions[p - procs], sizeof(sigactions[0]));
+}
+
 /**
  * @brief 返回对应的信号处理动作
  */

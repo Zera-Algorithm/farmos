@@ -37,6 +37,10 @@ int sys_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit,
 void sys_uname(u64 upuname);
 void sys_gettimeofday(u64 uptv, u64 uptz);
 u64 sys_clock_gettime(u64 clockid, u64 tp);
+u64 sys_geteuid();
+u64 sys_getegid();
+u64 sys_getgid();
+u64 sys_setpgid(u64 pid, u64 pgid);
 
 struct iovec;
 struct statfs;
@@ -88,6 +92,13 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
 err_t sys_msync(u64 addr, size_t length, int flags);
 err_t sys_unmap(u64 start, u64 len);
 err_t sys_mprotect(u64 addr, size_t len, int prot);
+
+// 调度（sys_sched）
+u64 sys_sched_getaffinity();
+u64 sys_sched_setaffinity();
+u64 sys_sched_getscheduler();
+u64 sys_sched_setscheduler();
+u64 sys_sched_getparam();
 
 
 // Futex(sys_futex)

@@ -45,7 +45,12 @@ err_t ptUnmap(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
 
 Pte ptLookup(Pte *pgdir, u64 va) __attribute__((warn_unused_result));
 
-Pte paToPte(u64 pa);
-u64 pteToPa(Pte pte);
+static inline Pte paToPte(u64 pa) {
+	return (pa >> PAGE_SHIFT) << PTE_PPNSHIFT;
+}
+
+static inline u64 pteToPa(Pte pte) {
+	return (pte >> PTE_PPNSHIFT) << PAGE_SHIFT;
+}
 
 #endif // _VMM_H
