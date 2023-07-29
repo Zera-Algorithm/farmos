@@ -11,6 +11,11 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
+		// (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL}, // server
+		// (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u","-P", "5", "-b", "1000G", NULL},
+
+	    // (char *const[]){"/looper", "1", NULL},
+
 		// time-test
 	    (char *const[]){"/time-test", NULL},
 

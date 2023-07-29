@@ -585,7 +585,7 @@ static Message * message_alloc() {
 	return message;
 }
 
-
+// designed only by UDP
 static Socket * find_remote_socket(SocketAddr * addr, int self_type, int socket_index) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
