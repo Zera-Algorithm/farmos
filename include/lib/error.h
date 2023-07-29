@@ -3,6 +3,8 @@
 
 #include <types.h>
 
+#define IGNORE_ASSERT 0
+
 #define E_NOPROC 1
 #define E_NO_MAP 2
 #define E_BAD_ELF 3
@@ -35,7 +37,7 @@ void _error(const char *, int, const char *, const char *, ...) __attribute__((n
 
 #define assert(expr)                                                                               \
 	do {                                                                                       \
-		if (!(expr)) {                                                                     \
+		if (!IGNORE_ASSERT && (!(expr))) {                                                                     \
 			panic("'" #expr "'");                                                      \
 		}                                                                                  \
 	} while (0)

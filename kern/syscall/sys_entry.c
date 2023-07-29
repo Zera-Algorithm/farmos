@@ -121,9 +121,10 @@ void syscall_entry(trapframe_t *tf) {
 	if (func == NULL) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
-        if (sysno != SYS_exit_group)
-		    printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
-		return;
+        if (sysno != SYS_exit_group) {
+		    //printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
+        }
+        return;
 		// sys_exit(SYSCALL_ERROR);
 	}
 

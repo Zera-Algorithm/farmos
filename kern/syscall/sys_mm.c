@@ -6,7 +6,7 @@
 #include <proc/thread.h>
 #include <sys/syscall.h>
 
-#define PASSIVE_THRESHOLD 0x1800000
+#define PASSIVE_THRESHOLD 0x2000000
 
 err_t sys_map(u64 start, u64 len, u64 perm) {
 	u64 from = PGROUNDDOWN(start);
