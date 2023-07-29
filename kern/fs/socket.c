@@ -3,15 +3,18 @@
 #include <fs/socket.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lib/printf.h>
 #include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <mm/memlayout.h>
 #include <mm/vmm.h>
 #include <proc/interface.h>
 #include <proc/sleep.h>
+#include <proc/sched.h>
 #include <lib/queue.h>
 #include <proc/tsleep.h>
 #include <sys/errno.h>
+#include <mm/kmalloc.h>
 
 static uint socket_bitmap[SOCKET_COUNT / 32] = {0};
 Socket sockets[SOCKET_COUNT];
@@ -28,7 +31,7 @@ static int fd_socket_stat(struct Fd *fd, u64 pkStat);
 
 static void gen_local_socket_addr();
 static Socket *remote_find_peer_socket(const Socket *local_socket);
-static Socket *find_listening_socket(const SocketAddr *addr);
+static Socket *find_listening_socket(const SocketAddr *addr, int type);
 static Message * message_alloc();
 static Socket * find_remote_socket(SocketAddr * addr, int type, int socket_index);
 static void message_free(Message * message);
@@ -137,6 +140,8 @@ int socket(int domain, int type, int protocol) {
 	mtx_lock(&socket->state.state_lock);
 	socket->state.is_close = false;
 	mtx_unlock(&socket->state.state_lock);
+
+	warn("Thread %s: socket create: build socketfd %d, type %d\n", cpu_this()->cpu_running->td_name, usfd, type);
 	return usfd;
 }
 
@@ -155,7 +160,6 @@ static inline int get_socket_by_fd(int sockfd, Socket **socket) {
 int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
 	SocketAddr socketaddr;
 	copyIn((u64)p_sockectaddr, &socketaddr, sizeof(SocketAddr));
-	warn("bind addr: family = %d, addr = %d, port = %d\n", socketaddr.family, socketaddr.addr, socketaddr.port);
 
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -165,6 +169,12 @@ int bind(int sockfd, const SocketAddr *p_sockectaddr, socklen_t addrlen) {
 	} // 检查Fd类型是否匹配
 
 	Socket *socket = fds[sfd].socket;
+	warn("Thread %s: bind addr: sockfd = %d, type = %d, family = %d, addr = %d, port = %d\n",
+		cpu_this()->cpu_running->td_name, sockfd, socket->type, socketaddr.family, socketaddr.addr, socketaddr.port);
+
+	// if (socket->type == SOCK_DGRAM) {
+	// 	printf("bind type = DGRAM\n");
+	// }
 
 	mtx_lock(&socket->lock);
 
@@ -189,6 +199,7 @@ int listen(int sockfd, int backlog) {
 	} // 检查Fd类型是否匹配
 
 	Socket *socket = fds[sfd].socket;
+	warn("Thread %s: listen sockfd = %d, type = %d\n", cpu_this()->cpu_running->td_name, sockfd, socket->type);
 
 	// TODO 对socket进行加锁
 	mtx_lock(&socket->lock);
@@ -204,7 +215,6 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	SocketAddr addr;
 	copyIn((u64)p_addr, &addr, sizeof(SocketAddr));
 
-	warn("Thread %s: connect sockfd = %d, family = %d, port = %d, addr = %lx\n", cpu_this()->cpu_running->td_name, sockfd, addr.family, addr.port, addr.addr);
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
@@ -214,12 +224,24 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 
 	Socket *local_socket = fds[sfd].socket;
 
+	warn("Thread %s: connect sockfd = %d, type = %d, family = %d, port = %d, addr = %lx\n",
+		cpu_this()->cpu_running->td_name, sockfd, local_socket->type, addr.family, addr.port, addr.addr);
+
 	mtx_lock(&local_socket->lock);
-	gen_local_socket_addr(&local_socket->addr);
+	if (local_socket->addr.port == 0) {
+		gen_local_socket_addr(&local_socket->addr);
+	}
 	local_socket->target_addr = addr;
 	mtx_unlock(&local_socket->lock);
 
-	Socket *target_socket = find_listening_socket(&addr);
+	// 如果是UDP，只设置target_addr就可以
+	if (SOCK_IS_UDP(local_socket->type)) {
+		// printf("connect: type = UDP");
+		return 0;
+	}
+
+	// TCP的情况：除了要设置对方地址，还需要等待
+	Socket *target_socket = find_listening_socket(&addr, local_socket->type & 0xf);
 	if (target_socket == NULL) {
 		warn("server socket doesn't exists or isn't listening\n");
 		return -1;
@@ -297,18 +319,22 @@ int accept(int sockfd, SocketAddr *p_addr, socklen_t * addrlen) {
 }
 
 static void gen_local_socket_addr(SocketAddr * socket_addr) {
-	static int local_addr = (127 << 24) + 1;
-	static int local_port = 10000;
+	static u32 local_addr = (127 << 24) + 1;
+	static u32 local_port = 10000;
 	socket_addr->addr = local_addr;
 	socket_addr->port = local_port++;
 }
 
-static Socket *find_listening_socket(const SocketAddr *addr) {
+/**
+ * @brief 查找指定地址和类型的监听socket
+ */
+static Socket *find_listening_socket(const SocketAddr *addr, int type) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if (sockets[i].used &&
 			// sockets[i].addr.family == addr->family && // family可能未必相同，可以一个是INET一个是INET6
 		    // sockets[i].addr.addr == addr->addr &&
+			sockets[i].type == type &&
 			sockets[i].addr.port == addr->port &&
 		    sockets[i].listening) {
 			mtx_unlock(&sockets[i].lock);
@@ -324,7 +350,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if ( sockets[i].used &&
-			local_socket - sockets != i &&
+			local_socket - sockets != i && // not self
 			// sockets[i].addr.family == local_socket->target_addr.family &&
 		    sockets[i].addr.port == local_socket->target_addr.port &&
 		    // sockets[i].addr.addr == local_socket->target_addr.addr &&
@@ -346,6 +372,13 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	char ch;
 	char *readPos;
 	Socket *localSocket = fd->socket;
+
+	// UDP：直接从对端地址读取
+	if (SOCK_IS_UDP(localSocket->type)) {
+		return recvfrom(fd - fds, (void *)buf, n, 0, &localSocket->target_addr, NULL, 0);
+	}
+
+	// TCP
 	mtx_lock(&localSocket->lock);
 	// 读时，对自身socket进行加自旋锁
 
@@ -390,6 +423,13 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	char ch;
 	char *writePos;
 	Socket *localSocket = fd->socket;
+
+	// UDP
+	if (SOCK_IS_UDP(localSocket->type)) {
+		return sendto(fd - fds, (void *)buf, n, 0, &localSocket->target_addr, NULL, 0);
+	}
+
+	// TCP
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket == NULL) {
 		warn("socket write error: can\'t find target socket.\n");
@@ -423,6 +463,9 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			copyIn((buf + i), &ch, 1);
 			writePos = (char *)(targetSocket->bufferAddr +
 					    ((targetSocket->socketWritePos) % PAGE_SIZE));
+			if (writePos == NULL) {
+				asm volatile("ebreak");
+			}
 			*writePos = ch;
 			targetSocket->socketWritePos++;
 			i++;
@@ -517,7 +560,7 @@ static Message * message_alloc() {
 
 	message->message_link.tqe_next= NULL;
 	message->message_link.tqe_prev = NULL;
-	message->bufferAddr = (void *)kvmAlloc(65535);
+	message->bufferAddr = (void *)kmalloc(4000);
 	message->length = 0;
 
 	return message;
@@ -549,49 +592,73 @@ static void message_free(Message * message) {
 	message->port = 0;
 	message->addr = 0;
 	message->length = 0;
-	kvmFree((u64) message->bufferAddr);
+	kfree(message->bufferAddr);
 
 	mtx_lock(&mtx_messages);
 	TAILQ_INSERT_TAIL(&message_free_list, message, message_link);
 	mtx_unlock(&mtx_messages);
 }
 
-int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen) {
+/**
+ * @brief 接收用户数据报，将对方地址存入src_addr
+ * @param user 当user为0时，表示内核调用。
+ * 此时，sockfd为内核fd号，src_addr为内核地址。读取src_addr中的值而不是写入，且仅接受从src_addr发来的报文
+ */
+int recvfrom(int sockfd, void *buffer, size_t len, int flags, SocketAddr *src_addr, socklen_t *addrlen, int user) {
 	// int r;
 	int min_size;
+	Socket *local_socket;
 
-	int sfd = cur_proc_fs_struct()->fdList[sockfd];
+	if (user) {
+		int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
-	if (sfd >= 0 && fds[sfd].type != dev_socket) {
-		warn("target fd is not a socket fd, please check\n");
-		return -1;
-	} // 检查Fd类型是否匹配
+		if (sfd >= 0 && fds[sfd].type != dev_socket) {
+			warn("target fd is not a socket fd, please check\n");
+			return -1;
+		} // 检查Fd类型是否匹配
 
-	Socket *local_socket = fds[sfd].socket;
+		local_socket = fds[sfd].socket;
+	} else {
+		local_socket = fds[sockfd].socket;
+	}
+	warn("thread %s: socket recvfrom, fd = %d\n", cpu_this()->cpu_running->td_name, sockfd);
 
 	SocketAddr socketaddr;
-	copyIn((u64)src_addr, &socketaddr, sizeof(SocketAddr));
+	if (!user) socketaddr = *src_addr;
 
 	Message * message = NULL;
-	Message * mes;
+	Message * msg;
 	mtx_lock(&local_socket->lock);
 	while (message == NULL) {
-		TAILQ_FOREACH (mes, &local_socket->messages, message_link) {
-			if (
-				// mes->addr == socketaddr.addr &&
-				// mes->family == socketaddr.family &&
-				mes->port == socketaddr.port) {
-					message = mes;
-					break;
-				}
+		if (!user) {
+			TAILQ_FOREACH (msg, &local_socket->messages, message_link) {
+				if (
+					// msg->addr == socketaddr.addr &&
+					// msg->family == socketaddr.family &&
+					msg->port == socketaddr.port) {
+						message = msg;
+						break;
+					}
+			}
+		} else {
+			message = TAILQ_FIRST(&local_socket->messages);
 		}
+
 		if (message == NULL) {
-			// TODO
+			// TODO：wakeup
 			sleep(&local_socket->messages, &local_socket->lock,
 			      "wait another UDP socket to write");
+			// tsleep(&local_socket->messages, &local_socket->lock, "wait another UDP socket to write", 10000);
 		} else {
 			min_size = MIN(len, message->length);
 			copyOut((u64)buffer, message->bufferAddr,  min_size);
+
+			// 向用户态返回对方地址
+			socketaddr.family = message->family;
+			socketaddr.port = message->port;
+			socketaddr.addr = message->addr;
+			if (user && src_addr) copyOut((u64)src_addr, &socketaddr, sizeof(SocketAddr));
+			break;
 		}
 	}
 
@@ -605,26 +672,34 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 
 }
 
-int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen) {
+int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr *dst_addr, socklen_t *addrlen, int user) {
+	Socket *local_socket;
+	if (user) {
+		int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
-	int sfd = cur_proc_fs_struct()->fdList[sockfd];
+		if (sfd >= 0 && fds[sfd].type != dev_socket) {
+			warn("target fd is not a socket fd, please check\n");
+			return -EBADF;
+		}
 
-	if (sfd >= 0 && fds[sfd].type != dev_socket) {
-		warn("target fd is not a socket fd, please check\n");
-		return -1;
+		local_socket = fds[sfd].socket;
+	} else {
+		local_socket = fds[sockfd].socket;
 	}
 
-	Socket *local_socket = fds[sfd].socket;
-
 	SocketAddr socketaddr;
-	copyIn((u64)dst_addr, &socketaddr, sizeof(SocketAddr));
+	if (user) {
+		copyIn((u64)dst_addr, &socketaddr, sizeof(SocketAddr));
+	} else {
+		socketaddr = *dst_addr;
+	}
 	warn("sendto addr: %x, port: %d\n", socketaddr.addr, socketaddr.port);
 
 	Socket * target_socket = find_remote_socket(&socketaddr, local_socket->type, local_socket - sockets);
 
 	if (target_socket == NULL) {
 		warn("target addr socket doesn't exists\n");
-		return -1;
+		return MIN(len, 65535); // 发送不了也不报错，因为UDP不校验发送的正确性
 	}
 
 	Message * message = message_alloc();
@@ -642,12 +717,13 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 
 	mtx_lock(&target_socket->lock);
 	TAILQ_INSERT_TAIL(&target_socket->messages, message, message_link);
+	wakeup(&target_socket->messages); // 唤醒对端的recvfrom
 	mtx_unlock(&target_socket->lock);
 
 	return min_len;
 }
 
-int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
+int getsocketname(int sockfd, SocketAddr * addr, socklen_t *addrlen) {
 
     int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
@@ -655,10 +731,11 @@ int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
 		warn("target fd is not a socket fd, please check\n");
 		return -1;
 	}
-
+	socklen_t len = sizeof(SocketAddr);
 	Socket *local_socket = fds[sfd].socket;
 
-    copyOut((u64)addr, &local_socket->addr, sizeof(SocketAddr));
+    if (addr) copyOut((u64)addr, &local_socket->addr, sizeof(SocketAddr));
+	if (addrlen) copyOut((u64)addrlen, &len, sizeof(len));
     return 0;
 }
 

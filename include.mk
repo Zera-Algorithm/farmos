@@ -51,6 +51,8 @@ RELEASE_CFLAGS   := $(CFLAGS) -O2
 RELEASE_LDFLAGS  := $(LDFLAGS) -O --gc-sections
 DEBUG_CFLAGS     := $(CFLAGS) -O -g -ggdb
 
+FARMOS_PROFILE := debug
+
 # 设为release模式，会使用O2优化
 # 设为debug模式，开O1
 ifeq ($(FARMOS_PROFILE),debug)

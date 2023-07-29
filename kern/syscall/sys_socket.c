@@ -20,15 +20,15 @@ int sys_accept(int sockfd, SocketAddr *addr, socklen_t * addrlen) {
 	return accept(sockfd, addr, addrlen);
 }
 
-int sys_recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen) {
-	return recvfrom(sockfd, buffer, len, flgas, src_addr, addrlen);
+int sys_recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t *addrlen) {
+	return recvfrom(sockfd, buffer, len, flgas, src_addr, addrlen, 1);
 }
 
-int sys_sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen) {
-	return sendto(sockfd, buffer, len, flags, dst_addr, addrlen);
+int sys_sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t *addrlen) {
+	return sendto(sockfd, buffer, len, flags, dst_addr, addrlen, 1);
 }
 
-int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen) {
+int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t *addrlen) {
 	return getsocketname(sockfd, addr, addrlen);
 }
 

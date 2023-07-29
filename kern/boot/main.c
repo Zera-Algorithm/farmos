@@ -49,7 +49,7 @@ void hartInit() {
 extern void trapInitHart();
 extern void sched_init();
 
-// #define SINGLE
+#define SINGLE
 // #define LOCALCOMP_TEST
 
 // start() jumps here in supervisor mode on all CPUs.

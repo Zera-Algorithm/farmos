@@ -327,7 +327,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 				FD_CLR(fd, &readfds_cur);
 			} else {
 				FD_SET(fd, &readfds_cur);
-				log(LEVEL_GLOBAL, "Thread %s: FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
+				log(LEVEL_GLOBAL, "Thread %s: read FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
 			}
 			tot += r;
 		}
@@ -343,6 +343,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 				FD_CLR(fd, &writefds_cur);
 			} else {
 				FD_SET(fd, &writefds_cur);
+				log(LEVEL_GLOBAL, "Thread %s: write FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
 			}
 			tot += r;
 		}

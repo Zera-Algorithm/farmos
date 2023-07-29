@@ -8,7 +8,7 @@
 
 #define SOCKET_COUNT 128
 #define PENDING_COUNT 128
-#define MESSAGE_COUNT 128
+#define MESSAGE_COUNT 512
 
 
 #define AF_UNIX 1  /* Unix domain sockets 		*/
@@ -80,11 +80,14 @@ void socketFree(int socketNum);
 
 int setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
 int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
-int getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
-int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen);
-int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen);
+int getsocketname(int sockfd, SocketAddr * addr, socklen_t *addrlen);
+int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t *addrlen, int user);
+int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t *addrlen, int user);
 int socket_read_check(struct Fd *fd);
 int socket_write_check(struct Fd* fd);
 int getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
+
+#define SOCKET_TYPE_MASK 0xf
+#define SOCK_IS_UDP(type) (((type) & SOCKET_TYPE_MASK) == SOCK_DGRAM)
 
 #endif
