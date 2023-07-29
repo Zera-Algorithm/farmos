@@ -171,6 +171,7 @@ void freeFd(uint i) {
 		// 释放fd的资源
 		fds[i].dirent = NULL;
 		fds[i].pipe = NULL;
+		fds[i].socket = NULL;
 		fds[i].type = 0;
 		fds[i].offset = 0;
 		fds[i].flags = 0;
@@ -498,8 +499,8 @@ Fd *get_kfd_by_fd(int fd) {
 	} else {
 		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
 		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
-			warn("kern fd(%d) is wrong, please check\n",
-			     cur_proc_fs_struct()->fdList[fd]);
+			warn("kern fd(%d) of fd %d is wrong, please check\n",
+			     cur_proc_fs_struct()->fdList[fd], fd);
 			return NULL;
 		} else {
 			int kfd = cur_proc_fs_struct()->fdList[fd];

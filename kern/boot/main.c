@@ -88,6 +88,7 @@ void main() {
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
 		kmalloc_init();
+		socket_init();
 		itimer_init();
 
 		extern mutex_t first_thread_lock;

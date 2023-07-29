@@ -65,7 +65,15 @@ int getitimer(int which, struct itimerval *curr_value);
 int setitimer(int which, const struct itimerval *new_value,
 				struct itimerval *old_value);
 
+// socket
+int socket(int domain, int type, int protocol);
+int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
+int listen(int sockfd, int backlog);
+int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
+int accept(int sockfd, SocketAddr *addr);
+
 int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val3);
 int gettid();
+void reboot();
 
 #endif // __UNISTD_H__

@@ -55,7 +55,7 @@ static tsevent_t *tse_alloc(thread_t *td, void *chan, u64 wakeus) {
     tse->tse_td = td;
     tse->tse_wchan = chan;
     tse->tse_wakeus = wakeus;
-    
+
     tseq_critical_enter(&tsevent_usedq);
     if (wakeus) {
         tsevent_t *temp_tse;
@@ -81,8 +81,8 @@ static tsevent_t *tse_alloc(thread_t *td, void *chan, u64 wakeus) {
 static void tse_set_unused(tsevent_t *tse, bool timeout) {
     assert(mtx_hold(&tsevent_usedq.tseq_lock));
     TAILQ_REMOVE(&tsevent_usedq.tseq_head, tse, tse_usedq);
-    
-    warn("%08x(%08x) WAS WAKEUP(%d) at %d before %d\n", tse->tse_td->td_tid, tse->tse_td->td_proc->p_pid, timeout, getUSecs(), tse->tse_wakeus);
+
+    // warn("%08x(%08x) WAS WAKEUP(%d) at %d before %d\n", tse->tse_td->td_tid, tse->tse_td->td_proc->p_pid, timeout, getUSecs(), tse->tse_wakeus);
     tse->tse_wchan = timeout ? (void *)-1 : NULL;
 }
 
@@ -98,7 +98,7 @@ static err_t tse_free(tsevent_t *tse) {
 
     return r;
 }
- 
+
 
 // 接口函数
 
@@ -109,7 +109,7 @@ err_t tsleep(void *chan, mutex_t *mtx, const char *msg, u64 wakeus) {
     tsevent_t *tse = tse_alloc(cpu_this()->cpu_running, chan, wakeus);
     // 已经获取了 tsevent_usedq 的锁，释放 mtx 后再睡眠
     // 睡眠时先获取睡眠队列的锁，然后再释放 tsevent_usedq 的锁
-    warn("%08x(%08x) TSLEEP UNTIL %d->%d\n", cpu_this()->cpu_running->td_tid, cpu_this()->cpu_running->td_proc->p_pid, getUSecs(), wakeus);
+    // warn("%08x(%08x) TSLEEP UNTIL %d->%d\n", cpu_this()->cpu_running->td_tid, cpu_this()->cpu_running->td_proc->p_pid, getUSecs(), wakeus);
     if (mtx) {
         tseq_critical_exit(&tsevent_usedq);
     }
