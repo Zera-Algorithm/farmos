@@ -247,7 +247,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 		return -1;
 	}
 
-	mtx_lock(&target_socket->lock);
+	// mtx_lock(&target_socket->lock);
 
 	if (target_socket->waiting_t - target_socket->waiting_h == PENDING_COUNT) {
 		return -1; // 达到最高限制
@@ -337,7 +337,7 @@ static Socket *find_listening_socket(const SocketAddr *addr, int type) {
 			sockets[i].type == type &&
 			sockets[i].addr.port == addr->port &&
 		    sockets[i].listening) {
-			mtx_unlock(&sockets[i].lock);
+			// mtx_unlock(&sockets[i].lock);
 			return &sockets[i];
 		}
 		mtx_unlock(&sockets[i].lock);
@@ -359,7 +359,7 @@ static Socket *remote_find_peer_socket(const Socket *local_socket) {
 		    sockets[i].target_addr.port == local_socket->addr.port // &&
 		    // sockets[i].target_addr.addr == local_socket->addr.addr
 			) {
-			mtx_unlock(&sockets[i].lock);
+			// mtx_unlock(&sockets[i].lock);
 			return &sockets[i];
 		}
 		mtx_unlock(&sockets[i].lock);
@@ -439,7 +439,7 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		return -EPIPE;
 	}
 
-	mtx_lock(&targetSocket->lock);
+	// mtx_lock(&targetSocket->lock);
 
 	while (i < n) {
 		mtx_lock(
@@ -532,6 +532,7 @@ static int fd_socket_close(struct Fd *fd) {
 	Socket *localSocket = fd->socket;
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket != NULL) {
+		mtx_unlock(&targetSocket->lock);
 		mtx_lock(&targetSocket->state.state_lock);
 		targetSocket->state.is_close = true;
 		mtx_unlock(&targetSocket->state.state_lock);
