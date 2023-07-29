@@ -34,6 +34,7 @@ int sys_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit,
 		  struct rlimit *old_limit);
 pid_t sys_getsid(pid_t pid);
 pid_t sys_setsid();
+void sys_reboot();
 
 // 系统信息（sys_info）
 void sys_uname(u64 upuname);
@@ -116,7 +117,6 @@ u64 sys_sched_setaffinity();
 u64 sys_sched_getscheduler();
 u64 sys_sched_setscheduler();
 u64 sys_sched_getparam();
-
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);

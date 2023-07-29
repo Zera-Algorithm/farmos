@@ -291,3 +291,7 @@ pid_t sys_getsid(pid_t pid) {
 pid_t sys_setsid() {
 	return 0;
 }
+
+void sys_reboot() {
+	cpu_halt();
+}

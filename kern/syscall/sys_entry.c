@@ -100,6 +100,7 @@ static syscall_function_t sys_table[] = {
     [SYS_sched_getparam] = {sys_sched_getparam, "sched_getparam"},
     [SYS_sched_getscheduler] = {sys_sched_getscheduler, "sched_getscheduler"},
     [SYS_sched_setscheduler] = {sys_sched_setscheduler, "sched_setscheduler"},
+	[SYS_reboot] = {sys_reboot, "reboot"},
 };
 
 /**

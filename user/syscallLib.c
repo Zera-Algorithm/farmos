@@ -236,7 +236,6 @@ int accept(int sockfd, SocketAddr *addr) {
 	return syscall(SYS_accept, sockfd, addr);
 }
 
-
 int gettid() {
 	return syscall(SYS_gettid);
 }
@@ -248,4 +247,8 @@ int getitimer(int which, struct itimerval *curr_value) {
 int setitimer(int which, const struct itimerval *new_value,
 				struct itimerval *old_value) {
 	return syscall(SYS_setitimer, which, new_value, old_value);
+}
+
+void reboot() {
+	syscall(SYS_reboot);
 }
