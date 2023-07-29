@@ -29,6 +29,7 @@ static malloc_config_t malloc_config[] = {
 	{.size = 14 * PAGE_SIZE, .npage = 0},
 	{.size = 16 * PAGE_SIZE, .npage = 0},
 	{.size = 18 * PAGE_SIZE, .npage = 0}, // for UDP buffer
+	{.size = 33 * PAGE_SIZE, .npage = 0}, // for TCP buffer
     {.size = -1},
 };
 
@@ -97,6 +98,7 @@ static void extend_heap(malloc_config_t *config) {
 
 	// 2. 如果超过了malloc的最大分配页数，就panic
 	if (heap_top + PAGE_SIZE > KERNEL_MALLOC + MAX_MALLOC_NPAGE * PAGE_SIZE) {
+		asm volatile("ebreak");
 		panic("kmalloc: out of memory\n");
 	}
 

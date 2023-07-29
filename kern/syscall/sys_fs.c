@@ -296,18 +296,18 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
 
 	// debug
-	log(LEVEL_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
-	log(LEVEL_GLOBAL, "readfds: \n");
+	log(FS_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
+	log(FS_GLOBAL, "readfds: \n");
 	FD_SET_FOREACH(fd, &readfds) {
-		log(LEVEL_GLOBAL, "%d\n", fd);
+		log(FS_GLOBAL, "%d\n", fd);
 	}
-	log(LEVEL_GLOBAL, "\n");
+	log(FS_GLOBAL, "\n");
 
-	log(LEVEL_GLOBAL, "writefds: \n");
+	log(FS_GLOBAL, "writefds: \n");
 	FD_SET_FOREACH(fd, &writefds) {
-		log(LEVEL_GLOBAL, "%d\n", fd);
+		log(FS_GLOBAL, "%d\n", fd);
 	}
-	log(LEVEL_GLOBAL, "\n");
+	log(FS_GLOBAL, "\n");
 	// debug end
 
 	while (1) {
@@ -327,7 +327,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 				FD_CLR(fd, &readfds_cur);
 			} else {
 				FD_SET(fd, &readfds_cur);
-				log(LEVEL_GLOBAL, "Thread %s: read FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
+				log(FS_GLOBAL, "Thread %s: read FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
 			}
 			tot += r;
 		}
@@ -343,7 +343,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 				FD_CLR(fd, &writefds_cur);
 			} else {
 				FD_SET(fd, &writefds_cur);
-				log(LEVEL_GLOBAL, "Thread %s: write FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
+				log(FS_GLOBAL, "Thread %s: write FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
 			}
 			tot += r;
 		}

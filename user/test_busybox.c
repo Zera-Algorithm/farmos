@@ -14,10 +14,15 @@ int main() {
 		// time-test
 	    // (char *const[]){"/time-test", NULL},
 
+	    // (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "socket", NULL},
 	    // (char *const[]){"./runtest.exe", "-w", "entry-dynamic.exe", "socket", NULL},
 		// iperf
 	    (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL}, // server
-	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-P", "5", NULL}, // client
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-b", "1000G", NULL}, // basic UDP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", NULL}, // basic TCP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-P", "5", NULL}, // parallel TCP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-R", "-b", "1000G", NULL}, // Reverse UDP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-R", NULL}, // Reverse TCP
 	    // (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 
 		// libc-bench测试

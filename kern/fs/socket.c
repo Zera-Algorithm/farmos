@@ -105,7 +105,7 @@ int socket(int domain, int type, int protocol) {
 	mtx_lock(&socket->lock);
 	socket->used = true;
 	socket->addr.family = domain;
-	socket->type = type;
+	socket->type = (type & 0xf);
 	memset(&socket->target_addr, 0, sizeof(SocketAddr));
 	socket->waiting_h = socket->waiting_t = 0;
 	socket->bufferAddr = (void *)kvmAlloc();
@@ -219,7 +219,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 
 	if (sfd >= 0 && fds[sfd].type != dev_socket) {
 		warn("target fd is not a socket fd, please check\n");
-		return -1;
+		return -EBADF;
 	} // 检查Fd类型是否匹配
 
 	Socket *local_socket = fds[sfd].socket;
@@ -243,6 +243,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	// TCP的情况：除了要设置对方地址，还需要等待
 	Socket *target_socket = find_listening_socket(&addr, local_socket->type & 0xf);
 	if (target_socket == NULL) {
+		asm volatile("ebreak");
 		warn("server socket doesn't exists or isn't listening\n");
 		return -1;
 	}
@@ -250,6 +251,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	// mtx_lock(&target_socket->lock);
 
 	if (target_socket->waiting_t - target_socket->waiting_h == PENDING_COUNT) {
+		warn("fd %d: target socket's pending queue is full\n", sockfd);
 		return -1; // 达到最高限制
 	}
 
@@ -334,7 +336,7 @@ static Socket *find_listening_socket(const SocketAddr *addr, int type) {
 		if (sockets[i].used &&
 			// sockets[i].addr.family == addr->family && // family可能未必相同，可以一个是INET一个是INET6
 		    // sockets[i].addr.addr == addr->addr &&
-			sockets[i].type == type &&
+			(sockets[i].type & 0xf) == type &&
 			sockets[i].addr.port == addr->port &&
 		    sockets[i].listening) {
 			// mtx_unlock(&sockets[i].lock);
@@ -400,6 +402,7 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		}
 	}
 
+	char read_buf[4096];
 	for (i = 0; i < n; i++) {
 		if (localSocket->socketReadPos == localSocket->socketWritePos) {
 			break;
@@ -407,11 +410,12 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		readPos =
 		    (char *)(localSocket->bufferAddr + ((localSocket->socketReadPos) % PAGE_SIZE));
 		ch = *readPos;
-		// TODO：成批拷贝，加快速度。否则会将时间浪费在查页表上
-		copyOut((buf + i), &ch, 1);
+		// Note：成批拷贝，加快速度。否则会将时间浪费在查页表上
+		read_buf[i] = ch;
 		localSocket->socketReadPos++;
 	}
 	fd->offset += i;
+	copyOut(buf, read_buf, i);
 
 	wakeup(&localSocket->socketWritePos);
 	mtx_unlock(&localSocket->lock);
@@ -422,61 +426,70 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	warn("thread %s: socket write, fd = %d, n = %d\n", cpu_this()->cpu_running->td_name, fd - fds, n);
 	int i = 0;
-	char ch;
 	char *writePos;
 	Socket *localSocket = fd->socket;
+	assert(n <= 131072);
 
 	// UDP
 	if (SOCK_IS_UDP(localSocket->type)) {
 		return sendto(fd - fds, (void *)buf, n, 0, &localSocket->target_addr, NULL, 0);
 	}
 
+	char *write_buf = kmalloc(131072);
 	// TCP
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket == NULL) {
 		warn("socket write error: can\'t find target socket.\n");
 		// 原因可能是远端已关闭
+		kfree(write_buf);
 		return -EPIPE;
 	}
 
 	// mtx_lock(&targetSocket->lock);
-
+	copyIn(buf, write_buf, n);
 	while (i < n) {
 		mtx_lock(
 		    &localSocket->state.state_lock); // 获得自身socket的状态锁，从而来获得targetSocket是否关闭的状态
-		if (targetSocket->socketWritePos - targetSocket->socketReadPos == PAGE_SIZE) {
-			if (localSocket->state.is_close /* 对面socket进程已结束*/) {
+		if (localSocket->state.is_close /* 对面socket进程已结束*/) {
+			if (i == 0)	{
+				warn("socket write error: target socket is closed.\n");
 				mtx_unlock(&localSocket->state.state_lock);
 				mtx_unlock(&targetSocket->lock);
-				warn("socket writer can\'t write more.\n");
+				kfree(write_buf);
 				return -EPIPE;
 			} else {
+				warn("socket writer can\'t write more.\n");
 				mtx_unlock(&localSocket->state.state_lock);
-
-				wakeup(&targetSocket->socketReadPos);
-				mtx_unlock_sleep(&fd->lock);
-				sleep(&targetSocket->socketWritePos, &targetSocket->lock,
-				      "wait another socket to  read.\n");
-				mtx_lock_sleep(&fd->lock);
+				break;
 			}
-		} else {
+		}
+		// 对端肯定没有关闭
+		if (targetSocket->socketWritePos - targetSocket->socketReadPos == PAGE_SIZE) {
 			mtx_unlock(&localSocket->state.state_lock);
 
-			copyIn((buf + i), &ch, 1);
+			wakeup(&targetSocket->socketReadPos);
+			mtx_unlock_sleep(&fd->lock);
+			sleep(&targetSocket->socketWritePos, &targetSocket->lock,
+					"wait another socket to  read.\n");
+			mtx_lock_sleep(&fd->lock);
+		} else {
 			writePos = (char *)(targetSocket->bufferAddr +
 					    ((targetSocket->socketWritePos) % PAGE_SIZE));
 			if (writePos == NULL) {
 				asm volatile("ebreak");
 			}
-			*writePos = ch;
+			*writePos = write_buf[i];
 			targetSocket->socketWritePos++;
 			i++;
+
+			mtx_unlock(&localSocket->state.state_lock);
 		}
 	}
 
 	fd->offset += i;
 	wakeup(&targetSocket->socketReadPos);
 	mtx_unlock(&targetSocket->lock);
+	kfree(write_buf);
 	return i;
 }
 
@@ -485,6 +498,9 @@ void socketFree(int socketNum) {
 	Socket *socket = &sockets[socketNum];
 
 	mtx_lock(&socket->lock);
+	if (socket->listening != 0) {
+		warn("closing listening socket %d\n", socketNum);
+	}
 	socket->used = false;
 	socket->socketReadPos = 0;
 	socket->socketWritePos = 0;
@@ -510,11 +526,11 @@ void socketFree(int socketNum) {
 		message_free(message);
 	}
 
-	mtx_unlock(&socket->lock);
-
 	mtx_lock(&socket->state.state_lock);
 	socket->state.is_close = false;
 	mtx_unlock(&socket->state.state_lock);
+
+	mtx_unlock(&socket->lock);
 
 	mtx_lock(&mtx_socketmap);
 	//  对socketBitMap加锁，使得只有一个进程能够进入Alloc函数
@@ -527,9 +543,9 @@ void socketFree(int socketNum) {
 } // TODO free socket时需要释放messages剩余的message
 
 static int fd_socket_close(struct Fd *fd) {
-	warn("thread %s: socket close, fd = %d\n", cpu_this()->cpu_running->td_name, fd - fds);
-
 	Socket *localSocket = fd->socket;
+	warn("thread %s: socket close, fd = %d, listening = %d\n",
+		cpu_this()->cpu_running->td_name, fd - fds, localSocket->listening);
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket != NULL) {
 		mtx_unlock(&targetSocket->lock);
@@ -807,9 +823,10 @@ int socket_read_check(struct Fd *fd) {
 /**
  * @brief 可以写返回1，否则为0
  * 1. 如果是监听的socket，返回0
- * 1. 如果是普通的socket，那么返回当前是否可写入数据，或者说socket是否关闭
+ * 2. 如果是普通的socket，那么返回当前是否可写入数据，或者说socket是否关闭
  *  2.1 TCP 检查buffer是否为满
  *  2.2 UDP 返回1（UDP始终可以发送）
+ * 3. 例外情况：未连接的socket，返回0
  */
 int socket_write_check(struct Fd* fd) {
 	Socket *socket = fd->socket;
@@ -817,17 +834,33 @@ int socket_write_check(struct Fd* fd) {
 	mtx_lock(&socket->lock);
 
 	if (socket->listening) {
+		mtx_unlock(&socket->lock);
 		ret = 0;
 	} else if ((socket->type & 0xf) == SOCK_STREAM) {
+		mtx_unlock(&socket->lock);
+
 		// TCP
+		Socket *targetSocket = remote_find_peer_socket(socket);
+		// 对方已关闭
+		if (targetSocket == NULL) {
+			ret = 1;
+			goto out;
+		}
 		mtx_lock(&socket->state.state_lock);
-		ret = ((socket->socketWritePos - socket->socketReadPos != PAGE_SIZE) || (socket->state.is_close));
+		if (socket->state.is_close) {
+			ret = 1;
+			goto out;
+		}
 		mtx_unlock(&socket->state.state_lock);
+
+		ret = (targetSocket->socketWritePos - targetSocket->socketReadPos != PAGE_SIZE);
+		mtx_unlock(&targetSocket->lock);
 	} else {
+		mtx_unlock(&socket->lock);
 		// UDP
 		ret = 1;
 	}
 
-	mtx_unlock(&socket->lock);
+out:
 	return ret;
 }
