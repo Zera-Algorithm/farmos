@@ -16,7 +16,7 @@ mutex_t sigevent_lock;
 
 void sig_init() {
 	// 初始化信号事件
-	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN);
+	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN | MTX_RECURSE);
 	for (int i = NSIG - 1; i >= 0; i--) {
 		TAILQ_INSERT_HEAD(&sigevent_freeq, &sigevents[i], se_link);
 	}
@@ -44,6 +44,16 @@ void sigevent_free(sigevent_t *se) {
 	mtx_unlock(&sigevent_lock);
 }
 
+void sigevent_freetd(thread_t *td) {
+	mtx_lock(&sigevent_lock);
+	sigevent_t *se;
+	while ((se = TAILQ_FIRST(&td->td_sigqueue)) != NULL) {
+		sigeventq_remove(td, se);
+		sigevent_free(se);
+	}
+	mtx_unlock(&sigevent_lock);
+}
+
 // 信号处理函数注册
 
 err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
@@ -68,6 +78,14 @@ err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
 		}
 	}
 	return 0;
+}
+
+void sigaction_free(proc_t *p) {
+	memset(&sigactions[p - procs], 0, sizeof(sigactions[0]));
+}
+
+void sigaction_clone(proc_t *p, proc_t *childp) {
+	memcpy(&sigactions[childp - procs], &sigactions[p - procs], sizeof(sigactions[0]));
 }
 
 /**

@@ -10,19 +10,11 @@ Pte *kernPd;
 
 // 纯接口函数
 
-inline Pte paToPte(u64 pa) {
-	return (pa >> PAGE_SHIFT) << PTE_PPNSHIFT;
-}
-
-inline u64 pteToPa(Pte pte) {
-	return (pte >> PTE_PPNSHIFT) << PAGE_SHIFT;
-}
-
-inline Pte pageToPte(Page *p) {
+static inline Pte pageToPte(Page *p) {
 	return paToPte(MEMBASE) + (pageToPpn(p) << PTE_PPNSHIFT);
 }
 
-inline Page *pteToPage(Pte pte) {
+static inline Page *pteToPage(Pte pte) {
 	assert(pteToPa(pte) > MEMBASE);
 	return paToPage(pteToPa(pte));
 }
@@ -92,7 +84,6 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 				log(LEVEL_MODULE, "\tcreate a page for level %d in va 0x%016lx\n",
 				    i, va);
 				Page *newPage = pmAlloc();
-				pmPageIncRef(newPage);
 				// 将新页表的物理地址写入当前页表项
 				ptModify(curPte, pageToPte(newPage) | PTE_V);
 				flush_tlb_if_need(pageDir, va);

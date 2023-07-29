@@ -165,7 +165,7 @@ u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
 	if (flags & CLONE_VM) {
 		return td_fork(cpu_this()->cpu_running, stack, ptid, tls, ctid);
 	} else {
-		return proc_fork(cpu_this()->cpu_running, stack);
+		return proc_fork(cpu_this()->cpu_running, stack, flags);
 	}
 }
 

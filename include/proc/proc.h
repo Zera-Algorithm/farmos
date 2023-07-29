@@ -64,7 +64,7 @@ stack_arg_t proc_setustack(thread_t *td, pte_t *argpt, u64 argc, char **argv, u6
 
 void proc_create(const char *name, const void *bin, size_t size);
 u64 td_fork(thread_t *td, u64 childsp, u64 ptid, u64 tls, u64 ctid);
-u64 proc_fork(thread_t *td, u64 childsp);
+u64 proc_fork(thread_t *td, u64 childsp, u64 flags);
 
 void proc_destroy(proc_t *p, err_t exitcode);
 void proc_free(proc_t *p);

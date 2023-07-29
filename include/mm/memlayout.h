@@ -54,9 +54,9 @@
 
 // 用户页表中，线程的用户栈部分
 // 至少要分到32页，因为libc可能有默认栈的设置
-#define TD_USTACK_PAGE_NUM 64				// 用户栈占用的总页数
+#define TD_USTACK_PAGE_NUM 72				// 用户栈占用的总页数
 #define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的总大小
-#define TD_USTACK_INIT_PAGE_NUM 16              // 用户栈初始页数
+#define TD_USTACK_INIT_PAGE_NUM 8              // 用户栈初始页数
 #define TD_USTACK_INIT_SIZE (TD_USTACK_INIT_PAGE_NUM * PAGE_SIZE) // 用户栈初始大小
 #define TD_USTACK_INIT_BOTTOM (USTACKTOP - TD_USTACK_INIT_SIZE) // 用户栈初始底部
 #define TD_USTACK_EXTEND_PAGE_NUM (TD_USTACK_PAGE_NUM - TD_USTACK_INIT_PAGE_NUM) // 用户栈扩展页数

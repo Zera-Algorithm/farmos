@@ -36,8 +36,9 @@ int main() {
 	    // (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
 		// lua测试：pass
-	    // (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
-
+	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+		// libc-bench测试
+	    (char *const[]){"/libc-bench", NULL},
 
 	    // 命令行测试
 	    // (char *const[]) {"/busybox", "ash", NULL},

@@ -6,6 +6,7 @@
 #include <sys/syscall.h>
 #include <sys/syscall_ids.h>
 #include <types.h>
+#include <lib/terminal.h>
 
 typedef struct syscall_function {
 	void *func;
@@ -90,6 +91,15 @@ static syscall_function_t sys_table[] = {
 	[SYS_getsid] = {sys_getsid, "getsid"},
 	[SYS_setsid] = {sys_setsid, "setsid"},
 	[SYS_pselect6] = {sys_pselect6, "pselect6"},
+    [SYS_geteuid] = {sys_geteuid, "geteuid"},
+    [SYS_getegid] = {sys_getegid, "getegid"},
+    [SYS_getgid] = {sys_getgid, "getgid"},
+    [SYS_setpgid] = {sys_setpgid, "setpgid"},
+    [SYS_sched_getaffinity] = {sys_sched_getaffinity, "sched_getaffinity"},
+    [SYS_sched_setaffinity] = {sys_sched_setaffinity, "sched_setaffinity"},
+    [SYS_sched_getparam] = {sys_sched_getparam, "sched_getparam"},
+    [SYS_sched_getscheduler] = {sys_sched_getscheduler, "sched_getscheduler"},
+    [SYS_sched_setscheduler] = {sys_sched_setscheduler, "sched_setscheduler"},
 };
 
 /**
@@ -125,8 +135,10 @@ void syscall_entry(trapframe_t *tf) {
 	if (func == NULL) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
-		warn("unimplemented or unknown syscall: %s(%d)\n", sys_names[sysno], sysno);
-		return;
+        if (sysno != SYS_exit_group) {
+		    //printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
+        }
+        return;
 		// sys_exit(SYSCALL_ERROR);
 	}
 

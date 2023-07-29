@@ -39,6 +39,10 @@ pid_t sys_setsid();
 void sys_uname(u64 upuname);
 void sys_gettimeofday(u64 uptv, u64 uptz);
 u64 sys_clock_gettime(u64 clockid, u64 tp);
+u64 sys_geteuid();
+u64 sys_getegid();
+u64 sys_getgid();
+u64 sys_setpgid(u64 pid, u64 pgid);
 
 struct iovec;
 struct statfs;
@@ -106,6 +110,13 @@ int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
 int sys_getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
 int sys_setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
 int sys_getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
+// 调度（sys_sched）
+u64 sys_sched_getaffinity();
+u64 sys_sched_setaffinity();
+u64 sys_sched_getscheduler();
+u64 sys_sched_setscheduler();
+u64 sys_sched_getparam();
+
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);
