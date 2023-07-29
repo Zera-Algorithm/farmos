@@ -346,7 +346,9 @@ static Socket *find_listening_socket(const SocketAddr *addr, int type) {
 	// TODO 加type参数即可
 }
 
+// 如果找到了对端socket，就持有锁
 static Socket *remote_find_peer_socket(const Socket *local_socket) {
+	// TODO：存在并发安全问题
 	for (int i = 0; i < SOCKET_COUNT; ++i) {
 		mtx_lock(&sockets[i].lock);
 		if ( sockets[i].used &&
