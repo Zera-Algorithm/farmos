@@ -73,6 +73,7 @@ void sig_return(thread_t *td);
 // 信号事件相关函数
 sigevent_t *sigevent_alloc(int signo) __attribute__((warn_unused_result));
 void sigevent_free(sigevent_t *se);
+void sigevent_freetd(thread_t *td);
 
 // 信号处理相关函数
 err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size);

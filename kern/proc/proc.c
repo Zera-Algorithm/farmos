@@ -147,9 +147,13 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 
 	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
 	if (p->p_pid != PID_INIT) {
-		warn("proc %08x destroying, send SIGCHLD to parent %08x\n", p->p_pid, p->p_parent->p_pid);
-		sig_send_proc(p->p_parent, SIGCHLD);
-		wakeup(p->p_parent);
+		if (p->p_parent == NULL) {
+			log(PROC_GLOBAL, "proc %08x has no parent\n", p->p_pid);
+		} else {
+			log(PROC_GLOBAL, "proc %08x destroying, send SIGCHLD to parent %08x\n", p->p_pid, p->p_parent->p_pid);
+			sig_send_proc(p->p_parent, SIGCHLD);
+			wakeup(p->p_parent);
+		}
 	}
 
 	proc_lock(p);

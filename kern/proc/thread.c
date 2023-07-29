@@ -59,12 +59,16 @@ thread_t *td_alloc() {
  */
 static void td_free(thread_t *td) {
 	// 将线程字段重置
+	td->td_proc = NULL;
 	td->td_tid = 0;
 	td->td_status = UNUSED;
 
+	// 释放进程信号
+	sigevent_freetd(td);
+
 	// 将线程加入空闲线程队列
 	tdq_critical_enter(&thread_freeq);
-	TAILQ_INSERT_TAIL(&thread_freeq.tq_head, td, td_freeq);
+	TAILQ_INSERT_HEAD(&thread_freeq.tq_head, td, td_freeq);
 	tdq_critical_exit(&thread_freeq);
 }
 

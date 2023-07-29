@@ -84,7 +84,6 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 				log(LEVEL_MODULE, "\tcreate a page for level %d in va 0x%016lx\n",
 				    i, va);
 				Page *newPage = pmAlloc();
-				pmPageIncRef(newPage);
 				// 将新页表的物理地址写入当前页表项
 				ptModify(curPte, pageToPte(newPage) | PTE_V);
 				flush_tlb_if_need(pageDir, va);
