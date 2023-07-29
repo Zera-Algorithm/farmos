@@ -100,6 +100,7 @@ static syscall_function_t sys_table[] = {
     [SYS_sched_getparam] = {sys_sched_getparam, "sched_getparam"},
     [SYS_sched_getscheduler] = {sys_sched_getscheduler, "sched_getscheduler"},
     [SYS_sched_setscheduler] = {sys_sched_setscheduler, "sched_setscheduler"},
+    [SYS_get_robust_list] = {sys_get_robust_list, "get_robust_list"},
 	[SYS_reboot] = {sys_reboot, "reboot"},
 };
 
@@ -137,7 +138,7 @@ void syscall_entry(trapframe_t *tf) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
         if (sysno != SYS_exit_group) {
-		    //printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
+		    // printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
         }
         return;
 		// sys_exit(SYSCALL_ERROR);

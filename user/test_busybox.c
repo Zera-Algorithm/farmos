@@ -19,6 +19,9 @@ int main() {
 		// time-test
 	    (char *const[]){"/time-test", NULL},
 
+		// libc-bench测试
+	    (char *const[]){"/libc-bench", NULL},
+
 		// busybox测试
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 
@@ -38,8 +41,7 @@ int main() {
 	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-R", NULL}, // Reverse TCP
 	    // (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 
-		// libc-bench测试
-	    (char *const[]){"/libc-bench", NULL},
+
 
 		// unixbench测试
 		(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},
@@ -273,13 +275,13 @@ int main() {
 	// "entry-static.exe", "pthread_exit_cancel", NULL}, 	(char *const[]) {"./runtest.exe", "-w",
 	// "entry-static.exe", "pthread_condattr_setclock", NULL}, 	(char *const[]) {"./runtest.exe",
 	// "-w", "entry-static.exe", "pthread_cond_smasher", NULL}, 	(char *const[])
-	// {"./runtest.exe", "-w", "entry-static.exe", "pthread_cancel_sem_wait", NULL}, 	(char
-	// *const[]) {"./runtest.exe", "-w", "entry-static.exe", "pthread_robust_detach", NULL},
+	// {"./runtest.exe", "-w", "entry-static.exe", "pthread_cancel_sem_wait", NULL}, 	
+	// (char *const[]) {"./runtest.exe", "-w", "entry-static.exe", "pthread_robust_detach", NULL},
+	// (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "pthread_robust_detach", NULL},
 	// 	(char *const[]) {"./runtest.exe", "-w", "entry-static.exe", "pthread_tsd", NULL},
 	// 	(char *const[]) {"./runtest.exe", "-w", "entry-static.exe", "pthread_cond", NULL},
-	// 	(char *const[]) {"./runtest.exe", "-w", "entry-static.exe", "pthread_cancel_points",
-	// NULL}, 	NULL
-	// };
+	// (char *const[]) {"./runtest.exe", "-w", "entry-static.exe", "pthread_cancel_points", NULL},
+	// NULL };
 
 	char *const envp[] = {"LD_LIBRARY_PATH=/", NULL};
 

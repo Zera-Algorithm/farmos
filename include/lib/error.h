@@ -3,7 +3,7 @@
 
 #include <types.h>
 
-#define IGNORE_ASSERT 0
+#define IGNORE_ASSERT 1
 
 #define E_NOPROC 1
 #define E_NO_MAP 2

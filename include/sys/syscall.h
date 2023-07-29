@@ -120,5 +120,5 @@ u64 sys_sched_getparam();
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);
-
+u64 sys_get_robust_list();
 #endif // !_SYSCALL_H
