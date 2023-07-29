@@ -31,3 +31,5 @@ os_output.txt
 test
 sdcard
 busybox
+os_busybox.txt
+os_lmbench.txt

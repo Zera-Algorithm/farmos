@@ -243,7 +243,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 	// TCP的情况：除了要设置对方地址，还需要等待
 	Socket *target_socket = find_listening_socket(&addr, local_socket->type & 0xf);
 	if (target_socket == NULL) {
-		asm volatile("ebreak");
+		// asm volatile("ebreak"); //
 		warn("server socket doesn't exists or isn't listening\n");
 		return -1;
 	}
@@ -476,7 +476,7 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			writePos = (char *)(targetSocket->bufferAddr +
 					    ((targetSocket->socketWritePos) % PAGE_SIZE));
 			if (writePos == NULL) {
-				asm volatile("ebreak");
+				// asm volatile("ebreak"); //
 			}
 			*writePos = write_buf[i];
 			targetSocket->socketWritePos++;

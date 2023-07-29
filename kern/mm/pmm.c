@@ -16,7 +16,7 @@ struct Page {
 	LIST_ENTRY(Page) link;
 };
 
-static u64 pageleft = 0;
+u64 pageleft = 0;
 u64 npage = 0;
 Page *pages = NULL;
 PageList pageFreeList;

@@ -11,6 +11,7 @@
 #include <lib/string.h>
 #include <lib/wchar.h>
 #include <lock/mutex.h>
+#include <fs/chardev.h>
 
 FileSystem *fatFs;
 extern mutex_t mtx_file;
@@ -149,6 +150,11 @@ static void init_proc_fs() {
 		log(LEVEL_GLOBAL, "executing initcall #%d\n", fn - __initcall_fs_start);
 		(*fn)();
 	}
+
+	// 设置系统发行版本，越大越好，过小会FATAL
+	makeDirAt(fatFs->root, "/proc/sys", 0);
+	makeDirAt(fatFs->root, "/proc/sys/kernel", 0);
+	create_chardev_file("/proc/sys/kernel/osrelease", "10.2.0", NULL, NULL);
 }
 
 static void init_fs_other() {
@@ -162,6 +168,16 @@ static void init_fs_other() {
 	makeDirAt(fatFs->root, "/lib", 0);
 	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
 	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
+
+	makeDirAt(fatFs->root, "/sbin", 0);
+	panic_on(linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all"));
+	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/sbin/busybox"));
+
+	// 两个部分的sh脚本
+	extern const unsigned char bin2c_iperf_testcode_sh[637];
+	extern const unsigned char bin2c_unixbench_testcode_sh[4556];
+	create_chardev_file("/iperf_testcode_part.sh", (char *)bin2c_iperf_testcode_sh, NULL, NULL);
+	create_chardev_file("/unixbench_testcode_part.sh", (char *)bin2c_unixbench_testcode_sh, NULL, NULL);
 }
 
 void init_files() {
