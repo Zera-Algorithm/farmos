@@ -3,12 +3,15 @@
 
 #include <fs/fat32.h>
 #include <fs/fs.h>
+#include <fs/socket.h>
 #include <lock/mutex.h>
+#include <proc/thread.h>
 #include <types.h>
 
 #define FDNUM 1024
 
 typedef struct FdDev FdDev;
+typedef struct Socket Socket;
 
 typedef struct Fd {
 	// 保证每个fd的读写不并发
@@ -23,6 +26,7 @@ typedef struct Fd {
 	FdDev *fd_dev;
 
 	u32 refcnt; // 引用计数
+	Socket *socket;
 } Fd;
 
 typedef struct DirentUser {
@@ -30,7 +34,7 @@ typedef struct DirentUser {
 	i64 d_off;		 // 下一个dirent到文件首部的偏移
 	unsigned short d_reclen; // 当前dirent的长度
 	unsigned char d_type;	 // 文件类型
-	char d_name[];		 //文件名
+	char d_name[];		 // 文件名
 } DirentUser;
 
 #define DIRENT_USER_SIZE 128
@@ -43,6 +47,7 @@ extern uint citesNum[FDNUM];
 #define dev_file 1
 #define dev_pipe 2
 #define dev_console 3
+#define dev_socket 4
 
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001

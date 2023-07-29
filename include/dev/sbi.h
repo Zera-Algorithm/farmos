@@ -43,7 +43,7 @@ struct sbiret {
 		asm volatile("ecall\n"                                                             \
 			     "mv %[error], a0\n"                                                   \
 			     "mv %[value], a1\n"                                                   \
-			     : "+r"(a0), "+r"(a1), [ error ] "=r"(error), [ value ] "=r"(value)    \
+			     : "+r"(a0), "+r"(a1), [error] "=r"(error), [value] "=r"(value)        \
 			     : "r"(a2), "r"(a3), "r"(a4), "r"(a6), "r"(a7)                         \
 			     : "memory");                                                          \
 		(struct sbiret){error, value};                                                     \

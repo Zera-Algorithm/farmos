@@ -216,6 +216,26 @@ int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val
 	return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
 }
 
+int socket(int domain, int type, int protocol) {
+	return syscall(SYS_socket, domain, type, protocol);
+}
+
+int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen) {
+	return syscall(SYS_bind, sockfd, sockectaddr, addrlen);
+}
+
+int listen(int sockfd, int backlog) {
+	return syscall(SYS_listen, sockfd, backlog);
+}
+
+int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen) {
+	return syscall(SYS_connect, sockfd, addr, addrlen);
+}
+
+int accept(int sockfd, SocketAddr *addr) {
+	return syscall(SYS_accept, sockfd, addr);
+}
+
 int gettid() {
 	return syscall(SYS_gettid);
 }
@@ -227,4 +247,8 @@ int getitimer(int which, struct itimerval *curr_value) {
 int setitimer(int which, const struct itimerval *new_value,
 				struct itimerval *old_value) {
 	return syscall(SYS_setitimer, which, new_value, old_value);
+}
+
+void reboot() {
+	syscall(SYS_reboot);
 }

@@ -12,29 +12,29 @@
 #include <lib/string.h>
 #include <lock/mutex.h>
 
-void init_thread_fs(thread_fs_t *td_fs_struct) {
-	strncpy(td_fs_struct->cwd, "/", 2);
+void init_thread_fs(thread_fs_t *fs_struct) {
+	strncpy(fs_struct->cwd, "/", 2);
 
 	// 初始化文件描述符表
 	for (int i = 0; i < MAX_FD_COUNT; i++) {
-		td_fs_struct->fdList[i] = -1;
+		fs_struct->fdList[i] = -1;
 	}
 
 	// 初始化控制台文件描述符
-	td_fs_struct->fdList[0] = readConsoleAlloc();
-	td_fs_struct->fdList[1] = writeConsoleAlloc();
-	td_fs_struct->fdList[2] = errorConsoleAlloc();
+	fs_struct->fdList[0] = readConsoleAlloc();
+	fs_struct->fdList[1] = writeConsoleAlloc();
+	fs_struct->fdList[2] = errorConsoleAlloc();
 
-	td_fs_struct->cwd_dirent = NULL;
+	fs_struct->cwd_dirent = NULL;
 
 	// 初始化MMAP区域的开始位置
-	td_fs_struct->mmap_addr = MMAP_START;
+	fs_struct->mmap_addr = MMAP_START;
 
-	td_fs_struct->rlimit_files_cur = MAX_FD_COUNT;
-	td_fs_struct->rlimit_files_max = MAX_FD_COUNT;
+	fs_struct->rlimit_files_cur = MAX_FD_COUNT;
+	fs_struct->rlimit_files_max = MAX_FD_COUNT;
 
 	// 初始化进程fs结构体的锁为自旋锁
-	mtx_init(&td_fs_struct->lock, "thread_fs_lock", true, MTX_SPIN);
+	mtx_init(&fs_struct->lock, "thread_fs_lock", true, MTX_SPIN);
 }
 
 // 不设置cwd_dirent是为了在get_cwd_dirent时设置
@@ -61,19 +61,18 @@ void fork_thread_fs(thread_fs_t *old, thread_fs_t *new) {
 	mtx_init(&new->lock, "thread_fs_lock", true, MTX_SPIN);
 }
 
-// 在进程结束时回收进程的fs结构体
-void recycle_thread_fs(thread_fs_t *td_fs_struct) {
-	td_fs_struct->cwd[0] = 0;
+void recycle_thread_fs(thread_fs_t *fs_struct) {
+	fs_struct->cwd[0] = 0;
 
 	// 回收进程的文件描述符
 	for (int i = 0; i < MAX_FD_COUNT; i++) {
-		if (td_fs_struct->fdList[i] != -1) {
-			freeFd(td_fs_struct->fdList[i]);
+		if (fs_struct->fdList[i] != -1) {
+			freeFd(fs_struct->fdList[i]);
 		}
 	}
 
-	if (td_fs_struct->cwd_dirent != NULL) {
-		file_close(td_fs_struct->cwd_dirent);
+	if (fs_struct->cwd_dirent != NULL) {
+		file_close(fs_struct->cwd_dirent);
 	}
 }
 
@@ -81,12 +80,11 @@ void recycle_thread_fs(thread_fs_t *td_fs_struct) {
  * @brief 获取cwd对应的dirent。如果已获取，则无需重复获取，以免无法释放
  * @todo 加锁，以及chdir时的变更
  */
-Dirent *get_cwd_dirent(thread_fs_t *td_fs_struct) {
-	if (td_fs_struct->cwd_dirent != NULL) {
-		return td_fs_struct->cwd_dirent;
+Dirent *get_cwd_dirent(thread_fs_t *fs_struct) {
+	if (fs_struct->cwd_dirent != NULL) {
+		return fs_struct->cwd_dirent;
 	} else {
-		// 我们保证正常情况下不会panic，因为chroot的时候会检查cwd是否有效
-		panic_on(getFile(NULL, td_fs_struct->cwd, &(td_fs_struct->cwd_dirent)));
-		return td_fs_struct->cwd_dirent;
+		panic_on(getFile(NULL, fs_struct->cwd, &(fs_struct->cwd_dirent)));
+		return fs_struct->cwd_dirent;
 	}
 }

@@ -11,22 +11,40 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
+		// (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL}, // server
+		// (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u","-P", "5", "-b", "1000G", NULL},
+
+	    // (char *const[]){"/looper", "1", NULL},
+
 		// time-test
 	    (char *const[]){"/time-test", NULL},
 
-		
-
-	    // busybox测试
+		// busybox测试
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
+
 	    // libc-test的static测试点和dynamic测试点
 	    (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
 	    (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
-	    // (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
 		// lua测试：pass
 	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+
+		// iperf
+	    (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL}, // server
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-b", "1000G", NULL}, // basic UDP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", NULL}, // basic TCP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-P", "5", NULL}, // parallel TCP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-R", "-b", "1000G", NULL}, // Reverse UDP
+	    (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-R", NULL}, // Reverse TCP
+	    // (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+
 		// libc-bench测试
 	    (char *const[]){"/libc-bench", NULL},
+
+		// unixbench测试
+		(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},
+
+	    // (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
 	    // 命令行测试
 	    // (char *const[]) {"/busybox", "ash", NULL},
@@ -288,7 +306,6 @@ int main() {
 			}
 		}
 	}
-
-	// char *const argv[] = {"/libc-bench", NULL};
+	reboot();
 	return 0;
 }

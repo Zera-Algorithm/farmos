@@ -99,6 +99,10 @@ static void __mtx_lo_unlock(mutex_t *m, bool need_critical) {
 
 // 自旋互斥量接口（不检查自旋锁类型，因为睡眠锁基于自旋锁）
 void mtx_lock(mutex_t *m) {
+	if ((u64)m < 0x1000) {
+		panic("");
+	}
+
 	if (m->mtx_type & MTX_SPIN) {
 		// 自旋互斥量，判断是否重入
 		lo_critical_enter();

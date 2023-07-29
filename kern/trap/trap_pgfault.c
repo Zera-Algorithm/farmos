@@ -37,6 +37,7 @@ err_t page_fault_handler(pte_t *pd, u64 violate, u64 badva) {
 		return passive_handler(pd, pte, badva);
 	} else {
 		// 不合法的写入请求 todo: signal
+		asm volatile("ebreak");
 		return -1; // todo errcode
 	}
 }
@@ -72,7 +73,7 @@ void trap_pgfault(thread_t *td, u64 exc_code) {
 			prot[4] = 'C';
 
 		printf(FARM_ERROR"[Page Fault] "SGR_RED
-			"%s(t:%08x|p:%08x) violate %x, badva=%lx, pte=%lx (prot = %s)"SGR_RESET"\n", 
+			"%s(t:%08x|p:%08x) violate %x, badva=%lx, pte=%lx (prot = %s)"SGR_RESET"\n",
 			td->td_name, td->td_tid, td->td_proc->p_pid, violation, badva, pte, prot);
 		warn("page fault caused 'SIGSEGV' on thread %d[%s]\n", td->td_tid, td->td_name);
 		sig_send_proc(td->td_proc, SIGSEGV);
