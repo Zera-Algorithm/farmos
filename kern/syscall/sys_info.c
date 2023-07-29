@@ -4,6 +4,8 @@
 #include <proc/thread.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
+#include <lib/log.h>
+#include <sys/syscall.h>
 
 void sys_uname(u64 upuname) {
 	static utsname_t utsname = {
@@ -44,4 +46,29 @@ u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, tp, &ts, sizeof(ts));
 	return 0;
+}
+
+u64 sys_geteuid() {
+	warn("sys_geteuid not implemented\n");
+    return 0;
+}
+
+u64 sys_getegid() {
+	warn("sys_getegid not implemented\n");
+    return 0;
+}
+
+u64 sys_getgid() {
+	warn("sys_getgid not implemented\n");
+    return 0;
+}
+
+u64 sys_getpgid() {
+	warn("sys_getpgid not implemented\n");
+    return 0;
+}
+
+u64 sys_setpgid(u64 pid, u64 pgid) {
+	warn("sys_setpgid not implemented\n");
+    return 0;
 }

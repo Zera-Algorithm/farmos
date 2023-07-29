@@ -14,8 +14,7 @@ int main() {
 		// time-test
 	    (char *const[]){"/time-test", NULL},
 
-		// libc-bench测试
-	    (char *const[]){"/libc-bench", NULL},
+		
 
 	    // busybox测试
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
@@ -26,7 +25,8 @@ int main() {
 
 		// lua测试：pass
 	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
-
+		// libc-bench测试
+	    (char *const[]){"/libc-bench", NULL},
 
 	    // 命令行测试
 	    // (char *const[]) {"/busybox", "ash", NULL},

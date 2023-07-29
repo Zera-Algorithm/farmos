@@ -112,6 +112,7 @@ static void proc_recycle(proc_t *p) {
 	// 放在td_recycle前面是因为要避免因为睡眠唤醒，把进程的td_status改为RUNNABLE，而不是维持ZOMBIE
 	recycle_thread_fs(&p->p_fs_struct);
 	proc_recycleupt(p);
+	sigaction_free(p);
 	p->p_status = ZOMBIE;
 }
 
