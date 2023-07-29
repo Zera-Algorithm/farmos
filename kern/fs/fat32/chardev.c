@@ -117,4 +117,5 @@ void create_chardev_file(char *path, char *str, chardev_read_fn_t read, chardev_
 		return;
 	}
 	file->type = DIRENT_CHARDEV;
+	file_close(file);
 }

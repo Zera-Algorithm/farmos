@@ -102,6 +102,9 @@ static syscall_function_t sys_table[] = {
     [SYS_sched_setscheduler] = {sys_sched_setscheduler, "sched_setscheduler"},
     [SYS_get_robust_list] = {sys_get_robust_list, "get_robust_list"},
 	[SYS_reboot] = {sys_reboot, "reboot"},
+	[SYS_getrusage] = {sys_getrusage, "getrusage"},
+	[SYS_sysinfo] = {sys_sysinfo, "sysinfo"},
+	[SYS_syslog] = {sys_syslog, "syslog"},
 };
 
 /**

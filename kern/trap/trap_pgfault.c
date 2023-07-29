@@ -37,7 +37,6 @@ err_t page_fault_handler(pte_t *pd, u64 violate, u64 badva) {
 		return passive_handler(pd, pte, badva);
 	} else {
 		// 不合法的写入请求 todo: signal
-		asm volatile("ebreak");
 		return -1; // todo errcode
 	}
 }

@@ -1,7 +1,7 @@
 INCLUDES := -I../../include
 
 # modules := $(shell ls -d */)
-modules := fat32 fd proc
+modules := fat32 fd proc static_files
 
 .PHONY: build clean $(modules)
 

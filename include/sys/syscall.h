@@ -36,6 +36,9 @@ pid_t sys_getsid(pid_t pid);
 pid_t sys_setsid();
 void sys_reboot();
 
+struct rusage;
+struct sysinfo;
+
 // 系统信息（sys_info）
 void sys_uname(u64 upuname);
 void sys_gettimeofday(u64 uptv, u64 uptz);
@@ -44,6 +47,9 @@ u64 sys_geteuid();
 u64 sys_getegid();
 u64 sys_getgid();
 u64 sys_setpgid(u64 pid, u64 pgid);
+int sys_getrusage(int who, struct rusage *p_usage);
+int sys_syslog(int priority, const char *format, ...);
+int sys_sysinfo(struct sysinfo *info);
 
 struct iovec;
 struct statfs;

@@ -54,7 +54,7 @@ void *memmove(void *dst, const void *src, uint n) {
 // memcpy exists to placate GCC.  Use memmove.
 void *memcpy(void *dst, const void *src, uint n) {
 	if ((u64)dst < 0x80000000ul) {
-		asm volatile("ebreak");
+		// asm volatile("ebreak"); //
 	}
 	return memmove(dst, src, n);
 }

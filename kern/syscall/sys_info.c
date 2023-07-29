@@ -6,6 +6,9 @@
 #include <sys/utsname.h>
 #include <lib/log.h>
 #include <sys/syscall.h>
+#include <sys/sys_info.h>
+#include <lib/string.h>
+#include <dev/dtb.h>
 
 void sys_uname(u64 upuname) {
 	static utsname_t utsname = {
@@ -71,4 +74,44 @@ u64 sys_getpgid() {
 u64 sys_setpgid(u64 pid, u64 pgid) {
 	warn("sys_setpgid not implemented\n");
     return 0;
+}
+
+int sys_getrusage(int who, struct rusage *p_usage) {
+	struct rusage usage;
+	memset(&usage, 0, sizeof(usage));
+	usage.ru_utime.tv_sec = getUSecs() / 1000000ul;
+	usage.ru_utime.tv_usec = getUSecs() % 1000000ul;
+	usage.ru_stime.tv_sec = 0;
+	usage.ru_stime.tv_usec = 0;
+	copyOut((u64)p_usage, &usage, sizeof(usage));
+	return 0;
+}
+
+/**
+ * @brief 向内核输出日志
+ */
+int sys_syslog(int priority, const char *format, ...) {
+	warn("syslog not implemented\n");
+	return 0;
+}
+
+int sys_sysinfo(struct sysinfo *info) {
+	extern struct MemInfo memInfo;
+	extern u64 pageleft;
+
+	struct sysinfo si;
+	memset(&si, 0, sizeof(si));
+	si.uptime = getUSecs() / 1000000ul;
+	si.totalram = memInfo.size;
+	si.freeram = pageleft * PAGE_SIZE;
+	si.sharedram = 0;
+	si.bufferram = 0;
+	si.totalswap = 0;
+	si.freeswap = 0;
+	si.procs = 5;
+	si.totalhigh = 0;
+	si.freehigh = 0;
+	si.mem_unit = 1;
+	copyOut((u64)info, &si, sizeof(si));
+	return 0;
 }

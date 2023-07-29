@@ -98,7 +98,7 @@ static void extend_heap(malloc_config_t *config) {
 
 	// 2. 如果超过了malloc的最大分配页数，就panic
 	if (heap_top + PAGE_SIZE > KERNEL_MALLOC + MAX_MALLOC_NPAGE * PAGE_SIZE) {
-		asm volatile("ebreak");
+		// asm volatile("ebreak"); //
 		panic("kmalloc: out of memory\n");
 	}
 
