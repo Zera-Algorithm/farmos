@@ -30,6 +30,8 @@ int getDirentByFd(int fd, Dirent **dirent, int *kernFd);
 
 // TODO: 实现初始化
 void fd_init() {
+	extern mutex_t mtx_file_load;
+	mtx_init(&mtx_file_load, "kload", 0, MTX_SLEEP);
 	mtx_init(&mtx_fd, "sys_fdtable", 1, MTX_SPIN | MTX_RECURSE);
 }
 

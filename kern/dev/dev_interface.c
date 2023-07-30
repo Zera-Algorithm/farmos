@@ -2,14 +2,21 @@
 #include <dev/virtio.h>
 #include <dev/sbi.h>
 #include <dev/uart.h>
+#include <lib/printf.h>
 
 void dev_test() {
     // virtio_disk_test();
 }
 
-void dev_init() {
-    virtio_disk_init();
+void cons_init() {
+    printInit();
     uart_init();
+}
+
+void dev_init() {
+    #ifdef QEMU
+    virtio_disk_init();
+    #endif
     dev_test();
 }
 

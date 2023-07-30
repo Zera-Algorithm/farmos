@@ -1,5 +1,6 @@
 #ifndef _MEMLAYOUT_H
 #define _MEMLAYOUT_H
+#include <param.h>
 /**
  * FarmOS 的虚拟内存布局：
  *
@@ -97,7 +98,6 @@
 // PHYSTOP -- end RAM used by the kernel
 
 // qemu puts UART registers here in physical memory.
-// #define QEMU
 #ifdef QEMU
 #define UART0 0x10000000ul
 #else // SiFive
