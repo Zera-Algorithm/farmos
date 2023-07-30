@@ -1,6 +1,5 @@
 #include <dev/plic.h>
 #include <dev/timer.h>
-#include <dev/virtio.h>
 #include <fs/dirent.h>
 #include <fs/vfs.h>
 #include <lib/log.h>
@@ -14,6 +13,7 @@
 #include <riscv.h>
 #include <sys/syscall.h>
 #include <trap/trap.h>
+#include <fs/buf.h>
 
 extern void kernelvec();
 
@@ -182,7 +182,6 @@ void utrap_firstsched() {
 		mtx_unlock(&first_thread_lock);
 
 		// 初始化文件系统（需要持有自旋锁）
-		virtio_disk_init();
 		bufInit();
 		dirent_init();
 		init_root_fs();

@@ -85,7 +85,7 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 				    i, va);
 				Page *newPage = pmAlloc();
 				// 将新页表的物理地址写入当前页表项
-				ptModify(curPte, pageToPte(newPage) | PTE_V);
+				ptModify(curPte, pageToPte(newPage) | PTE_V | PTE_MACHINE);
 				flush_tlb_if_need(pageDir, va);
 				// 将新页表的虚拟地址赋值给 curPageTable
 				curPageTable = (Pte *)pageToPa(newPage);
@@ -101,7 +101,7 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 // 初始化函数
 static void vmInitMap(u64 pa, u64 va, u64 len, u64 perm) {
 	for (u64 off = 0; off < len; off += PAGE_SIZE) {
-		*(u64 *)ptWalk(kernPd, va + off, true) = (paToPte(pa + off) | perm | PTE_V);
+		*(u64 *)ptWalk(kernPd, va + off, true) = (paToPte(pa + off) | perm | PTE_V | PTE_MACHINE);
 	}
 }
 
@@ -221,7 +221,7 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 	if (*pte & PTE_V) {
 		// 原页表项有效时，修改映射（此时不应该是添加被动映射）
 		assert(!(*pte & PTE_PASSIVE));
-		ptModify(pte, paToPte(pa) | perm | PTE_V);
+		ptModify(pte, paToPte(pa) | perm | PTE_V | PTE_MACHINE);
 		
 	} else if (perm & PTE_PASSIVE) {
 		// 原页表项无效，添加被动映射（传入的物理地址必须为零）
@@ -232,7 +232,7 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 	} else {
 		// 原页表项无效，添加有效映射，外部已申请了页面
 		assert(pa >= MEMBASE);
-		ptModify(pte, paToPte(pa) | perm | PTE_V);
+		ptModify(pte, paToPte(pa) | perm | PTE_V | PTE_MACHINE);
 	}
 
 	// 如果操作的是当前页表，刷新 TLB

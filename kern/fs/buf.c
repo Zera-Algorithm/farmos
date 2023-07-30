@@ -1,4 +1,4 @@
-#include <dev/virtio.h>
+#include <dev/interface.h>
 #include <fs/buf.h>
 #include <lib/error.h>
 #include <lib/log.h>
@@ -48,7 +48,7 @@ static Buffer *bufAlloc(u32 dev, u64 blockno) {
 			if (buf->valid && buf->dirty) {
 				// 如果该缓冲区已经被使用，写回磁盘
 				// 即换出时写回磁盘
-				virtio_disk_rw(buf, 1);
+				disk_rw(buf, 1);
 			}
 
 			// 如果该缓冲区没有被引用，直接使用
@@ -69,7 +69,7 @@ static Buffer *bufAlloc(u32 dev, u64 blockno) {
 Buffer *bufRead(u32 dev, u64 blockno) {
 	Buffer *buf = bufAlloc(dev, blockno);
 	if (!buf->valid) {
-		virtio_disk_rw(buf, 0);
+		disk_rw(buf, 0);
 		buf->valid = true;
 	}
 	return buf;
@@ -121,7 +121,7 @@ void bufSync() {
 		for (int j = 0; j < BGROUP_BUF_NUM; j++) {
 			Buffer *buf = &b->buf[j];
 			if (buf->valid && buf->dirty) {
-				virtio_disk_rw(buf, 1);
+				disk_rw(buf, 1);
 				buf->dirty = false;
 			}
 		}

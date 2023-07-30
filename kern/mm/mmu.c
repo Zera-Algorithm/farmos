@@ -23,7 +23,7 @@ void vmEnable() {
 	// sfence_vma();
 	extern Pte *kernPd;
 	w_satp(MAKE_SATP(kernPd));
-
+	
 	// 刷新TLB（单核）
 	sfence_vma();
 }

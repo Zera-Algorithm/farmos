@@ -1,4 +1,4 @@
-#include <dev/sbi.h>
+#include <dev/interface.h>
 #include <lib/printf.h>
 #include <lib/terminal.h>
 #include <lib/vprint.h>
@@ -25,7 +25,7 @@ static void outputToStr(void *data, const char *buf, size_t len) {
 
 static void output(void *data, const char *buf, size_t len) {
 	for (int i = 0; i < len; i++) {
-		SBI_PUTCHAR(buf[i]);
+		cons_putc(buf[i]);
 	}
 }
 
