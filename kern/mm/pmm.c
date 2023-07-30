@@ -16,7 +16,7 @@ struct Page {
 	LIST_ENTRY(Page) link;
 };
 
-static u64 pageleft = 0;
+u64 pageleft = 0;
 u64 npage = 0;
 Page *pages = NULL;
 PageList pageFreeList;
@@ -93,7 +93,10 @@ inline u64 __attribute__((warn_unused_result)) pmTop() {
 
 Page *__attribute__((warn_unused_result)) pmAlloc() {
 	Page *pp = LIST_FIRST(&pageFreeList);
-	panic_on(pp == NULL);
+	if (pp == NULL) {
+		pp = pages;
+		panic("pmAlloc: no free page");
+	}
 	// 从空闲页链表中移除该页
 	LIST_REMOVE(pp, link);
 	pageleft--;

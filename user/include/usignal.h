@@ -64,10 +64,9 @@ typedef struct siginfo {
 
 typedef struct sigaction {
 	void (*sa_handler)(int);
-	void (*sa_sigaction)(int, siginfo_t *, void *);
-	sigset_t sa_mask;
-	int sa_flags;
+	unsigned long sa_flags;
 	void (*sa_restorer)(void);
+	sigset_t sa_mask; // 可变长
 } sigaction_t;
 
 // 信号相关宏

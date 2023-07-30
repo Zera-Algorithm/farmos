@@ -14,6 +14,7 @@ typedef unsigned int uint32;
 typedef long long int64;
 typedef unsigned long long uint64;
 typedef unsigned int uint;
+typedef unsigned int socklen_t;
 
 #define ULONG_MAX (0xffffffffffffffffULL)
 #define LONG_MAX (0x7fffffffffffffffLL)
@@ -81,7 +82,7 @@ typedef __builtin_va_list va_list;
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
 #define O_RDWR 0x002 // 可读可写
-//#define O_CREATE 0x200
+// #define O_CREATE 0x200
 #define O_CREATE 0x40
 #define O_DIRECTORY 0x0200000
 
@@ -139,6 +140,57 @@ struct linux_dirent64 {
 struct iovec {
 	void *iov_base;
 	size_t iov_len;
+};
+
+typedef struct SocketAddr {
+	uint16 family;
+	uint16 port;
+	uint32 addr;
+	char zero[8];
+} SocketAddr;
+
+enum __socket_type
+{
+  SOCK_STREAM = 1,		/* Sequenced, reliable, connection-based
+				   byte streams.  */
+#define SOCK_STREAM SOCK_STREAM
+  SOCK_DGRAM = 2,		/* Connectionless, unreliable datagrams
+				   of fixed maximum length.  */
+#define SOCK_DGRAM SOCK_DGRAM
+  SOCK_RAW = 3,			/* Raw protocol interface.  */
+#define SOCK_RAW SOCK_RAW
+  SOCK_RDM = 4,			/* Reliably-delivered messages.  */
+#define SOCK_RDM SOCK_RDM
+  SOCK_SEQPACKET = 5,		/* Sequenced, reliable, connection-based,
+				   datagrams of fixed maximum length.  */
+#define SOCK_SEQPACKET SOCK_SEQPACKET
+  SOCK_DCCP = 6,		/* Datagram Congestion Control Protocol.  */
+#define SOCK_DCCP SOCK_DCCP
+  SOCK_PACKET = 10,		/* Linux specific way of getting packets
+				   at the dev level.  For writing rarp and
+				   other similar things on the user level. */
+#define SOCK_PACKET SOCK_PACKET
+
+  /* Flags to be ORed into the type parameter of socket and socketpair and
+     used for the flags parameter of paccept.  */
+
+  SOCK_CLOEXEC = 02000000,	/* Atomically set close-on-exec flag for the
+				   new descriptor(s).  */
+#define SOCK_CLOEXEC SOCK_CLOEXEC
+  SOCK_NONBLOCK = 00004000	/* Atomically mark descriptor(s) as
+				   non-blocking.  */
+#define SOCK_NONBLOCK SOCK_NONBLOCK
+};
+
+
+typedef struct timeval {
+	unsigned long tv_sec;	     /* seconds */
+	unsigned long tv_usec; /* microseconds */
+} timeval_t;
+
+struct itimerval {
+	struct timeval it_interval; /* Interval for periodic timer */
+	struct timeval it_value;    /* Time until next expiration */
 };
 
 // for mmap

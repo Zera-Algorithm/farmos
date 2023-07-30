@@ -12,6 +12,10 @@ void syscall_entry(trapframe_t *tf);
 // 内存管理（sys_mem）
 err_t sys_map(u64 start, u64 len, u64 perm);
 err_t sys_brk(u64 addr);
+int sys_madvise(void *addr, size_t length, int advice);
+int sys_membarrier(int cmd, int flags);
+
+struct rlimit;
 
 // 进程管理（sys_proc）
 void sys_exit(err_t code) __attribute__((noreturn));
@@ -26,22 +30,40 @@ u64 sys_getppid();
 clock_t sys_times(u64 utms);
 u64 sys_getuid();
 u64 sys_set_tid_address(u64 pTid);
+int sys_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit,
+		  struct rlimit *old_limit);
+pid_t sys_getsid(pid_t pid);
+pid_t sys_setsid();
+void sys_reboot();
+
+struct rusage;
+struct sysinfo;
 
 // 系统信息（sys_info）
 void sys_uname(u64 upuname);
 void sys_gettimeofday(u64 uptv, u64 uptz);
 u64 sys_clock_gettime(u64 clockid, u64 tp);
+u64 sys_geteuid();
+u64 sys_getegid();
+u64 sys_getgid();
+u64 sys_setpgid(u64 pid, u64 pgid);
+int sys_getrusage(int who, struct rusage *p_usage);
+int sys_syslog(int priority, const char *format, ...);
+int sys_sysinfo(struct sysinfo *info);
 
 struct iovec;
+struct statfs;
 
 // 文件系统（sys_fs）
 int sys_write(int fd, u64 buf, size_t count);
 int sys_read(int fd, u64 buf, size_t count);
+size_t sys_pread64(int fd, u64 buf, size_t count, off_t offset);
+size_t sys_pwrite64(int fd, u64 buf, size_t count, off_t offset);
 int sys_openat(int fd, u64 filename, int flags, mode_t mode);
 int sys_close(int fd);
 int sys_dup(int fd);
 int sys_dup3(int fd_old, int fd_new);
-int sys_getcwd(u64 buf, int size);
+u64 sys_getcwd(u64 buf, int size);
 int sys_pipe2(u64 pfd);
 int sys_chdir(u64 path);
 int sys_mkdirat(int dirFd, u64 path, int mode);
@@ -61,12 +83,19 @@ int sys_fcntl(int fd, int cmd, int arg);
 int sys_utimensat(int dirfd, u64 pathname, u64 pTime, int flags);
 off_t sys_lseek(int fd, off_t offset, int whence);
 int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned int flags);
+int sys_statfs(u64 ppath, struct statfs *buf);
+int sys_ftruncate(int fd, off_t length);
+int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
 
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);
 int sys_sigreturn();
 int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize);
 int sys_tkill(int tid, int sig);
+int sys_kill(int pid, int sig);
+int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout);
+int sys_setitimer(int which, u64 new_value, u64 old_value);
+int sys_getitimer(int which, u64 curr_value);
 
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);
@@ -74,4 +103,28 @@ err_t sys_msync(u64 addr, size_t length, int flags);
 err_t sys_unmap(u64 start, u64 len);
 err_t sys_mprotect(u64 addr, size_t len, int prot);
 
+typedef struct SocketAddr SocketAddr;
+
+// socket
+int sys_socket(int domain, int type, int protocol);
+int sys_bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
+int sys_listen(int sockfd, int backlog);
+int sys_connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
+int sys_accept(int sockfd, SocketAddr *addr);
+int sys_recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_addr, socklen_t addrlen);
+int sys_sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketAddr * dst_addr, socklen_t addrlen);
+int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
+int sys_getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
+int sys_setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
+int sys_getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
+// 调度（sys_sched）
+u64 sys_sched_getaffinity();
+u64 sys_sched_setaffinity();
+u64 sys_sched_getscheduler();
+u64 sys_sched_setscheduler();
+u64 sys_sched_getparam();
+
+// Futex(sys_futex)
+int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);
+u64 sys_get_robust_list();
 #endif // !_SYSCALL_H

@@ -3,6 +3,7 @@
 #include <proc/proc.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <signal/signal.h>
 
 mutex_t pid_lock;
 
@@ -10,7 +11,7 @@ static u64 pid_alloc(proc_t *p) {
 	static u64 cnt = 0; // todo tid lock
 	mtx_lock(&pid_lock);
 	cnt += 1;
-	u64 new_pid = (p - procs) | ((cnt % 0x1000) < 16);
+	u64 new_pid = PID_GENERATE(cnt, p - procs);
 	mtx_unlock(&pid_lock);
 	return new_pid;
 }
@@ -47,10 +48,10 @@ proc_t *proc_alloc() { // static
 static void proc_uvminit(proc_t *p, thread_t *inittd, const char *name, const void *bin,
 			 size_t size) {
 	// 初始化用户地址空间
-	proc_initustack(p, inittd, TD_USTACK);
+	proc_initustack(p, inittd);
 
 	// 加载代码段
-	proc_initucode(p, inittd, bin, size);
+	proc_initucode_by_binary(p, inittd, bin, size, NULL);
 
 	// 初始化用户线程信息
 	assert(strlen(name) <= MAXPATH);
@@ -80,8 +81,9 @@ void proc_create(const char *name, const void *bin, size_t size) {
 	// 设置初始化线程
 	inittd->td_status = RUNNABLE;
 
-	// 初始化参数
-	proc_setustack(inittd, p->p_pt, 0, NULL, 0);
+	// Note：ProcCreate不需要将参数压栈
+	// // 初始化参数
+	// proc_setustack(inittd, p->p_pt, 0, NULL, 0, NULL);
 
 	// 将初始线程加入调度队列
 	tdq_critical_enter(&thread_runq);
@@ -110,6 +112,7 @@ static void proc_recycle(proc_t *p) {
 	// 放在td_recycle前面是因为要避免因为睡眠唤醒，把进程的td_status改为RUNNABLE，而不是维持ZOMBIE
 	recycle_thread_fs(&p->p_fs_struct);
 	proc_recycleupt(p);
+	sigaction_free(p);
 	p->p_status = ZOMBIE;
 }
 
@@ -135,7 +138,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 			proc_free(child);
 		} else {
 			warn("haven't implement init, child %d is still alive\n", child->p_pid);
-			child->p_parent = 0;
+			child->p_parent = &procs[PID_TO_INDEX(PID_INIT)];
 			// child->td_parent = TID_INIT;
 			// todo: insert to init's childlist and wake up init
 		}
@@ -143,7 +146,15 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 	}
 
 	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
-	wakeup(p->p_parent);
+	if (p->p_pid != PID_INIT) {
+		if (p->p_parent == NULL) {
+			log(PROC_GLOBAL, "proc %08x has no parent\n", p->p_pid);
+		} else {
+			log(PROC_GLOBAL, "proc %08x destroying, send SIGCHLD to parent %08x\n", p->p_pid, p->p_parent->p_pid);
+			sig_send_proc(p->p_parent, SIGCHLD);
+			wakeup(p->p_parent);
+		}
+	}
 
 	proc_lock(p);
 	mtx_unlock(&wait_lock);

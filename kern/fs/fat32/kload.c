@@ -3,9 +3,11 @@
 #include <lib/elf.h>
 #include <lib/error.h>
 #include <lib/log.h>
+#include <lib/string.h>
 #include <lib/printf.h>
 #include <lock/mutex.h>
 #include <mm/vmm.h>
+#include <proc/sched.h>
 #include <proc/interface.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
@@ -15,20 +17,54 @@
  * @brief 此文件用于将文件加载到内核
  */
 
+#define MAX_KLOAD_FILE 10
+#define FILEID_TO_KVA(fileid) (KERNEL_TEMP + (fileid) * 0x10000000ul)
+
+static struct {
+	Dirent *file;
+	u64 kva;
+	int valid;
+} file_load_info[MAX_KLOAD_FILE];
+
 extern Pte *kernPd; // 内核页表
 mutex_t mtx_file_load;
-static Dirent *file = NULL;
+
+// 如果获取不到，就等待直到能够获取到
+static int alloc_fileid() {
+	while (1) {
+		mtx_lock_sleep(&mtx_file_load);
+		for (int i = 0; i < MAX_KLOAD_FILE; i++) {
+			if (file_load_info[i].valid == 0) {
+				file_load_info[i].valid = 1;
+				mtx_unlock_sleep(&mtx_file_load);
+				return i;
+			}
+		}
+		mtx_unlock_sleep(&mtx_file_load);
+
+		// 如果没有空闲的fileid，就等待
+		yield();
+		warn("no free fileid, Waiting...\n");
+	}
+}
+
+static void free_fileid(int fileid) {
+	mtx_lock_sleep(&mtx_file_load);
+	assert(file_load_info[fileid].valid == 1);
+	file_load_info[fileid].valid = 0;
+	mtx_unlock_sleep(&mtx_file_load);
+}
+
 
 static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
-	mtx_lock_sleep(&mtx_file_load);
+	int fileid = alloc_fileid();
 
-	file = dirent;
-
+	Dirent *file = file_load_info[fileid].file = dirent;
 	int _size;
 	void *_binary;
 
 	*size = _size = dirent->file_size;
-	*bin = _binary = (void *)KERNEL_TEMP;
+	*bin = _binary = (void *)FILEID_TO_KVA(fileid);
 
 	// 1. 分配足够的页
 	int npage = (_size) % PAGE_SIZE == 0 ? (_size / PAGE_SIZE) : (_size / PAGE_SIZE + 1);
@@ -41,35 +77,46 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 
 	// 2. 读取文件
 	file_read(file, 0, (u64)_binary, 0, _size);
-	return 0;
+
+	// if (strncmp(file->name, "libc.so", 8) == 0) {
+	// 	if (((char*)_binary)[0] == 0x7f && ((char*)_binary)[1] == 'E' && ((char*)_binary)[2] == 'L' && ((char*)_binary)[3] == 'F') {
+	// 		log(DEBUG, "map dynamic libc.so\n");
+	// 	} else {
+	// 		panic("file's first clus = %d", file->first_clus);
+	// 	}
+	// }
+
+	return fileid;
 }
 
 fileid_t file_load(const char *path, void **bin, size_t *size) {
+	Dirent *file;
 	// load时加锁，unload时解锁
-	if (path[1] == 'w') {
-		*size = 666;
-	}
-	file = getFile(NULL, (char *)path);
-	assert(file != NULL);
-	log(DEBUG, "file: %s\n", file->name);
+	panic_on(getFile(NULL, (char *)path, &file));
+	log(DEBUG, "kload file: %s\n", file->name);
 	return file_load_by_dirent(file, bin, size);
 }
 
 void file_unload(fileid_t fileid) {
+	assert(fileid >= 0 && fileid < MAX_KLOAD_FILE);
+	Dirent *file = file_load_info[fileid].file;
+
 	assert(file != NULL);
 	int _size = file->file_size;
 	int npage = (_size) % PAGE_SIZE == 0 ? (_size / PAGE_SIZE) : (_size / PAGE_SIZE + 1);
+	u64 start_va = FILEID_TO_KVA(fileid);
 
 	// 1. 释放文件
 	file_close(file);
 
 	// 2. 解除页面映射
 	for (int i = 0; i < npage; i++) {
-		u64 va = KERNEL_TEMP + i * PAGE_SIZE;
+		u64 va = start_va + i * PAGE_SIZE;
 		panic_on(ptUnmap(kernPd, va));
 	}
 
-	mtx_unlock_sleep(&mtx_file_load);
+	// 3. 释放fileid
+	free_fileid(fileid);
 }
 
 /**

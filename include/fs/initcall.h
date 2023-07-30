@@ -15,6 +15,6 @@ typedef int (*initcall_t)(void);
  */
 #define fs_initcall(fn)                                                                            \
 	static initcall_t __initcall_##fn __attribute__((used))                                    \
-	    __attribute__((__section__(".initcall_fs"))) = fn
+	__attribute__((__section__(".initcall_fs"))) = fn
 
 #endif

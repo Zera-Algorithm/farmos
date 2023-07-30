@@ -1,8 +1,10 @@
 #include <lib/log.h>
+#include <lib/transfer.h>
 #include <mm/memlayout.h>
 #include <proc/cpu.h>
 #include <proc/sched.h>
 #include <proc/thread.h>
+#include <signal/machine.h>
 #include <signal/signal.h>
 #include <sys/syscall.h>
 
@@ -13,13 +15,12 @@ extern char trampoline[];
 /**
  * @brief 获取当前最高优先级能处理的信号
  */
-static sigevent_t *sig_getse(thread_t *td) {
+sigevent_t *sig_getse(thread_t *td) {
 	assert(mtx_hold(&td->td_lock));
 	sigevent_t *se = NULL;
-	sigset_t sigset = sigset_or(&td->td_sigmask, &td->td_cursigmask);
 	TAILQ_FOREACH (se, &td->td_sigqueue, se_link) {
 		// 若信号正在处理或者信号没被阻塞，返回信号
-		if ((se->se_status & SE_PROCESSING) || (!sigset_isset(&sigset, se->se_signo))) {
+		if ((se->se_status & SE_PROCESSING) || sig_td_canhandle(td, se->se_signo)) {
 			return se;
 		}
 	}
@@ -31,6 +32,7 @@ static void sig_beforestart(thread_t *td, sigevent_t *se, sigaction_t *sa) {
 	assert(mtx_hold(&td->td_lock));
 	// 设为处理状态
 	se->se_status = SE_PROCESSING;
+	td->td_sig = se;
 	// 保存用户上下文及信号屏蔽字
 	se->se_restoretf = td->td_trapframe;
 	se->se_restoremask = td->td_cursigmask;
@@ -39,11 +41,19 @@ static void sig_beforestart(thread_t *td, sigevent_t *se, sigaction_t *sa) {
 	// 保护用户栈（压栈）
 	td->td_trapframe.sp -= 0x1000;
 	// 设置返回地址为 sigreturn
-	td->td_trapframe.ra = user_sig_return_uaddr;
+	td->td_trapframe.ra = sa->sa_restorer ? (u64)sa->sa_restorer : user_sig_return_uaddr;
 	// 使用户程序从 handler 启动
 	td->td_trapframe.epc = (u64)sa->sa_handler;
 	// 向a0填入信号参数
 	td->td_trapframe.a0 = se->se_signo;
+	// 若指定了 SA_SIGINFO，则补充参数
+	if (sa->sa_flags & SA_SIGINFO) {
+		siginfo_set(td, se);
+		td->td_trapframe.sp -= sizeof(u64);
+		td->td_trapframe.sp -= sizeof(u64);
+	}
+	// 留出参数空间
+	td->td_trapframe.sp -= sizeof(u64);
 }
 
 static void sig_afterret(thread_t *td, sigevent_t *se, sigaction_t *sa) {
@@ -79,6 +89,13 @@ void sig_check() {
 		// 有新的信号需要处理，先获取信号处理函数
 		sigaction_t *sa = sigaction_get(td->td_proc, se->se_signo);
 
+		// struct pthread self;
+		// if (se->se_signo == 33) {
+		// 	warn("sig_check: %s handling signal %d\n", td->td_name, se->se_signo);
+		// 	copyIn(td->td_trapframe.tp - sizeof(struct pthread), &self,
+		// 	       sizeof(struct pthread));
+		// }
+
 		// 判断信号处理函数是否存在
 		if (sa->sa_handler == NULL) {
 			// 未注册的信号处理函数
@@ -88,10 +105,10 @@ void sig_check() {
 				warn("%s handling SIGKILL signal\n", td->td_name);
 				td->td_killed = 1;
 			}
+			warn("%s's signal %d ignored\n", td->td_name, se->se_signo);
 			// 无默认处理函数，直接忽略
 			sigeventq_remove(td, se);
 			sigevent_free(se);
-			warn("%s's signal %d ignored\n", td->td_name, se->se_signo);
 		} else {
 			// 已注册的信号处理函数
 			// 第一步：保存当前上下文
@@ -100,6 +117,7 @@ void sig_check() {
 			// 跳出循环，返回用户态处理信号
 			break;
 		}
+		// warn("%lx\n", self.tsd);
 	}
 	mtx_unlock(&td->td_lock);
 }

@@ -1,5 +1,6 @@
 #include <fs/fd.h>
 #include <fs/file.h>
+#include <fs/file_time.h>
 #include <fs/kload.h>
 #include <fs/pipe.h>
 #include <fs/thread_fs.h>
@@ -17,6 +18,8 @@
 #include <sys/syscall.h>
 #include <sys/syscall_fs.h>
 #include <sys/time.h>
+#include <dev/timer.h>
+#include <proc/tsleep.h>
 
 int sys_write(int fd, u64 buf, size_t count) {
 	return write(fd, buf, count);
@@ -42,7 +45,7 @@ int sys_dup3(int fd_old, int fd_new) {
 	return dup3(fd_old, fd_new);
 }
 
-int sys_getcwd(u64 buf, int size) {
+u64 sys_getcwd(u64 buf, int size) {
 	void *kptr = cur_proc_fs_struct()->cwd;
 	copyOut(buf, kptr, MIN(256, size));
 	return buf;
@@ -60,22 +63,40 @@ int sys_pipe2(u64 pfd) {
 }
 
 int sys_chdir(u64 path) {
-	char kbuf[MAX_NAME_LEN];
+	char kbuf[MAX_NAME_LEN], new_cwd[MAX_NAME_LEN];
 	copyInStr(path, kbuf, MAX_NAME_LEN);
 	thread_fs_t *thread_fs = cur_proc_fs_struct();
 
 	if (kbuf[0] == '/') {
 		// 绝对路径
-		strncpy(thread_fs->cwd, kbuf, MAX_NAME_LEN);
-		assert(strlen(thread_fs->cwd) + 3 < MAX_NAME_LEN);
-		strcat(thread_fs->cwd, "/"); // 保证cwd是一个目录
+		strncpy(new_cwd, kbuf, MAX_NAME_LEN);
+		assert(strlen(new_cwd) + 3 < MAX_NAME_LEN);
+		strcat(new_cwd, "/"); // 保证cwd是一个目录
 	} else {
 		// 相对路径
 		// 保证操作之前cwd以"/"结尾
-		assert(strlen(thread_fs->cwd) + strlen(kbuf) + 3 < MAX_NAME_LEN);
-		strcat(thread_fs->cwd, kbuf);
-		strcat(thread_fs->cwd, "/");
+		strncpy(new_cwd, thread_fs->cwd, MAX_NAME_LEN);
+		assert(strlen(new_cwd) + strlen(kbuf) + 3 < MAX_NAME_LEN);
+		strcat(new_cwd, kbuf);
+		strcat(new_cwd, "/");
 	}
+
+	// 检查new_cwd是否指向有效的目录
+	Dirent *cwd_dirent;
+	int ret = getFile(NULL, new_cwd, &cwd_dirent);
+	if (ret < 0) {
+		return ret;
+	} else if (!IS_DIRECTORY(&cwd_dirent->raw_dirent)) {
+		file_close(cwd_dirent);
+		return -ENOTDIR;
+	}
+
+	if (thread_fs->cwd_dirent != NULL) {
+		file_close(thread_fs->cwd_dirent);
+	}
+
+	strncpy(thread_fs->cwd, new_cwd, MAX_NAME_LEN);
+	thread_fs->cwd_dirent = cwd_dirent;
 	return 0;
 }
 
@@ -207,6 +228,159 @@ int sys_ppoll(u64 p_fds, int nfds, u64 tmo_p, u64 sigmask) {
 }
 
 /**
+ * @brief 检查fd是否可以读取。可以返回1，不可以返回0，失败返回负数
+ */
+static inline int check_pselect_r(int fd) {
+	Fd *kfd = get_kfd_by_fd(fd);
+	int ret;
+	if (kfd == NULL) {
+		return -EBADF;
+	}
+	mtx_lock_sleep(&kfd->lock);
+
+	// 目前只处理socket和其他
+	if (kfd->type == dev_socket) {
+		ret = socket_read_check(kfd);
+	} else {
+		ret = 1;
+	}
+	mtx_unlock_sleep(&kfd->lock);
+	return ret;
+}
+
+/**
+ * @brief 检查fd是否可以写入。可以返回1，不可以返回0，失败返回负数
+ */
+static inline int check_pselect_w(int fd) {
+	Fd *kfd = get_kfd_by_fd(fd);
+	int ret;
+	if (kfd == NULL) {
+		warn("pselect6: fd %d not found\n", fd);
+		return -EBADF;
+	}
+	mtx_lock_sleep(&kfd->lock);
+
+	// 目前只处理socket和其他
+	if (kfd->type == dev_socket) {
+		ret = socket_write_check(kfd);
+	} else {
+		ret = 1;
+	}
+	mtx_unlock_sleep(&kfd->lock);
+	return ret;
+}
+
+/**
+ * 原型：int pselect6(int nfds, fd_set *readfds, fd_set *writefds,
+                   fd_set *exceptfds, const struct timespec *timeout,
+                   const sigset_t *sigmask) {
+ */
+int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout,
+				u64 sigmask) {
+	int fd, r;
+	int func_ret = 0;
+	fd_set readfds, writefds, exceptfds;
+	fd_set readfds_cur, writefds_cur, exceptfds_cur;
+	memset(&readfds, 0, sizeof(readfds));
+	memset(&writefds, 0, sizeof(writefds));
+	memset(&exceptfds, 0, sizeof(exceptfds));
+
+	struct timespec timeout;
+	memset(&timeout, 0, sizeof(timeout));
+	if (p_readfds) copyIn(p_readfds, &readfds, sizeof(readfds));
+	if (p_writefds) copyIn(p_writefds, &writefds, sizeof(writefds));
+	if (p_exceptfds) copyIn(p_exceptfds, &exceptfds, sizeof(exceptfds));
+	if (p_timeout) copyIn(p_timeout, &timeout, sizeof(timeout));
+
+	u64 start = getUSecs();
+	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
+
+	// debug
+	log(FS_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
+	log(FS_GLOBAL, "readfds: \n");
+	FD_SET_FOREACH(fd, &readfds) {
+		log(FS_GLOBAL, "%d\n", fd);
+	}
+	log(FS_GLOBAL, "\n");
+
+	log(FS_GLOBAL, "writefds: \n");
+	FD_SET_FOREACH(fd, &writefds) {
+		log(FS_GLOBAL, "%d\n", fd);
+	}
+	log(FS_GLOBAL, "\n");
+	// debug end
+
+	while (1) {
+		// 创建一套临时的fds数组，用于记录轮询情况
+		readfds_cur = readfds;
+		writefds_cur = writefds;
+		exceptfds_cur = exceptfds;
+
+		int tot = 0; // 就绪的fd数目
+		log(FS_GLOBAL, "readfds: \n");
+		FD_SET_FOREACH(fd, &readfds_cur) {
+			log(FS_GLOBAL, "%d\n", fd);
+			r = check_pselect_r(fd);
+			if (r < 0) {
+				return r;
+			} else if (r == 0) {
+				FD_CLR(fd, &readfds_cur);
+			} else {
+				FD_SET(fd, &readfds_cur);
+				log(FS_GLOBAL, "Thread %s: read FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
+			}
+			tot += r;
+		}
+		log(FS_GLOBAL, "\n");
+
+		log(FS_GLOBAL, "writefds: \n");
+		FD_SET_FOREACH(fd, &writefds_cur) {
+			log(FS_GLOBAL, "%d\n", fd);
+			r = check_pselect_w(fd);
+			if (r < 0) {
+				return r;
+			} else if (r == 0) {
+				FD_CLR(fd, &writefds_cur);
+			} else {
+				FD_SET(fd, &writefds_cur);
+				log(FS_GLOBAL, "Thread %s: write FD_SET %d\n", cpu_this()->cpu_running->td_name, fd);
+			}
+			tot += r;
+		}
+		log(FS_GLOBAL, "\n");
+
+		// 暂时省略
+		// log(FS_GLOBAL, "exceptfds: \n");
+		// FD_SET_FOREACH(fd, &exceptfds_cur) {
+		// 	log(FS_GLOBAL, "%d\n", fd);
+		// }
+		// log(FS_GLOBAL, "\n");
+
+		if (tot > 0) {
+			func_ret = tot;
+			break;
+		} else {
+			// 小睡10ms
+			tsleep(&timeout, NULL, "pselect", 10000);
+		}
+
+		// 超时退出
+		u64 now = getUSecs();
+		if (timeout_us == 0 || now - start >= timeout_us) {
+			func_ret = 0;
+			break;
+		}
+	}
+
+	// 将轮询状况返回
+	if (p_readfds) copyOut(p_readfds, &readfds_cur, sizeof(readfds_cur));
+	if (p_writefds) copyOut(p_writefds, &writefds_cur, sizeof(writefds_cur));
+	if (p_exceptfds) copyOut(p_exceptfds, &exceptfds_cur, sizeof(exceptfds_cur));
+	return func_ret;
+}
+
+
+/**
  * @brief 控制文件描述符的属性
  */
 int sys_fcntl(int fd, int cmd, int arg) {
@@ -221,13 +395,17 @@ int sys_fcntl(int fd, int cmd, int arg) {
 	mtx_lock_sleep(&kfd->lock);
 
 	switch (cmd) {
-	// 目前Linux只规定了FD_CLOEXEC用于fcntl的set/get fd
+	// 目前Linux只规定了 FD_CLOEXEC 用于 fcntl 的 set/get fd
+	// FD_CLOEXEC标志对应了fd->flags的__O_CLOEXEC位
 	// TODO: 在exec时实现根据fd的FD_CLOEXEC flag来决定是关闭还是保留
 	case FCNTL_GETFD:
-		ret = kfd->flags & FD_CLOEXEC;
+		ret = (kfd->flags & __O_CLOEXEC) ? FD_CLOEXEC : 0;
 		break;
 	case FCNTL_SETFD:
-		kfd->flags |= (arg & FD_CLOEXEC);
+		if (arg & FD_CLOEXEC)
+			kfd->flags |= __O_CLOEXEC;
+		else
+			kfd->flags &= ~__O_CLOEXEC;
 		break;
 	case FCNTL_GET_FILE_STATUS: // 等同于F_GETFL
 		ret = kfd->flags;
@@ -258,13 +436,29 @@ int sys_fcntl(int fd, int cmd, int arg) {
 int sys_utimensat(int dirfd, u64 pathname, u64 pTime, int flags) {
 	Dirent *dir, *file;
 	char path[MAX_NAME_LEN];
-	unwrap(getDirentByFd(dirfd, &dir, NULL));
-	copyInStr(pathname, path, MAX_NAME_LEN);
+	int ret;
 
-	file = getFile(dir, path);
-	if (file == NULL)
-		return -ENOENT;
-	else {
+	unwrap(getDirentByFd(dirfd, &dir, NULL));
+	if (pathname != 0) {
+		copyInStr(pathname, path, MAX_NAME_LEN);
+		ret = getFile(dir, path, &file);
+	} else {
+		ret = getFile(dir, NULL, &file);
+	}
+
+	if (ret < 0)
+		return ret;
+	else if (pTime) {
+		struct timespec times[2];
+		copyIn(pTime, (void *)times, sizeof(times));
+		file_set_timestamp(file, ACCESS_TIME, &times[0]);
+		file_set_timestamp(file, MODIFY_TIME, &times[1]);
+		file_close(file);
+		return 0;
+	} else {
+		// pTime == 0
+		file_update_timestamp(file, ACCESS_TIME);
+		file_update_timestamp(file, MODIFY_TIME);
 		file_close(file);
 		return 0;
 	}
@@ -279,4 +473,65 @@ int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned
 	copyInStr(newpath, newpathStr, MAX_NAME_LEN);
 
 	return renameat2(olddir, oldpathStr, newdir, newpathStr, flags);
+}
+
+// position read，从特定位置开始读取文件
+size_t sys_pread64(int fd, u64 buf, size_t count, off_t offset) {
+	return pread64(fd, buf, count, offset);
+}
+
+size_t sys_pwrite64(int fd, u64 buf, size_t count, off_t offset) {
+	return pwrite64(fd, buf, count, offset);
+}
+
+#define MSDOS_SUPER_MAGIC 0x4d44 /* MD */
+
+int sys_statfs(u64 ppath, struct statfs *buf) {
+	Dirent *file;
+	char path[MAX_NAME_LEN];
+	copyInStr(ppath, path, MAX_NAME_LEN);
+	struct statfs statfs;
+
+	memset(&statfs, 0, sizeof(statfs));
+	int ret = getFile(NULL, path, &file);
+	if (ret < 0) {
+		return ret;
+	} else {
+		FileSystem *fs = file->file_system;
+
+		assert(fs != NULL);
+		statfs.f_type = MSDOS_SUPER_MAGIC;
+		statfs.f_bsize = fs->superBlock.bytes_per_clus;
+		statfs.f_blocks = fs->superBlock.bpb.tot_sec / fs->superBlock.bpb.sec_per_clus;
+		statfs.f_bfree = statfs.f_blocks / 2;		 // 虚构的空闲块数
+		statfs.f_bavail = statfs.f_blocks / 2;		 // 虚构的空闲块数
+		statfs.f_files = 100000;			 // 虚构的文件数
+		statfs.f_ffree = 10000;				 // 虚构的空闲file node数
+		statfs.f_fsid.val[0] = statfs.f_fsid.val[1] = 0; // fsid，一般不用
+		statfs.f_namelen = MAX_NAME_LEN;
+		statfs.f_frsize = 0; // unknown
+		statfs.f_flags = 0;  // 无需处理
+
+		copyOut((u64)buf, &statfs, sizeof(statfs));
+		file_close(file);
+		return 0;
+	}
+}
+
+// 改变文件的大小
+int sys_ftruncate(int fd, off_t length) {
+	Dirent *file;
+	unwrap(getDirentByFd(fd, &file, NULL));
+
+	extern mutex_t mtx_file;
+	mtx_lock_sleep(&mtx_file);
+
+	if (length <= file->file_size) {
+		fshrink(file, length);
+	} else {
+		fileExtend(file, length);
+	}
+
+	mtx_unlock_sleep(&mtx_file);
+	return 0;
 }

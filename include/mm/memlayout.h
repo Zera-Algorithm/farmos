@@ -7,6 +7,8 @@
  * |     PAGE_SIZE    |
  * |------------------| TRAMPOLINE
  * |     PAGE_SIZE    |
+ * |------------------| SIGNAL_TRAMPOLINE
+ * |     PAGE_SIZE    |
  * |------------------| TRAPFRAME
  * |     PAGE_SIZE    |
  * |------------------| STACKTOP/USTACKTOP
@@ -31,11 +33,15 @@
 #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
 #endif // !MAXVA
 
+#ifndef MINUVA
+#define MINUVA (0x10000ul)
+#endif // !MINUVA
+
 // FarmOS 虚拟内存布局
-#define TRAMPOLINE (MAXVA - PAGE_SIZE)
-#define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
-#define SIGNAL_TRAMPOLINE (TRAPFRAME - PAGE_SIZE)
-#define STACKTOP (SIGNAL_TRAMPOLINE - PAGE_SIZE)
+#define TRAMPOLINE (MAXVA - PAGE_SIZE) 
+#define SIGNAL_TRAMPOLINE (TRAMPOLINE - PAGE_SIZE)
+#define TRAPFRAME (SIGNAL_TRAMPOLINE - PAGE_SIZE)
+#define STACKTOP (TRAPFRAME - PAGE_SIZE)
 #define USTACKTOP STACKTOP
 
 // 内核初始化栈部分（静态数组）
@@ -48,15 +54,26 @@
 
 // 用户页表中，线程的用户栈部分
 // 至少要分到32页，因为libc可能有默认栈的设置
-#define TD_USTACK_PAGE_NUM 32				// 用户栈占用的页数
-#define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的大小
-#define TD_USTACK (USTACKTOP - (TD_USTACK_SIZE + PAGE_SIZE))
+#define TD_USTACK_PAGE_NUM 72				// 用户栈占用的总页数
+#define TD_USTACK_SIZE (TD_USTACK_PAGE_NUM * PAGE_SIZE) // 用户栈占用的总大小
+#define TD_USTACK_INIT_PAGE_NUM 8              // 用户栈初始页数
+#define TD_USTACK_INIT_SIZE (TD_USTACK_INIT_PAGE_NUM * PAGE_SIZE) // 用户栈初始大小
+#define TD_USTACK_INIT_BOTTOM (USTACKTOP - TD_USTACK_INIT_SIZE) // 用户栈初始底部
+#define TD_USTACK_EXTEND_PAGE_NUM (TD_USTACK_PAGE_NUM - TD_USTACK_INIT_PAGE_NUM) // 用户栈扩展页数
+#define TD_USTACK_EXTEND_SIZE (TD_USTACK_EXTEND_PAGE_NUM * PAGE_SIZE) // 用户栈扩展大小
+#define TD_USTACK_BOTTOM (TD_USTACK_INIT_BOTTOM - TD_USTACK_EXTEND_SIZE) // 用户栈扩展底部
 
 // 内核的起始位置
 #define KERNBASE 0x80200000ul
 
 // 可访问内存的起始位置
 #define MEMBASE 0x80000000ul
+
+// 用户程序的地址空间
+#define MMAP_START 0x600000000
+#define MMAP_END 0x800000000
+#define U_DYNAMIC_SO_START 0x800000000
+
 
 // BELOW TO BE CLASSIFIED (TODO)
 

@@ -1,5 +1,7 @@
+#include <futex/futex.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <mm/memlayout.h>
 #include <proc/cpu.h>
@@ -57,12 +59,16 @@ thread_t *td_alloc() {
  */
 static void td_free(thread_t *td) {
 	// 将线程字段重置
+	td->td_proc = NULL;
 	td->td_tid = 0;
 	td->td_status = UNUSED;
 
+	// 释放进程信号
+	sigevent_freetd(td);
+
 	// 将线程加入空闲线程队列
 	tdq_critical_enter(&thread_freeq);
-	TAILQ_INSERT_TAIL(&thread_freeq.tq_head, td, td_freeq);
+	TAILQ_INSERT_HEAD(&thread_freeq.tq_head, td, td_freeq);
 	tdq_critical_exit(&thread_freeq);
 }
 
@@ -72,7 +78,19 @@ static void td_free(thread_t *td) {
 void td_destroy(err_t exitcode) {
 	thread_t *td = cpu_this()->cpu_running;
 
+	if (td->td_ctid) {
+		mtx_lock(&td->td_lock);
+		int val = 0;
+		warn("td_destroy: td_ctid not null, copy 0 to it to notice other\n");
+		copyOut(td->td_ctid, (void *)&val, sizeof(u32));
+		warn("called futex_wake(%p, %d)\n", td->td_ctid, 1);
+		futex_wake(td->td_ctid, 1); // 唤醒仍在等待的其他join线程
+		mtx_unlock(&td->td_lock);
+	}
+
 	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
+
+	// todo 线程残留的信号和futex
 
 	// 将线程从进程链表中移除
 	proc_lock(td->td_proc);
@@ -85,6 +103,7 @@ void td_destroy(err_t exitcode) {
 
 	// 此时线程转为悬垂线程（不归属于任何进程），回收线程资源
 	mtx_lock(&td->td_lock);
+
 	td_free(td);
 	// 在此之后会访问 context, status, lock 等字段，不需要进程参与
 	schedule();

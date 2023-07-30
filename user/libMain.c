@@ -1,10 +1,10 @@
 #include <libMain.h>
 #include <unistd.h>
 
-void libMain(long *p) {
-	int argc = p[0];
-	char **argv = (void *)(p + 1);
-	char **envp = &argv[argc + 1];
+void libMain() {
+	int argc = 4;
+	char *argv[] = {"test_argv", "arg1", "arg2", "arg3", NULL, "env1=1", NULL};
+	char **envp = &argv[5];
 	int ret = main(argc, argv, envp);
 	exit(ret);
 }

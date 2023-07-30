@@ -27,6 +27,7 @@ typedef struct Buffer {
 	u64 blockno;
 	i32 dev;
 	bool valid;
+	bool dirty;
 	u16 disk;
 	u16 refcnt;
 	BufferData *data;
@@ -48,6 +49,7 @@ void bufTest(u64 blockno);
 Buffer *bufRead(u32 dev, u64 blockno) __attribute__((warn_unused_result));
 void bufWrite(Buffer *buf);
 void bufRelease(Buffer *buf);
+void bufSync();
 
 // struct buf {
 // 	int valid; // has data been read from disk?

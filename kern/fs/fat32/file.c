@@ -3,8 +3,10 @@
 #include <fs/fat32.h>
 #include <fs/file.h>
 #include <fs/file_device.h>
+#include <fs/file_time.h>
 #include <fs/fs.h>
 #include <fs/vfs.h>
+#include <fs/buf.h>
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
@@ -36,9 +38,9 @@ struct FileDev file_dev_file = {
  * @param path
  * 文件或目录的路径。如果path是绝对路径，则忽略baseDir；如果path是相对路径（不以 '/'
  * 开头，则是相对于baseDir的）。 path指向的地址要求为内核地址
- * @return NULL表示失败
+ * @return 负数表示出错
  */
-Dirent *get_file_raw(Dirent *baseDir, char *path) {
+int get_file_raw(Dirent *baseDir, char *path, Dirent **pfile) {
 	mtx_lock_sleep(&mtx_file);
 
 	Dirent *file;
@@ -53,13 +55,29 @@ Dirent *get_file_raw(Dirent *baseDir, char *path) {
 		fs = fatFs;
 	}
 
+	if (path == NULL) {
+		if (baseDir == NULL) {
+			// 一般baseDir都是以类似dirFd的形式解析出来的，所以如果baseDir为NULL，表示归属的fd无效
+			warn("get_file_raw: baseDir is NULL and path == NULL, may be the fd "
+			     "associate with it is invalid\n");
+			mtx_unlock_sleep(&mtx_file);
+			return -EBADF;
+		} else {
+			// 如果path为NULL，则直接返回baseDir（即上层的dirfd解析出的Dirent）
+			*pfile = baseDir;
+			mtx_unlock_sleep(&mtx_file);
+			return 0;
+		}
+	}
+
 	int r = walk_path(fs, path, baseDir, 0, &file, 0, &longSet);
 	if (r < 0) {
 		mtx_unlock_sleep(&mtx_file);
-		return NULL;
+		return r;
 	} else {
 		mtx_unlock_sleep(&mtx_file);
-		return file;
+		*pfile = file;
+		return 0;
 	}
 }
 
@@ -76,12 +94,14 @@ static void file_readlink(Dirent *file, char *buf, int size) {
  * @param path
  * 文件或目录的路径。如果path是绝对路径，则忽略baseDir；如果path是相对路径（不以 '/'
  * 开头，则是相对于baseDir的）。 path指向的地址要求为内核地址
- * @return NULL表示失败
+ * @return -ENOENT 找不到文件；
+ *  -ENOTDIR 路径中的某一级不是目录；
  */
-Dirent *getFile(Dirent *baseDir, char *path) {
-	Dirent *file = get_file_raw(baseDir, path);
-	if (file == NULL) {
-		return NULL;
+int getFile(Dirent *baseDir, char *path, Dirent **pfile) {
+	Dirent *file;
+	int ret = get_file_raw(baseDir, path, &file);
+	if (ret < 0) {
+		return ret;
 	}
 
 	if (IS_LINK(&(file->raw_dirent))) {
@@ -89,10 +109,11 @@ Dirent *getFile(Dirent *baseDir, char *path) {
 		file_readlink(file, buf, MAX_NAME_LEN);
 		file_close(file);
 		log(LEVEL_GLOBAL, "follow link: %s -> %s\n", path, buf);
-		assert(buf[0] == '/');	   // 链接文件的路径必须是绝对路径
-		return getFile(NULL, buf); // 递归调用
+		assert(buf[0] == '/');		  // 链接文件的路径必须是绝对路径
+		return getFile(NULL, buf, pfile); // 递归调用
 	} else {
-		return file;
+		*pfile = file;
+		return 0;
 	}
 }
 
@@ -169,7 +190,7 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 /**
  * @brief 扩充文件到新的大小
  */
-static void fileExtend(struct Dirent *file, int newSize) {
+void fileExtend(struct Dirent *file, int newSize) {
 	assert(file->file_size < newSize);
 
 	file->file_size = newSize;
@@ -199,7 +220,7 @@ static void fileExtend(struct Dirent *file, int newSize) {
 int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	mtx_lock_sleep(&mtx_file);
 
-	log(LEVEL_GLOBAL, "write file: %s\n", file->name);
+	log(FS_MODULE, "write file: %s\n", file->name);
 	assert(n != 0);
 
 	// Note: 支持off在任意位置的写入（允许超过file->size），[file->size, off)的部分将被填充为0
@@ -236,6 +257,32 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	return n;
 }
 
+/**
+ * @brief 缩小文件到指定的大小，仅仅改变文件的大小字段，而不是真正地释放簇
+ * 在ftruncate之前首先需要将文件的多余部分清零
+ */
+void fshrink(Dirent *file, u64 newsize) {
+	mtx_lock_sleep(&mtx_file);
+
+	assert(file != NULL);
+	assert(file->file_size >= newsize);
+
+	u64 oldsize = file->file_size;
+	// 1. 清空文件的剩余内容
+	char buf[1024];
+	memset(buf, 0, sizeof(buf));
+	for (int i = newsize; i < oldsize; i += sizeof(buf)) {
+		file_write(file, 0, (u64)buf, i, MIN(sizeof(buf), oldsize - i));
+	}
+
+	// 2. 缩小文件
+	file->file_size = oldsize;
+
+	// 3. 写回
+	sync_dirent_rawdata_back(file);
+	mtx_unlock_sleep(&mtx_file);
+}
+
 static mode_t get_file_mode(struct Dirent *file) {
 	// 默认给予RWX权限
 	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO;
@@ -243,8 +290,10 @@ static mode_t get_file_mode(struct Dirent *file) {
 		mode |= __S_IFDIR;
 	} else if (file->type == DIRENT_FILE) {
 		mode |= __S_IFREG;
-	} else if (file->type == DIRENT_DEV) {
-		// 我们默认设备总是块设备
+	} else if (file->type == DIRENT_CHARDEV) {
+		// 我们默认设备总是字符设备
+		mode |= __S_IFCHR;
+	} else if (file->type == DIRENT_BLKDEV) {
 		mode |= __S_IFBLK;
 	} else {
 		warn("unknown file type: %x\n", file->type);
@@ -292,27 +341,32 @@ void fileStat(struct Dirent *file, struct kstat *pKStat) {
 	pKStat->st_blocks = ROUNDUP(file->file_size, pKStat->st_blksize);
 
 	// 时间相关
-	pKStat->st_atime_sec = 0;
-	pKStat->st_atime_nsec = 0;
-	pKStat->st_mtime_sec = 0;
-	pKStat->st_mtime_nsec = 0;
-	pKStat->st_ctime_sec = 0;
-	pKStat->st_ctime_nsec = 0;
+	file_get_timestamp(file, pKStat);
 
 	mtx_unlock_sleep(&mtx_file);
 }
 
 // 检查文件的用户权限，暂时忽略flags
 int faccessat(Dirent *dir, char *path, int mode, int flags) {
-	Dirent *file = getFile(dir, path);
-	if (file == NULL) {
+	Dirent *file;
+	int ret = getFile(dir, path, &file);
+	if (ret < 0) {
 		warn("faccessat: file %s not exist\n", path);
 		// 文件不存在肯定不满足任何一项条件
-		return -1;
+		return ret;
 	}
 
 	// 文件默认有RWX三种权限，因为FAT32没有实现文件访问权限机制
 	// 因此确认文件存在后，不继续检查，直接返回0
 	file_close(file);
 	return 0;
+}
+
+/**
+ * @brief 同步文件系统到磁盘
+ */
+void fs_sync() {
+	mtx_lock_sleep(&mtx_file);
+	bufSync();
+	mtx_unlock_sleep(&mtx_file);
 }

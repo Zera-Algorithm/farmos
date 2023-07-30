@@ -5,6 +5,7 @@
 #include <mm/vmtools.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
+#include <sys/syscall_proc.h>
 
 static err_t duppage(Pte *pd, u64 target_va, Pte *target_pte, void *arg) {
 	pte_t *childpd = (pte_t *)arg;
@@ -14,7 +15,10 @@ static err_t duppage(Pte *pd, u64 target_va, Pte *target_pte, void *arg) {
 		pte_t parentpte = ptLookup(pd, target_va);
 		u64 perm = PTE_PERM(parentpte);
 		// 如果父线程的页表项是用户可写的，则进行写时复制（没考虑 PTE_G todo）
-		if ((perm & PTE_W) && (perm & PTE_U)) {
+		if (perm & PTE_PASSIVE) {
+			asm volatile("nop");
+			return ptMap(childpd, target_va, 0, perm);
+		} else if ((perm & PTE_W) && (perm & PTE_U)) {
 			perm = (perm & ~PTE_W) | PTE_COW;
 			return ptMap(childpd, target_va, pteToPa(parentpte), perm) ||
 			       ptMap(pd, target_va, pteToPa(parentpte), perm);
@@ -96,7 +100,7 @@ u64 td_fork(thread_t *td, u64 childsp, u64 ptid, u64 tls, u64 ctid) {
 /**
  * 基于传入的线程 fork 出一个新的进程（含一个初始化线程）并加入调度队列
  */
-u64 proc_fork(thread_t *td, u64 childsp) {
+u64 proc_fork(thread_t *td, u64 childsp, u64 flags) {
 	proc_t *p = td->td_proc;
 
 	// 获取一个进程和一个线程
@@ -115,6 +119,10 @@ u64 proc_fork(thread_t *td, u64 childsp) {
 	proc_fork_name_debug(childtd);
 	// 复制父线程的文件信息
 	fork_thread_fs(&p->p_fs_struct, &childp->p_fs_struct);
+
+	if (flags & CLONE_SIGHAND) {
+		sigaction_clone(p, childp);
+	}
 
 	// 父线程的内核线程信息不用复制，使用新内核线程的入口直接调度
 	childtd->td_status = RUNNABLE;

@@ -9,6 +9,7 @@
 #include <fs/fat32.h>
 #include <fs/fd.h>
 #include <fs/vfs.h>
+#include <futex/futex.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <mm/kmalloc.h>
@@ -21,7 +22,9 @@
 #include <proc/thread.h>
 #include <riscv.h>
 #include <signal/signal.h>
+#include <signal/itimer.h>
 #include <types.h>
+#include <proc/tsleep.h>
 
 volatile static int started = 0;
 // 用于记录当前哪个核已被启动
@@ -76,6 +79,8 @@ void main() {
 		thread_init();
 		proc_init();
 		sig_init();
+		futexevent_init();
+		tsleep_init();
 
 		// 其它
 		trapInitHart(); // install kernel trap vector
@@ -84,6 +89,8 @@ void main() {
 		plicInitHart(); // 设置本hart的中断控制器
 		fd_init();
 		kmalloc_init();
+		socket_init();
+		itimer_init();
 
 		extern mutex_t first_thread_lock;
 		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
@@ -100,26 +107,20 @@ void main() {
 		mtx_init(&mtx_file_load, "kload", 0, MTX_SLEEP);
 
 		assert(intr_get() == 0);
-		// PROC_CREATE(test_printf, "test1");
-		// PROC_CREATE(test_printf, "test2");
-		// PROC_CREATE(test_printf, "test3");
-		// PROC_CREATE(test_pthread, "test_pthread");
-		// PROC_CREATE(test_clone, "test_clone");
-		// PROC_CREATE(test_pipe, "test_pipe");
+// PROC_CREATE(test_printf, "test1");
+// PROC_CREATE(test_printf, "test2");
+// PROC_CREATE(test_printf, "test3");
+// PROC_CREATE(test_pthread, "test_pthread");
+// PROC_CREATE(test_clone, "test_clone");
+// PROC_CREATE(test_pipe, "test_pipe");
 #ifdef LOCALCOMP_TEST
 		PROC_CREATE(test_init, "test_init");
 #else
 		PROC_CREATE(test_busybox, "test_busybox");
 #endif
-		// PROC_CREATE(test_execve, "test_execve");
+		// PROC_CREATE(test_setitimer, "test_setitimer");
 		// PROC_CREATE(test_while, "test_while");
-		// PROC_CREATE(test_signal1, "test_signal1");
-
-		// thread_t *td = TAILQ_FIRST(&thread_runq.tq_head);
-		// mtx_lock(&td->td_lock);
-		// sigevent_t *se = sigevent_alloc(SIGKILL);
-		// sigeventq_insert(td, se);
-		// mtx_unlock(&td->td_lock);
+		// PROC_CREATE(test_futex, "test_futex");
 
 		printf("Waiting from Hart %d\n", cpu_this_id());
 		started = 1;

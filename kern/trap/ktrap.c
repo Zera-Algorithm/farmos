@@ -60,24 +60,9 @@ void kerneltrap(ktrapframe_t *tf) {
 	//     excCode);
 	if (type == SCAUSE_INTERRUPT) {
 		if (excCode == INTERRUPT_TIMER) {
-			log(DEFAULT, "timer interrupt on CPU %d!\n", cpuid());
-			handler_timer_int();
+			ktrap_timer();
 		} else if (excCode == INTERRUPT_EXTERNEL) {
-			log(DEFAULT, "externel interrupt on CPU %d!\n", cpuid());
-			int irq = plicClaim();
-
-			if (irq == VIRTIO0_IRQ) {
-				// Note: call virtio intr handler
-				log(DEFAULT, "[cpu %d] catch virtio intr\n", cpuid());
-				virtio_disk_intr();
-			} else {
-				log(DEFAULT, "[cpu %d] unknown externel interrupt irq = %d\n",
-				    cpuid(), irq);
-			}
-
-			if (irq) {
-				plicComplete(irq);
-			}
+			trap_device();
 		} else {
 			log(DEFAULT, "unknown interrupt.\n");
 		}

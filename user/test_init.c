@@ -21,7 +21,6 @@ int main() {
 	int child = fork();
 	if (child) {
 		wait(&wstatus);
-		syscall_shutdown();
 	} else {
 		// child
 		char *const argv[] = {NULL};

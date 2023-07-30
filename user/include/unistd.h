@@ -20,7 +20,7 @@ int close(int);
 pid_t getpid(void);
 pid_t getppid(void);
 int sched_yield(void);
-void exit(int);
+void exit(int) __attribute__((noreturn));
 pid_t fork(void);
 pid_t clone(int (*fn)(void *arg), void *arg, void *stack, size_t stack_size, unsigned long flags);
 int exec(char *);
@@ -55,12 +55,25 @@ int getdents(int fd, struct linux_dirent64 *dirp64, unsigned long len);
 int pipe(int[2]);
 int dup(int);
 int dup2(int, int);
-void syscall_shutdown();
 
 // signal
 int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);
 int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
 int kill(pid_t pid, int sig);
 int tkill(pid_t tid, int sig);
+int getitimer(int which, struct itimerval *curr_value);
+int setitimer(int which, const struct itimerval *new_value,
+				struct itimerval *old_value);
+
+// socket
+int socket(int domain, int type, int protocol);
+int bind(int sockfd, const SocketAddr *sockectaddr, socklen_t addrlen);
+int listen(int sockfd, int backlog);
+int connect(int sockfd, const SocketAddr *addr, socklen_t addrlen);
+int accept(int sockfd, SocketAddr *addr);
+
+int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val3);
+int gettid();
+void reboot();
 
 #endif // __UNISTD_H__

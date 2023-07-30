@@ -16,7 +16,7 @@ mutex_t sigevent_lock;
 
 void sig_init() {
 	// 初始化信号事件
-	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN);
+	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN | MTX_RECURSE);
 	for (int i = NSIG - 1; i >= 0; i--) {
 		TAILQ_INSERT_HEAD(&sigevent_freeq, &sigevents[i], se_link);
 	}
@@ -44,12 +44,22 @@ void sigevent_free(sigevent_t *se) {
 	mtx_unlock(&sigevent_lock);
 }
 
+void sigevent_freetd(thread_t *td) {
+	mtx_lock(&sigevent_lock);
+	sigevent_t *se;
+	while ((se = TAILQ_FIRST(&td->td_sigqueue)) != NULL) {
+		sigeventq_remove(td, se);
+		sigevent_free(se);
+	}
+	mtx_unlock(&sigevent_lock);
+}
+
 // 信号处理函数注册
 
 err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
-	assert(0 <= signo && signo < SIGNAL_MAX);
+	assert(0 < signo && signo <= SIGNAL_MAX);
 	thread_t *td = cpu_this()->cpu_running;
-	sigaction_t *kact = &sigactions[td->td_proc - procs][signo];
+	sigaction_t *kact = &sigactions[td->td_proc - procs][signo - 1];
 
 	// ksigaction实际的大小：考虑到sigset_t的可变长
 	size_t ksa_size = sizeof(sigaction_t) - sizeof(sigset_t) + sigset_size;
@@ -60,14 +70,28 @@ err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
 	if (act != 0) {
 		memset(kact, 0, sizeof(sigaction_t));
 		copy_in(td->td_proc->p_pt, act, kact, ksa_size);
+		if (!(kact->sa_flags & SA_RESTORER)) {
+			kact->sa_restorer = 0;
+		}
+		if (0x1 < (u64)kact->sa_handler && (u64)kact->sa_handler < 0x10000ul) {
+			error("sigaction_register: invalid handler %p", kact->sa_handler);
+		}
 	}
 	return 0;
+}
+
+void sigaction_free(proc_t *p) {
+	memset(&sigactions[p - procs], 0, sizeof(sigactions[0]));
+}
+
+void sigaction_clone(proc_t *p, proc_t *childp) {
+	memcpy(&sigactions[childp - procs], &sigactions[p - procs], sizeof(sigactions[0]));
 }
 
 /**
  * @brief 返回对应的信号处理动作
  */
 sigaction_t *sigaction_get(proc_t *p, int signo) {
-	assert(0 <= signo && signo < SIGNAL_MAX);
-	return &sigactions[p - procs][signo];
+	assert(0 < signo && signo <= SIGNAL_MAX);
+	return &sigactions[p - procs][signo - 1];
 }

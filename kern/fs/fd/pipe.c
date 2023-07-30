@@ -11,6 +11,7 @@
 #include <proc/proc.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <sys/errno.h>
 
 #define proc_fs_struct (cpu_this()->cpu_running->td_proc->p_fs_struct)
 
@@ -31,40 +32,35 @@ struct FdDev fd_dev_pipe = {
     .dev_stat = fd_pipe_stat,
 };
 
+static inline void free_both_ufd(int ufd1, int ufd2) {
+	if (ufd1 >= 0)
+		free_ufd(ufd1);
+	if (ufd2 >= 0)
+		free_ufd(ufd2);
+}
+
 extern mutex_t mtx_fd;
 
 int pipe(int fd[2]) {
 	int fd1 = -1, fd2 = -1;
 	int kernfd1 = -1, kernfd2 = -1;
-	int i;
 	u64 pipeAlloc;
 
-	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (cur_proc_fs_struct()->fdList[i] == -1) {
-			fd1 = i;
-			break;
-		}
-	}
-	for (i = 0; i < MAX_FD_COUNT; i++) {
-		if (cur_proc_fs_struct()->fdList[i] == -1 && i != fd1) {
-			fd2 = i;
-			break;
-		}
-	}
+	fd1 = alloc_ufd();
+	fd2 = alloc_ufd();
 	if (fd1 < 0 || fd2 < 0) {
 		warn("no free fd in proc fdList\n");
-		return -1;
+		free_both_ufd(fd1, fd2);
+		return -EMFILE;
 	} else {
-		kernfd1 = fdAlloc();
-		if (kernfd1 < 0) {
-			warn("no free fd in os\n");
-			return -1;
+		if ((kernfd1 = fdAlloc()) < 0) {
+			free_both_ufd(fd1, fd2);
+			return kernfd1;
 		}
-		kernfd2 = fdAlloc();
-		if (kernfd2 < 0) {
-			warn("no free fd in os\n");
+		if ((kernfd2 = fdAlloc()) < 0) {
+			free_both_ufd(fd1, fd2);
 			freeFd(kernfd1);
-			return -1;
+			return kernfd2;
 		}
 
 		pipeAlloc = kvmAlloc();
@@ -153,11 +149,12 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		if (pipeIsClose(p) /* || TODO: 进程已结束*/) {
 			mtx_unlock(&p->lock);
 			warn("writer can\'t write! pipe is closed or process is destoried.\n");
-			return -1;
+			return -EPIPE;
 		}
 
 		if (p->pipeWritePos - p->pipeReadPos == PIPE_BUF_SIZE) {
 			wakeup(&p->pipeReadPos);
+
 			mtx_unlock_sleep(&fd->lock);
 			sleep(&p->pipeWritePos, &p->lock, "pipe writer wait for pipe reader.\n");
 			mtx_lock_sleep(&fd->lock);
@@ -190,7 +187,7 @@ static int fd_pipe_close(struct Fd *fd) {
 
 	if (p && p->count == 0) {
 		// 这里每个pipe占据一个页的空间？
-		kvmFree((u64)p); //释放pipe结构体所在的物理内存
+		kvmFree((u64)p); // 释放pipe结构体所在的物理内存
 	}
 	return 0;
 }

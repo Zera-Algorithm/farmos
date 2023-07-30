@@ -10,48 +10,61 @@ Pte *kernPd;
 
 // 纯接口函数
 
-inline Pte paToPte(u64 pa) {
-	return (pa >> PAGE_SHIFT) << PTE_PPNSHIFT;
-}
-
-inline u64 pteToPa(Pte pte) {
-	return (pte >> PTE_PPNSHIFT) << PAGE_SHIFT;
-}
-
-inline Pte pageToPte(Page *p) {
+static inline Pte pageToPte(Page *p) {
 	return paToPte(MEMBASE) + (pageToPpn(p) << PTE_PPNSHIFT);
 }
 
-inline Page *pteToPage(Pte pte) {
+static inline Page *pteToPage(Pte pte) {
 	assert(pteToPa(pte) > MEMBASE);
 	return paToPage(pteToPa(pte));
 }
 
-// 内部功能接口函数 TODO::STATIC
-
-static void ptModify(Pte *pte, Pte value) {
-	// 取消原先的映射
-	if ((*pte & PTE_V) && pteToPa(*pte) >= MEMBASE) {
-		Page *page = pteToPage(*pte);
-		pmPageDecRef(page);
+// 映射操作包裹（解引用映射时使用，若传入页表项指向实际内存页面则更新映射次数）
+static inline void pp_dec_on_valid(pte_t pte) {
+	if (pte & PTE_V && pteToPa(pte) >= MEMBASE) {
+		pmPageDecRef(pteToPage(pte));
 	}
-	// 建立新的映射
-	*(u64 *)pte = value;
-	// 要求*pte表项指向的是MEMBASE以上的内存，不是设备内存，否则没有必要设置其所属的page
-	if ((*pte & PTE_V) && pteToPa(*pte) >= MEMBASE) {
-		pmPageIncRef(pteToPage(*pte));
-	}
-
-	log(LEVEL_MODULE, "finish modidy Pte!\n");
 }
 
+static inline void pp_inc_on_valid(pte_t pte) {
+	if (pte & PTE_V && pteToPa(pte) >= MEMBASE) {
+		pmPageIncRef(pteToPage(pte));
+	}
+}
+
+static inline void flush_tlb_if_need(pte_t *pd, u64 va) {
+	if (ptFetch() == pd) {
+		tlbFlush(va);
+	}
+}
+
+// 内部功能接口函数
+
+/**
+ * @brief 修改传入的页表项指针指向的页表项至传入的新值，若指向物理页相同则仅修改权限
+ * @note 在 FarmOS 中，PTE_V 代表该页表项的物理页号有效，即存在对应物理页。因此对于修改前后会检查 PTE_V 标志并对物理页的映射次数进行维护。
+ */
+static void ptModify(Pte *pte, Pte value) {
+	u64 oldpa = pteToPa(*pte);
+	u64 newpa = pteToPa(value);
+	if (oldpa == newpa) {
+		// 页表项指向的物理页没有变化，仅修改权限
+		*pte = value;
+	} else {
+		// 页表项指向的物理页发生了变化，需要修改映射
+		pp_dec_on_valid(*pte);
+		*pte = value;
+		pp_inc_on_valid(value);
+	}
+}
+
+/**
+ * @brief 将传入的页表项指针指向的页表项清零，若指向物理页则取消映射 
+ */
 static void ptClear(Pte *pte) {
 	// 取消原先的映射
-	if (*pte & PTE_V) {
-		Page *page = pteToPage(*pte);
-		pmPageDecRef(page);
-	}
-	*(u64 *)pte = 0;
+	pp_dec_on_valid(*pte);
+	*pte = 0;
 }
 
 static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
@@ -71,12 +84,9 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 				log(LEVEL_MODULE, "\tcreate a page for level %d in va 0x%016lx\n",
 				    i, va);
 				Page *newPage = pmAlloc();
-				pmPageIncRef(newPage);
 				// 将新页表的物理地址写入当前页表项
 				ptModify(curPte, pageToPte(newPage) | PTE_V);
-				if (ptFetch() == pageDir) {
-					tlbFlush(va);
-				}
+				flush_tlb_if_need(pageDir, va);
 				// 将新页表的虚拟地址赋值给 curPageTable
 				curPageTable = (Pte *)pageToPa(newPage);
 			} else {
@@ -175,40 +185,73 @@ Pte ptLookup(Pte *pgdir, u64 va) {
 	return pte == NULL ? 0 : *pte;
 }
 
+/**
+ * @brief 修改已有映射、或添加映射 
+ */
 err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 	mtx_lock(&kvmlock);
-	// 如果页表项已经存在，抹除其内容（可优化）
-	Pte *originPte = ptWalk(pgdir, va, false);
-	if (originPte != NULL && (*originPte & PTE_V)) {
-		panic_on(ptUnmap(pgdir, va));
-	}
-	// 页表项已经不存在，创建新的页表项
-	Pte *pte = ptWalk(pgdir, va, true);
-
-	log(LEVEL_MODULE, "begin modify Pte...\n");
-
-	// 建立新的映射
-	ptModify(pte, paToPte(pa) | perm | PTE_V);
-	if (ptFetch() == pgdir) {
-		tlbFlush();
+	// 遍历页表尝试获得 va 对应的页表项地址
+	Pte *pte = ptWalk(pgdir, va, false);
+	// 若不存在对应的页表项，则进行创建
+	if (pte == NULL) {
+		pte = ptWalk(pgdir, va, true);
 	}
 
+	/**
+	 * 对于页表项的 3 种状态间转换（有效、被动有效、无效）：
+	 * 1. 有效 -> 有效：
+	 * 		修改页表项内容（分支 1）
+	 * 2. 有效 -> 被动有效：
+	 * 		不应该存在这种情况
+	 * 3. 有效 -> 无效：
+	 * 		不应该存在这种情况，应该使用 ptUnmap
+	 * 4. 被动有效 -> 有效：
+	 * 		分配页面，修改页表项内容（分支 3）
+	 * 5. 被动有效 -> 被动有效：
+	 * 		修改页表项内容，更新权限（分支 2）
+	 * 6. 被动有效 -> 无效：
+	 * 		不应该存在这种情况，应该使用 ptUnmap
+	 * 7. 无效 -> 有效：
+	 * 		分配页面，修改页表项内容（分支 3）
+	 * 8. 无效 -> 被动有效：
+	 * 		修改页表项内容，更新权限（分支 2）
+	 * 9. 无效 -> 无效：
+	 * 		这是在干什么？
+	 */
+	if (*pte & PTE_V) {
+		// 原页表项有效时，修改映射（此时不应该是添加被动映射）
+		assert(!(*pte & PTE_PASSIVE));
+		ptModify(pte, paToPte(pa) | perm | PTE_V);
+		
+	} else if (perm & PTE_PASSIVE) {
+		// 原页表项无效，添加被动映射（传入的物理地址必须为零）
+		assert(pa == 0);
+		ptModify(pte, perm);
+		mtx_unlock(&kvmlock);
+		return 0; // 直接返回，不用刷新 TLB
+	} else {
+		// 原页表项无效，添加有效映射，外部已申请了页面
+		assert(pa >= MEMBASE);
+		ptModify(pte, paToPte(pa) | perm | PTE_V);
+	}
+
+	// 如果操作的是当前页表，刷新 TLB
+	flush_tlb_if_need(pgdir, va);
 	mtx_unlock(&kvmlock);
-	log(LEVEL_MODULE, "end insert of va 0x%016lx, pa 0x%016lx\n", va, pa);
 	return 0;
 }
 
 err_t ptUnmap(Pte *pgdir, u64 va) {
 	mtx_lock(&kvmlock);
 	Pte *pte = ptWalk(pgdir, va, false);
-	if (!(*pte & PTE_V)) {
+	if (!(*pte & PTE_V) && !(*pte & PTE_PASSIVE)) {
 		return -E_NO_MAP;
 	}
 	// 维护引用计数并清除页表项内容
 	ptClear(pte);
-	if (ptFetch() == pgdir) {
-		tlbFlush(va);
-	}
+
+	flush_tlb_if_need(pgdir, va);
+
 	mtx_unlock(&kvmlock);
 	return 0;
 }

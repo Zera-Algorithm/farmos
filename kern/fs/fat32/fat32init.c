@@ -11,6 +11,7 @@
 #include <lib/string.h>
 #include <lib/wchar.h>
 #include <lock/mutex.h>
+#include <fs/chardev.h>
 
 FileSystem *fatFs;
 extern mutex_t mtx_file;
@@ -93,7 +94,7 @@ void init_root_fs() {
 	extern FileSystem *fatFs;
 	extern mutex_t mtx_fs;
 	mtx_init(&mtx_fs, "fs", false, MTX_SPIN);
-	mtx_init(&mtx_file, "mtx_file", false, MTX_SLEEP | MTX_RECURSE);
+	mtx_init(&mtx_file, "mtx_file", true, MTX_SLEEP | MTX_RECURSE);
 
 	allocFs(&fatFs);
 
@@ -103,34 +104,40 @@ void init_root_fs() {
 	fat32_init(fatFs);
 }
 
-void init_dev_fs() {
+static void init_dev_fs() {
 	makeDirAt(fatFs->root, "/dev", 0);
 
 	// 这两个暂时用空文件代替
 	panic_on(create_file_and_close("/dev/random"));
-	panic_on(create_file_and_close("/dev/urandom"));
 	panic_on(create_file_and_close("/dev/rtc"));
 	panic_on(create_file_and_close("/dev/rtc0"));
 	makeDirAt(fatFs->root, "/dev/misc", 0);
 	panic_on(create_file_and_close("/dev/misc/rtc"));
+	makeDirAt(fatFs->root, "/dev/shm", 0);
 
 	extern struct FileDev file_dev_null;
 	extern struct FileDev file_dev_zero;
+	extern struct FileDev file_dev_urandom;
 
-	Dirent *file1, *file2;
+	Dirent *file1, *file2, *file3;
 	panic_on(createFile(fatFs->root, "/dev/null", &file1));
 	panic_on(createFile(fatFs->root, "/dev/zero", &file2));
+	panic_on(createFile(fatFs->root, "/dev/urandom", &file3));
 
 	file1->dev = &file_dev_null;
 	file2->dev = &file_dev_zero;
-	file1->type = DIRENT_DEV;
-	file2->type = DIRENT_DEV;
+	file3->dev = &file_dev_urandom;
+
+	file1->type = DIRENT_CHARDEV;
+	file2->type = DIRENT_CHARDEV;
+	file3->type = DIRENT_CHARDEV;
 
 	file_close(file1);
 	file_close(file2);
+	file_close(file3);
 }
 
-void init_proc_fs() {
+static void init_proc_fs() {
 	makeDirAt(fatFs->root, "/proc", 0);
 
 	extern initcall_t __initcall_fs_start[], __initcall_fs_end[];
@@ -143,4 +150,38 @@ void init_proc_fs() {
 		log(LEVEL_GLOBAL, "executing initcall #%d\n", fn - __initcall_fs_start);
 		(*fn)();
 	}
+
+	// 设置系统发行版本，越大越好，过小会FATAL
+	makeDirAt(fatFs->root, "/proc/sys", 0);
+	makeDirAt(fatFs->root, "/proc/sys/kernel", 0);
+	create_chardev_file("/proc/sys/kernel/osrelease", "10.2.0", NULL, NULL);
+}
+
+static void init_fs_other() {
+	makeDirAt(fatFs->root, "/bin", 0);
+	panic_on(create_file_and_close("/bin/ls"));
+
+	makeDirAt(fatFs->root, "/etc", 0);
+	makeDirAt(fatFs->root, "/tmp", 0);
+
+	// 将默认的动态链接库链接到/lib目录
+	makeDirAt(fatFs->root, "/lib", 0);
+	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
+	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
+
+	makeDirAt(fatFs->root, "/sbin", 0);
+	panic_on(linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all"));
+	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/sbin/busybox"));
+
+	// 两个部分的sh脚本
+	extern const unsigned char bin2c_iperf_testcode_sh[637];
+	extern const unsigned char bin2c_unixbench_testcode_sh[4556];
+	create_chardev_file("/iperf_testcode_part.sh", (char *)bin2c_iperf_testcode_sh, NULL, NULL);
+	create_chardev_file("/unixbench_testcode_part.sh", (char *)bin2c_unixbench_testcode_sh, NULL, NULL);
+}
+
+void init_files() {
+	init_dev_fs();
+	init_proc_fs();
+	init_fs_other();
 }

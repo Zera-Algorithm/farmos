@@ -5,6 +5,8 @@
 #include <mm/vmm.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
+#include <proc/dynamic_link.h>
+#include <fs/kload.h>
 
 /**
  * @brief 从src加载数据，填充va指向的页（起始于offset），并映射到进程的地址空间
@@ -58,6 +60,31 @@ static int loadCode(thread_t *td, const void *binary, size_t size, u64 *maxva) {
 	return 0;
 }
 
-void proc_initucode(proc_t *p, thread_t *inittd, const void *bin, size_t size) {
+void proc_initucode_by_file(proc_t *p, thread_t *inittd, char *pathbuf, stack_arg_t *parg) {
+	// 1. 加载可执行文件到内核，并映射各个段（包括代码段）
+	void *bin;
+	size_t size;
+	log(DEBUG, "START LOAD CODE\n");
+	fileid_t file = file_load(pathbuf, &bin, &size);
+	log(DEBUG, "END LOAD CODE\n");
 	panic_on(loadCode(inittd, bin, size, &p->p_brk));
+
+	// 2. 配置ELF相关内容，包括动态链接库
+	if (parg) {
+		// 只有exec需要映射libc.so、将参数压栈
+		parseElf(inittd, bin, size, parg);
+	}
+
+	file_unload(file);
+}
+
+void proc_initucode_by_binary(proc_t *p, thread_t *inittd, const void *bin, size_t size, stack_arg_t *parg) {
+	// 1. 映射ELF的各个段（包括代码段）
+	panic_on(loadCode(inittd, bin, size, &p->p_brk));
+
+	// 2. 配置ELF相关内容，包括动态链接库
+	if (parg) {
+		// 只有exec需要映射libc.so、将参数压栈
+		parseElf(inittd, bin, size, parg);
+	}
 }

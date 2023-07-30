@@ -23,7 +23,7 @@ const ElfHeader *getElfFrom(const void *binary, size_t size) {
 }
 
 /**
- * @brief 加载一个ELF格式的二进制文件，把所有段都映射到正确的虚拟地址（即ELF中指定的虚拟地址）
+ * @brief 加载一个ELF格式的二进制文件，把ph段映射到正确的虚拟地址（即ELF中指定的虚拟地址）
  * @param ph 程序头指针
  * @param binary 段的二进制数据指针，为物理地址
  * @param mapPage 用于将数据映射到虚拟地址的回调函数
@@ -48,7 +48,7 @@ int loadElfSegment(ProgramHeader *ph, const void *binary, ElfMapper mapPage, voi
 		perm |= PTE_X;
 	}
 
-	log(DEFAULT, "load segment to va 0x%016lx, size = 0x%x, perm = 0x%x\n", va, memSize, perm);
+	log(LEVEL_GLOBAL, "load segment to va 0x%016lx, size = 0x%x, perm = 0x%x\n", va, memSize, perm);
 
 	// 1. 映射第一个页
 	int r;

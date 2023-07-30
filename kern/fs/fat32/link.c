@@ -9,6 +9,8 @@
 #include <lock/mutex.h>
 #include <mm/kmalloc.h>
 #include <mm/vmm.h>
+#include <proc/cpu.h>
+#include <proc/thread.h>
 #include <sys/errno.h>
 
 extern mutex_t mtx_file;
@@ -24,11 +26,12 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 	mtx_lock_sleep(&mtx_file);
 
 	Dirent *oldFile, *newFile;
-	if ((oldFile = getFile(oldDir, oldPath)) == NULL) {
+	int ret;
+	if ((ret = getFile(oldDir, oldPath, &oldFile)) < 0) {
 		warn("oldFile %d not found!\n", oldPath);
 
 		mtx_unlock_sleep(&mtx_file);
-		return -ENOENT;
+		return ret;
 	}
 
 	char path[MAX_NAME_LEN];
@@ -52,7 +55,7 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 
 /**
  * @brief 递归地从文件的尾部释放其cluster
- * @note TODO: 可能有溢出风险
+ * @note TODO: 可能有栈溢出风险
  */
 static void recur_free_clus(FileSystem *fs, int clus, int prev_clus) {
 	int next_clus = fatRead(fs, clus);
@@ -75,8 +78,37 @@ static int rmfile(struct Dirent *file) {
 	char data = 0xE5;
 
 	if (file->refcnt > 1) {
-		warn("other process uses file %s! refcnt = %d\n", file->name, file->refcnt);
-		return -EBUSY; // in use
+		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
+		int hold_by_cur = 1;
+		for (int i = 0; i < file->holder_cnt; i++) {
+			if (file->holders[i] != cpu_this()->cpu_running->td_name) {
+				hold_by_cur = 0;
+				break;
+			}
+		}
+
+		if (!hold_by_cur) {
+			warn("other process uses file %s! refcnt = %d\n", file->name, file->refcnt);
+
+#ifdef REFCNT_DEBUG
+			for (int i = 0; i < file->holder_cnt; i++) {
+				warn("holder: %s\n", file->holders[i]);
+			}
+#endif
+
+			return -EBUSY; // in use
+		} else {
+			warn("file %s is hold by current process(refcnt = %d), can't remove, "
+			     "continue!\n",
+			     file->name, file->refcnt);
+			return 0;
+			/**
+			 * 此实现是为了应对ftello_unflushed_append的unlink失败问题
+			 * TODO: 后续实现建议：
+			 * 在Dirent上置一个位is_rm，表示在refcnt归0时是否可以删除。如果可以删除，那么在
+			 * file_close()之后检测到 (refcnt == 0 && is_rm) 就将其删除
+			 */
+		}
 	}
 
 	// 1. 如果是链接文件，则减去其链接数
@@ -84,8 +116,8 @@ static int rmfile(struct Dirent *file) {
 		assert(file->file_size < MAX_NAME_LEN);
 		file_read(file, 0, (u64)linked_file_path, 0, MAX_NAME_LEN);
 
-		Dirent *linked_file = getFile(NULL, linked_file_path);
-		assert(linked_file != NULL);
+		Dirent *linked_file;
+		panic_on(getFile(NULL, linked_file_path, &linked_file));
 		linked_file->linkcnt -= 1;
 		file_close(linked_file);
 	}
@@ -95,7 +127,9 @@ static int rmfile(struct Dirent *file) {
 	// 先递归删除子Dirent（由于存在意向锁，因此这样）
 	if (file->type == DIRENT_DIR) {
 		Dirent *tmp;
-		LIST_FOREACH (tmp, &file->child_list, dirent_link) { rmfile(tmp); }
+		LIST_FOREACH (tmp, &file->child_list, dirent_link) {
+			rmfile(tmp);
+		}
 	}
 	LIST_REMOVE(file, dirent_link); // 从父亲的子Dirent列表删除
 
@@ -120,15 +154,16 @@ int unlinkat(struct Dirent *dir, char *path) {
 	mtx_lock_sleep(&mtx_file);
 
 	Dirent *file;
-	if ((file = getFile(dir, path)) == NULL) {
+	int ret;
+	if ((ret = getFile(dir, path, &file)) < 0) {
 		warn("file %s not found!\n", path);
 		mtx_unlock_sleep(&mtx_file);
-		return -ENOENT;
+		return ret;
 	}
-	rmfile(file);
+	ret = rmfile(file);
 
 	mtx_unlock_sleep(&mtx_file);
-	return 0;
+	return ret;
 }
 
 /**
@@ -161,7 +196,6 @@ static int mvfile(Dirent *oldfile, Dirent *newDir, char *newPath) {
 			warn("holder: %s\n", oldfile->holders[i]);
 		}
 #endif
-
 		return -EBUSY; // in use
 	}
 
@@ -210,20 +244,21 @@ int renameat2(Dirent *oldDir, char *oldPath, Dirent *newDir, char *newPath, u32 
 
 	// 1. 前置的检查，获取oldFile
 	Dirent *oldFile, *newFile;
-	if ((oldFile = getFile(oldDir, oldPath)) == NULL) {
+	int ret;
+	if ((ret = getFile(oldDir, oldPath, &oldFile)) < 0) {
 		warn("renameat2: oldFile %s not found!\n", oldPath);
 		mtx_unlock_sleep(&mtx_file);
-		return -ENOENT;
+		return ret;
 	}
 
-	if ((newFile = getFile(newDir, newPath)) != NULL) {
+	if ((ret = getFile(newDir, newPath, &newFile)) == 0) {
 		warn("renameat2: newFile %s exists!\n", newPath);
 		file_close(newFile);
 		mtx_unlock_sleep(&mtx_file);
 		return -EEXIST;
 	}
 
-	int ret = mvfile(oldFile, newDir, newPath);
+	ret = mvfile(oldFile, newDir, newPath);
 	mtx_unlock_sleep(&mtx_file);
 	return ret;
 }
