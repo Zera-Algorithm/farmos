@@ -20,6 +20,6 @@
 #define MAXPATH 128		  // maximum file path name
 #define MAX_PROC_NAME_LEN (MAXPATH + 1)
 
-#define QEMU
+// #define QEMU
 
 #endif

@@ -5,6 +5,7 @@
 #include <mm/mmu.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
+#include <dev/sd.h>
 
 Pte *kernPd;
 
@@ -85,7 +86,7 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 				    i, va);
 				Page *newPage = pmAlloc();
 				// 将新页表的物理地址写入当前页表项
-				ptModify(curPte, pageToPte(newPage) | PTE_V | PTE_MACHINE);
+				ptModify(curPte, pageToPte(newPage) | PTE_V);
 				flush_tlb_if_need(pageDir, va);
 				// 将新页表的虚拟地址赋值给 curPageTable
 				curPageTable = (Pte *)pageToPa(newPage);
@@ -126,6 +127,9 @@ void vmmInit() {
 
 	// 第二步：映射UART寄存器，用于串口输入输出
 	vmInitMap(UART0, UART0, PAGE_SIZE, PTE_R | PTE_W);
+
+	// SD卡
+	vmInitMap(SPI_CTRL_ADDR, SPI_CTRL_ADDR, PAGE_SIZE, PTE_R | PTE_W);
 
 	// 第三步：映射MMIO的硬盘寄存器，可读可写
 	vmInitMap(VIRTIO0, VIRTIO0, PAGE_SIZE, PTE_R | PTE_W);

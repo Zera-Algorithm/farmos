@@ -73,9 +73,8 @@ comp-2:
 	cp sdcard.img fs.img
 	qemu-system-riscv64 -machine virt -kernel kernel-qemu -m 128M -nographic -smp 2 -bios default -drive file=fs.img,if=none,format=raw,id=x0  -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -device virtio-net-device
 
-board:
-	qemu-system-riscv64 -machine sifive_u -kernel kernel-qemu -m 128M -nographic -smp 5 -bios default 
-#-drive file=fs.img,if=sd,format=raw
+board: $(KERNEL_ELF)
+	qemu-system-riscv64 -machine sifive_u -kernel kernel-qemu -m 128M -nographic -smp 5 -bios ./bootloader/dynamic.bin -drive file=fs.img,if=sd,format=raw
 
 
 judge: $(OS_OUTPUT)
