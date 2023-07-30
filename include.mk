@@ -8,7 +8,7 @@ OS_OUTPUT	= os_output.txt
 OUTPUT_JSON = output.json
 
 ifndef NCPU
-NCPU := 2
+NCPU := 5
 endif
 
 CC = $(TOOLPREFIX)gcc

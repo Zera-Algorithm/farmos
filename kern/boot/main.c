@@ -51,13 +51,14 @@ static inline void hart_set_clear() {
 	for (int i = 0; i < NCPU; i++) {
 		hart_started[i] = 0;
 	}
+	__sync_synchronize();
 }
 
 static inline void hart_start_all() {
 #ifndef SINGLE
 	for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 		if (!hart_started[i]) {
-			hart_started[i] = 1;
+			SBI_HART_START(i, 0x80200000, 0);
 		}
 	}
 #endif
@@ -67,6 +68,7 @@ static inline void hart_wait_all() {
 #ifndef SINGLE
 	printf("Hart %d is waiting\n", cpu_this_id());
 	while (1) {
+		__sync_synchronize();
 		int all_started = 1;
 		for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 			if (!hart_started[i]) {
@@ -123,7 +125,7 @@ void main() {
 
 		// 初始化串口
 		cons_init();
-		printf("FarmOS kernel is booting (on hart %d)\n", cpu_this_id());
+		printf("FarmOS kernel is booting (on hart %d) total: %d\n", cpu_this_id(), NCPU);
 
 		// 读取 dtb
 		parseDtb();

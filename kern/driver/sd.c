@@ -121,7 +121,7 @@ static int sd_acmd41(void)
 
 static int sd_cmd58(void)
 {
-	#ifdef QEMU
+	#ifdef QEMU_SD
 	return 0;
 	#else
 	int rc;
@@ -164,7 +164,7 @@ start:
 	int rc = 0;
 	int timeout;
 	u8 x;
-	#ifdef QEMU
+	#ifdef QEMU_SD
 	if (sd_cmd(0x52, startSector * 512, 0xE1) != 0x00) {
 	#else
 	if (sd_cmd(0x52, startSector, 0xE1) != 0x00) {
@@ -234,7 +234,7 @@ int sdWrite(u8 *buf, u64 startSector, u32 sectorNumber) {
 		u8* st = p;
 		writeTimes = 0;
 start:	p = st;
-		#ifdef QEMU
+		#ifdef QEMU_SD
 		if (sd_cmd(24 | 0x40, now * 512, 0) != 0) {
 		#else
 		if (sd_cmd(24 | 0x40, now, 0) != 0) {
@@ -364,7 +364,7 @@ int sdTest() {
     sdRead(binary, 0, 2);
     for (int i = 0; i < 1024; i++) {
         if (binary[i] != (i & 10)) {
-            panic("sd read or write is wrong");
+            panic("sd read or write is wrong, index = %d, value = %d", i, binary[i]);
             break;
         }
     }

@@ -21,7 +21,7 @@ void dev_init() {
     // virtio_disk_init();
     #endif
     sdInit();
-    dev_test();
+    // dev_test();
 }
 
 void cons_putc(int c) {

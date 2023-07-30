@@ -61,10 +61,15 @@ sdrun: $(KERNEL_ELF)
 
 # 可以暂时不需要镜像文件
 # qemu-gdb: $(KERNEL_ELF) .gdbinit
+# qemu-gdb: $(KERNEL_ELF) .gdbinit
+# 	cp sdcard.img fs.img
+# 	@echo "*** Now run 'gdb' in another window." 1>&2
+# 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+
 qemu-gdb: $(KERNEL_ELF) .gdbinit
 	cp sdcard.img fs.img
-	@echo "*** Now run 'gdb' in another window." 1>&2
-	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+	qemu-img resize fs.img 64M
+	qemu-system-riscv64 -machine sifive_u -kernel kernel-qemu -m 128M -nographic -smp 5 -bios default -drive file=fs.img,if=sd,format=raw -S -s
 
 comp: all fs.img
 	qemu-system-riscv64 -machine virt -kernel $(KERNEL_ELF) -m 128M -nographic -smp $(NCPU) -bios default -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -no-reboot > $(OS_OUTPUT)
@@ -74,7 +79,7 @@ comp-2:
 	qemu-system-riscv64 -machine virt -kernel kernel-qemu -m 128M -nographic -smp 2 -bios default -drive file=fs.img,if=none,format=raw,id=x0  -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -device virtio-net-device
 
 board: $(KERNEL_ELF)
-	qemu-system-riscv64 -machine sifive_u -kernel kernel-qemu -m 128M -nographic -smp 5 -bios ./bootloader/dynamic.bin -drive file=fs.img,if=sd,format=raw
+	qemu-system-riscv64 -machine sifive_u -kernel kernel-qemu -m 128M -nographic -smp $(NCPU) -bios ./bootloader/dynamic.bin -drive file=fs.img,if=sd,format=raw
 
 
 judge: $(OS_OUTPUT)
