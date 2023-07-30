@@ -70,4 +70,6 @@
 
 static volatile u32 * const uart = (void *)(UART_CTRL_ADDR);
 
+int sdTest(void);
+
 #endif

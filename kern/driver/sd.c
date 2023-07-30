@@ -352,22 +352,19 @@ int sdInit(void) {
 u8 binary[1024];
 int sdTest(void) {
 	sdInit();
-    for (int j = 0; j < 20; j += 2) {
-        // for (int i = 0; i < 1024; i++) {
-        //     binary[i] = i & 7;
-        // }
-        // sdWrite(binary, j, 2);
-        // for (int i = 0; i < 1024; i++) {
-        //     binary[i] = 0;
-        // }
-        sdRead(binary, j, 2);
-        // for (int i = 0; i < 1024; i++) {
-        //     if (binary[i] != (i & 7)) {
-        //         panic("gg: %d ", j);
-        //         break;
-        //     }
-        // }
-        printf("finish %d\n", j);
+	for (int i = 0; i < 1024; i++) {
+    	binary[i] = i & 10;
+	}
+    sdWrite(binary, 0, 2);
+    for (int i = 0; i < 1024; i++) {
+        binary[i] = 0;
+    }
+    sdRead(binary, 0, 2);
+    for (int i = 0; i < 1024; i++) {
+        if (binary[i] != (i & 10)) {
+            panic("sd read or write is wrong");
+            break;
+        }
     }
 	return 0;
 }
