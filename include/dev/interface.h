@@ -1,6 +1,7 @@
 #ifndef _DEV_INTERFACE_H_
 #define _DEV_INTERFACE_H_
 
+void cons_init();
 void dev_init();
 
 void cons_putc(int c);

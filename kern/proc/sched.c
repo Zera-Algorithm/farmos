@@ -1,4 +1,5 @@
 #include <lib/log.h>
+#include <lib/printf.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
 #include <proc/proc.h>
@@ -99,7 +100,7 @@ void sched_init() {
 	assert(cpu_this()->cpu_lk_depth == 0);
 	cpu_t *cpu = cpu_this();
 
-	log(LEVEL_GLOBAL, "Hart %d start scheduling\n", cpu_this_id());
+	printf("Hart %d start running.\n", cpu_this_id());
 
 	// 选择一个线程
 	thread_t *ret = sched_runnable(NULL);

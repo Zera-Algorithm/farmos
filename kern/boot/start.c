@@ -6,6 +6,10 @@
 
 void main();
 
+void start_trap() {
+	while (1);
+}
+
 // entry.S needs one stack per CPU.
 // Note：内核栈只占一页的大小，所以不要放太大的数据结构
 __attribute__((aligned(16))) char stack0[KSTACKSIZE * NCPU];
@@ -26,6 +30,7 @@ void start(long hartid, uint64 _dtb_entry) {
 
 	// 在每个CPU的tp寄存器中保存hartid
 	w_tp(hartid);
+	w_stvec((u64)start_trap);
 
 	main();
 }

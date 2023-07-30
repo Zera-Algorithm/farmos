@@ -23,6 +23,8 @@ proc_t procs[NPROC];
 void *kstacks;
 
 void thread_init() {
+	extern mutex_t first_thread_lock;
+	mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
 	extern mutex_t td_tid_lock;
 	mtx_init(&td_tid_lock, "td_tid_lock", false, MTX_SPIN);
 	mtx_init(&wait_lock, "wait_lock", false, MTX_SPIN);
