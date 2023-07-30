@@ -14,6 +14,12 @@
 #define PTE_A (1 << 6) // 访问位（Accessed）
 #define PTE_D (1 << 7) // 脏位（Dirty）
 
+#ifdef QEMU
+#define PTE_MACHINE 0
+#else // Sifive
+#define PTE_MACHINE (PTE_A | PTE_D)
+#endif
+
 // 用户定义标识
 #define PTE_COW (1 << 8) // 写时复制位
 #define PTE_PASSIVE (1 << 9) // 被动映射位

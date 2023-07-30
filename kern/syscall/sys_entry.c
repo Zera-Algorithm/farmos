@@ -1,4 +1,3 @@
-#include <dev/sbi.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <proc/cpu.h>

@@ -1,7 +1,5 @@
 #include <dev/plic.h>
-#include <dev/sbi.h>
 #include <dev/timer.h>
-#include <dev/virtio.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <lib/string.h>

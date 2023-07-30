@@ -3,7 +3,7 @@
 #include <dev/rtc.h>
 #include <dev/sbi.h>
 #include <dev/timer.h>
-#include <dev/virtio.h>
+#include <dev/interface.h>
 #include <fs/buf.h>
 #include <fs/fat32.h>
 #include <fs/fd.h>
@@ -73,6 +73,7 @@ void main() {
 		pmmInit();
 		vmmInit();
 		vmEnable(); // 开启分页
+		log(LEVEL_GLOBAL, "memory init done\n");
 
 		// 进程管理机制初始化
 		thread_init();
@@ -80,16 +81,28 @@ void main() {
 		sig_init();
 		futexevent_init();
 		tsleep_init();
+		log(LEVEL_GLOBAL, "proc init done\n");
 
 		// 其它
 		trapInitHart(); // install kernel trap vector
+		log(LEVEL_GLOBAL, "trapInitHart done\n");
 		timerInit();	// 初始化核内时钟
+		log(LEVEL_GLOBAL, "timerInit done\n");
 		plicInit();	// 设置中断控制器
+		log(LEVEL_GLOBAL, "plicInit done\n");
 		plicInitHart(); // 设置本hart的中断控制器
+		log(LEVEL_GLOBAL, "plicInitHart done\n");
 		fd_init();
+		log(LEVEL_GLOBAL, "fd_init done\n");
 		kmalloc_init();
+		log(LEVEL_GLOBAL, "kmalloc_init done\n");
 		socket_init();
+		log(LEVEL_GLOBAL, "socket_init done\n");
 		itimer_init();
+		log(LEVEL_GLOBAL, "itimer_init done\n");
+		
+		// 设备初始化
+		dev_init();
 
 		extern mutex_t first_thread_lock;
 		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);

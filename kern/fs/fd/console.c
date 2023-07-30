@@ -1,4 +1,3 @@
-#include <dev/sbi.h>
 #include <fs/fd.h>
 #include <fs/fd_device.h>
 #include <lib/error.h>
@@ -6,6 +5,7 @@
 #include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <proc/sched.h>
+#include <dev/interface.h>
 
 static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset);
 static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset);
@@ -74,12 +74,11 @@ static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			break;
 		}
 
-		// 如果没读到字符，sbi_getchar会返回255
-		while ((ch = SBI_GETCHAR()) == 255) {
+		// 如果没读到字符，cons_getc 会返回255
+		while ((ch = cons_getc()) == (char)255) {
 			yield();
 			is_blocked = 1;
 		}
-		// printf("sbi_getchar: %c\n", ch);
 		copyOut((buf + i), &ch, 1);
 	}
 	fd->offset += i;
