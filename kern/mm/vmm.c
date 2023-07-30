@@ -85,7 +85,7 @@ static Pte *ptWalk(Pte *pageDir, u64 va, bool create) {
 				    i, va);
 				Page *newPage = pmAlloc();
 				// 将新页表的物理地址写入当前页表项
-				ptModify(curPte, pageToPte(newPage) | PTE_V | PTE_MACHINE);
+				ptModify(curPte, pageToPte(newPage) | PTE_V);
 				flush_tlb_if_need(pageDir, va);
 				// 将新页表的虚拟地址赋值给 curPageTable
 				curPageTable = (Pte *)pageToPa(newPage);
