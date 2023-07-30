@@ -4,6 +4,7 @@
 #include <dev/sbi.h>
 #include <dev/timer.h>
 #include <dev/virtio.h>
+#include <dev/sd.h>
 #include <fs/buf.h>
 #include <fs/fat32.h>
 #include <fs/fd.h>
@@ -86,6 +87,8 @@ void main() {
 
 		extern mutex_t first_thread_lock;
 		mtx_init(&first_thread_lock, "first_thread_lock", 0, MTX_SPIN);
+
+		sdTest();
 
 #ifndef SINGLE
 		hartInit(); // 启动其他Hart（成功分页后再启动其他核）

@@ -366,5 +366,6 @@ int sdTest(void) {
             break;
         }
     }
+	printf("sd test past!\n");
 	return 0;
 }
