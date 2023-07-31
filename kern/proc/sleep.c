@@ -38,6 +38,11 @@ void sleep(void *chan, mutex_t *mtx, const char *msg) {
 
 	// 释放进程锁，重新获取传入的另一个锁
 	mtx_unlock(&td->td_lock);
+
+	// 判断自己是否被 KILL 掉
+	if (td->td_killed) {
+		td_destroy(-1);
+	}
 	// 当前不持有任何锁
 	mtx_lock(mtx);
 }
@@ -68,5 +73,28 @@ void wakeup(void *chan) {
 
 	// 将唤醒的进程加入就绪队列
 	TAILQ_CONCAT(&thread_runq.tq_head, &readyq.tq_head, td_runq);
+	tdq_critical_exit(&thread_runq);
+}
+
+void wakeup_td(thread_t *td) {
+	mtx_lock(&td->td_lock);
+	if (td->td_status != SLEEPING) {
+		mtx_unlock(&td->td_lock);
+		return;
+	}
+	mtx_unlock(&td->td_lock);
+
+	tdq_critical_enter(&thread_sleepq);
+	mtx_lock(&td->td_lock);
+
+	sleep_debug("wakeup %s\n", td->td_name);
+	td->td_status = RUNNABLE;
+	TAILQ_REMOVE(&thread_sleepq.tq_head, td, td_sleepq);
+
+	mtx_unlock(&td->td_lock);
+	tdq_critical_exit(&thread_sleepq);
+
+	tdq_critical_enter(&thread_runq);
+	TAILQ_INSERT_TAIL(&thread_runq.tq_head, td, td_runq);
 	tdq_critical_exit(&thread_runq);
 }

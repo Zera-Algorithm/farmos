@@ -4,6 +4,7 @@
 #include <proc/cpu.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <sys/errno.h>
 
 #define WAIT_FAIL -1
 #define WAIT_NOHANG_EXIT 0
@@ -81,7 +82,8 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 	// 检查是否有能够等待的子进程
 	if (LIST_EMPTY(&curtd->td_proc->p_children)) {
 		mtx_unlock(&wait_lock);
-		return -1;
+		warn("no child process\n");
+		return -ECHILD;
 	}
 
 	// 有子进程，需要等待并释放一个子进程再返回
@@ -107,7 +109,8 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 		if (pid != -1) {
 			// 此时如果没有找到目标进程，说明目标进程不在子进程列表中，返回
 			mtx_unlock(&wait_lock);
-			return -1;
+			warn("no such child process: pid = %lx\n", pid);
+			return -ECHILD;
 		} else if (options & WNOHANG) {
 			// 未指定目标进程，且设置了 WNOHANG，直接返回
 			mtx_unlock(&wait_lock);

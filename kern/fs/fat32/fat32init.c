@@ -12,6 +12,7 @@
 #include <lib/wchar.h>
 #include <lock/mutex.h>
 #include <fs/chardev.h>
+#include <mm/kmalloc.h>
 
 FileSystem *fatFs;
 extern mutex_t mtx_file;
@@ -178,6 +179,15 @@ static void init_fs_other() {
 	extern const unsigned char bin2c_unixbench_testcode_sh[4556];
 	create_chardev_file("/iperf_testcode_part.sh", (char *)bin2c_iperf_testcode_sh, NULL, NULL);
 	create_chardev_file("/unixbench_testcode_part.sh", (char *)bin2c_unixbench_testcode_sh, NULL, NULL);
+
+	// 写入一个空格文件
+	Dirent *file1;
+	panic_on(createFile(fatFs->root, "/lat_sig", &file1));
+	char *cont = kmalloc(PAGE_SIZE);
+	memset(cont, ' ', PAGE_SIZE);
+	file_write(file1, 0, (u64)cont, 0, PAGE_SIZE);
+	kfree(cont);
+	file_close(file1);
 }
 
 void init_files() {

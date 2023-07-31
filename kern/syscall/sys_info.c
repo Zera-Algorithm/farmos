@@ -43,11 +43,12 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 // 此处不校验clockid,直接返回cpu时间
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
-	ts.tv_sec = getUSecs() / 1000000ul;
+	ts.tv_sec = getTime() / 10000000ul;
 	ts.tv_nsec = (getTime() * NSEC_PER_CLOCK) % 1000000000ul;
 
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, tp, &ts, sizeof(ts));
+	// warn("clock_gettime: %lds %ldns\n", ts.tv_sec, ts.tv_nsec);
 	return 0;
 }
 
@@ -78,11 +79,13 @@ u64 sys_setpgid(u64 pid, u64 pgid) {
 
 int sys_getrusage(int who, struct rusage *p_usage) {
 	struct rusage usage;
+	times_t *times = &cpu_this()->cpu_running->td_proc->p_times;
 	memset(&usage, 0, sizeof(usage));
-	usage.ru_utime.tv_sec = getUSecs() / 1000000ul;
-	usage.ru_utime.tv_usec = getUSecs() % 1000000ul;
-	usage.ru_stime.tv_sec = 0;
-	usage.ru_stime.tv_usec = 0;
+	usage.ru_utime.tv_sec = times->tms_utime / 1000000ul;
+	usage.ru_utime.tv_usec = times->tms_utime % 1000000ul;
+	usage.ru_stime.tv_sec = times->tms_stime / 1000000ul;
+	usage.ru_stime.tv_usec = times->tms_stime % 1000000ul;
+	// warn("getrusage: U: %lds %ldus / S: %lds %ldus\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec, usage.ru_stime.tv_sec, usage.ru_stime.tv_usec);
 	copyOut((u64)p_usage, &usage, sizeof(usage));
 	return 0;
 }

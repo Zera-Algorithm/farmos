@@ -12,6 +12,7 @@
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <sys/errno.h>
+#include <mm/kmalloc.h>
 
 #define proc_fs_struct (cpu_this()->cpu_running->td_proc->p_fs_struct)
 
@@ -63,7 +64,7 @@ int pipe(int fd[2]) {
 			return kernfd2;
 		}
 
-		pipeAlloc = kvmAlloc();
+		pipeAlloc = (u64)kmalloc(sizeof(struct Pipe));
 		struct Pipe *p = (struct Pipe *)pipeAlloc;
 		p->count = 2;
 		p->pipeReadPos = 0;
@@ -100,12 +101,14 @@ int pipe(int fd[2]) {
  * @param offset 无用参数
  */
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+
 	int i;
 	char ch;
 	struct Pipe *p = fd->pipe;
 
 	mtx_lock(&p->lock);
 	// 如果管道为空，则一直等待
+	warn("Thread %s: fd_pipe_read pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
 	while (p->pipeReadPos == p->pipeWritePos && !pipeIsClose(p)) {
 		// TODO：判断进程是否被kill，如被kill，就释放锁并返回负数
 		// read时的channel是readPos，对方也应该以此方式唤醒
@@ -136,6 +139,9 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	// 唤醒可能在等待的写者
 	wakeup(&p->pipeWritePos);
 	mtx_unlock(&p->lock);
+	if (i == 0) {
+		warn("read fd %d empty: maybe target pipe closed.\n", fd - fds);
+	}
 	return i;
 }
 
@@ -145,6 +151,7 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	struct Pipe *p = fd->pipe;
 
 	mtx_lock(&p->lock);
+	warn("Thread %s: fd_pipe_write pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
 	while (i < n) {
 		if (pipeIsClose(p) /* || TODO: 进程已结束*/) {
 			mtx_unlock(&p->lock);
@@ -178,6 +185,7 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 static int fd_pipe_close(struct Fd *fd) {
 	struct Pipe *p = fd->pipe;
 	mtx_lock(&p->lock);
+	warn("Thread %s: fd_pipe_close pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
 	p->count -= 1;
 
 	// 唤醒读写端的程序。这里不需要考虑当前是读端还是写端，直接全部唤醒就可
@@ -187,7 +195,7 @@ static int fd_pipe_close(struct Fd *fd) {
 
 	if (p && p->count == 0) {
 		// 这里每个pipe占据一个页的空间？
-		kvmFree((u64)p); // 释放pipe结构体所在的物理内存
+		kfree(p); // 释放pipe结构体所在的物理内存
 	}
 	return 0;
 }
@@ -211,3 +219,40 @@ static int pipeIsClose(struct Pipe *p) {
 		return 0;
 	}
 }
+
+/**
+ * 如果管道中有数据，直接返回1
+ * 如果管道中没有数据，且管道未关闭，返回0，否则返回1
+ */
+int pipe_check_read(struct Pipe *p) {
+	mtx_lock(&p->lock);
+	if (p->pipeReadPos != p->pipeWritePos) {
+		mtx_unlock(&p->lock);
+		return 1;
+	} else if (pipeIsClose(p)) {
+		mtx_unlock(&p->lock);
+		return 1;
+	} else {
+		mtx_unlock(&p->lock);
+		return 0;
+	}
+}
+
+/**
+ * 如果管道空闲，直接返回1
+ * 如果管道不空闲，且管道未关闭，返回0，否则返回1
+ */
+int pipe_check_write(struct Pipe *p) {
+	mtx_lock(&p->lock);
+	if (p->pipeWritePos - p->pipeReadPos < PIPE_BUF_SIZE) {
+		mtx_unlock(&p->lock);
+		return 1;
+	} else if (pipeIsClose(p)) {
+		mtx_unlock(&p->lock);
+		return 1;
+	} else {
+		mtx_unlock(&p->lock);
+		return 0;
+	}
+}
+

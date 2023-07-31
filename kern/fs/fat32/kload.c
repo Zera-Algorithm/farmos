@@ -12,6 +12,7 @@
 #include <proc/proc.h>
 #include <proc/thread.h>
 #include <types.h>
+#include <sys/errno.h>
 
 /**
  * @brief 此文件用于将文件加载到内核
@@ -92,7 +93,9 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 fileid_t file_load(const char *path, void **bin, size_t *size) {
 	Dirent *file;
 	// load时加锁，unload时解锁
-	panic_on(getFile(NULL, (char *)path, &file));
+	if (getFile(NULL, (char *)path, &file)) {
+		return -ENOENT;
+	}
 	log(DEBUG, "kload file: %s\n", file->name);
 	return file_load_by_dirent(file, bin, size);
 }

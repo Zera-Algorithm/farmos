@@ -3,7 +3,7 @@
 #include <lock/mutex.h>
 #include <types.h>
 
-#define PIPE_BUF_SIZE 2048
+#define PIPE_BUF_SIZE (7 * PAGE_SIZE)
 struct thread;
 
 struct Pipe {
@@ -20,4 +20,7 @@ struct Pipe {
 };
 
 int pipe(int fd[2]);
+int pipe_check_read(struct Pipe *p);
+int pipe_check_write(struct Pipe *p);
+
 #endif

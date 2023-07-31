@@ -1,4 +1,5 @@
 #include <lib/log.h>
+#include <dev/timer.h>
 #include <lib/printf.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
@@ -126,8 +127,16 @@ context_t *sched_switch(context_t *old_ctx, register_t param) {
 	cpu_t *cpu = cpu_this();
 	cpu->cpu_running = NULL;
 
+	u64 now = getUSecs();
+	if (old->td_proc) {
+		old->td_proc->p_times.tms_utime += (now - old->td_proc->p_times.tms_ustart);
+	}
+
 	// 选择新线程
 	thread_t *ret = sched_runnable(old);
+	if (ret->td_proc) {
+		ret->td_proc->p_times.tms_ustart = now;
+	}
 	// log(LEVEL_GLOBAL, "Hart Sched %s(%d) -> %s(%d)\n", old->td_name, old->td_tid,
 	// ret->td_name,
 	//     ret->td_tid);

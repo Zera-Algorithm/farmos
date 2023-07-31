@@ -86,7 +86,7 @@ struct Dirent {
 	u32 linkcnt; // 链接计数
 	u32 refcnt;  // 引用计数
 
-	char *holders[64];
+	char *holders[128];
 	int holder_cnt;
 };
 

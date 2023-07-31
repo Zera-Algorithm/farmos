@@ -51,8 +51,7 @@ void proc_addtd(proc_t *p, thread_t *td);
 typedef struct stack_arg stack_arg_t;
 
 void proc_initupt(proc_t *p);
-void proc_initucode_by_file(proc_t *p, thread_t *inittd, char *pathbuf, stack_arg_t *parg);
-void proc_initucode_by_binary(proc_t *p, thread_t *inittd, const void *bin, size_t size, stack_arg_t *parg);
+int proc_initucode_by_binary(proc_t *p, thread_t *inittd, const void *bin, size_t size, stack_arg_t *parg);
 
 typedef struct stack_arg stack_arg_t;
 typedef void (*argv_callback_t)(char *kstr_arr[]);

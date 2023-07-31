@@ -43,6 +43,7 @@ static int copyin_uarg_array(pte_t *in_pt, char **arg_array, char *kstr_array[])
 			char *buf = kmalloc(MAXARGLEN + 1);
 			copy_in(in_pt, (u64)(&arg_array[arg_count]), &arg, sizeof(char *));
 			if (arg == NULL) {
+				kfree(buf);
 				break;
 			}
 

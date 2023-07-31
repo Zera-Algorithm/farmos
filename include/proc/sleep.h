@@ -10,6 +10,7 @@ extern mutex_t wait_lock;
 
 void sleep(void *chan, mutex_t *mtx, const char *msg);
 void wakeup(void *chan);
+void wakeup_td(thread_t *td);
 
 u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options);
 

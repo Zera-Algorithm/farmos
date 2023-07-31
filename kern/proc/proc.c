@@ -113,12 +113,12 @@ static void proc_recycle(proc_t *p) {
 	recycle_thread_fs(&p->p_fs_struct);
 	proc_recycleupt(p);
 	sigaction_free(p);
-	p->p_status = ZOMBIE;
+
 }
 
 void proc_destroy(proc_t *p, err_t exitcode) {
 	p->p_exitcode = exitcode;
-
+	p->p_status = ZOMBIE;
 	// 拿等待锁，防止其它线程在此期间调用 wait
 	proc_unlock(p);
 

@@ -3,6 +3,7 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
+#include <lib/elf.h>
 #include <mm/kmalloc.h>
 #include <mm/vmtools.h>
 #include <proc/cpu.h>
@@ -121,14 +122,27 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	copy_in_str(p->p_pt, path, pathbuf, MAX_PROC_NAME_LEN);
 	safestrcpy(td->td_name, pathbuf, MAX_PROC_NAME_LEN);
 
-	// TODO: 区分ELF和脚本
+	void *bin;
+	size_t size;
+	fileid_t file_id = file_load(pathbuf, &bin, &size);
+	if (file_id < 0) {
+		return file_id;
+	}
+
+	// Note: 区分ELF和脚本
 	int len = strlen(pathbuf);
 	if (len > 3 && pathbuf[len - 3] == '.' && pathbuf[len - 2] == 's' &&
 	    pathbuf[len - 1] == 'h') {
+		file_unload(file_id); // 先释放不使用的文件
+
 		// 执行脚本，指定解释器为busybox
 		strncpy(pathbuf, "/busybox", MAX_PROC_NAME_LEN);
 		// 加载参数
 		stack_arg = copy_arg(p, td, argv, envp, exec_sh_callback);
+
+		// 重新加载文件
+		file_id = file_load(pathbuf, &bin, &size);
+		assert(file_id >= 0);
 	} else { // 判定为ELF文件
 		// 加载参数
 		stack_arg = copy_arg(p, td, argv, envp, exec_elf_callback);
@@ -145,9 +159,11 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 
 	// 加载程序的各个段
 	log(DEBUG, "START LOAD CODE SEGMENT\n");
-	proc_initucode_by_file(p, td, pathbuf, &stack_arg);
+	int ret = proc_initucode_by_binary(p, td, bin, size, &stack_arg);
 	log(DEBUG, "END LOAD CODE SEGMENT\n");
-	return 0;
+
+	file_unload(file_id);
+	return ret;
 }
 
 /**

@@ -1,3 +1,5 @@
+#include <dev/sbi.h>
+#include <dev/timer.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <proc/cpu.h>
@@ -118,16 +120,16 @@ void syscall_entry(trapframe_t *tf) {
     thread_t *td = cpu_this()->cpu_running;
 
 	if (sys_func != NULL && sys_func->name != NULL) {
-		if (sysno != SYS_brk)
+		if (sysno != SYS_brk && sysno != SYS_getrusage && sysno != SYS_clock_gettime && sysno != SYS_pselect6 && sysno != SYS_getppid && sysno != SYS_rt_sigaction)
 			log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
 		    	td->td_name, sys_func->name, tf->epc);
-        if (sysno != SYS_brk)
+        if (sysno != SYS_brk && sysno != SYS_getrusage && sysno != SYS_clock_gettime && sysno != SYS_pselect6 && sysno != SYS_getppid && sysno != SYS_rt_sigaction)
         	log(LEVEL_GLOBAL, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
 	}
 
 
 	// S态时间审计
-	// u64 startTime = getTime();
+	u64 startTime = getUSecs();
 	// 系统调用最多6个参数
 	u64 (*func)(u64, u64, u64, u64, u64, u64);
 
@@ -151,10 +153,10 @@ void syscall_entry(trapframe_t *tf) {
 	if ((i64)tf->a0 < 0) {
 		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
-    if (sysno != SYS_brk)
+    if (sysno != SYS_brk && sysno != SYS_getrusage && sysno != SYS_clock_gettime && sysno != SYS_pselect6 && sysno != SYS_getppid && sysno != SYS_rt_sigaction)
     	log(LEVEL_GLOBAL, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
 
-	// // S态时间审计
-	// u64 endTime = getTime();
-	// myProc()->procTime.totalStime += (endTime - startTime);
+	// S态时间审计
+	u64 endTime = getUSecs();
+	cpu_this()->cpu_running->td_proc->p_times.tms_stime += (endTime - startTime);
 }

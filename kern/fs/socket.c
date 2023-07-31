@@ -392,10 +392,8 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			mtx_unlock(&localSocket->state.state_lock);
 
 			wakeup(&localSocket->socketWritePos);
-			mtx_unlock_sleep(&fd->lock);
 			sleep(&localSocket->socketReadPos, &localSocket->lock,
 			      "wait another socket to write");
-			mtx_lock_sleep(&fd->lock);
 		} else {
 			mtx_unlock(&localSocket->state.state_lock);
 			break;
@@ -435,18 +433,17 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		return sendto(fd - fds, (void *)buf, n, 0, &localSocket->target_addr, NULL, 0);
 	}
 
-	char *write_buf = kmalloc(131072);
+	char write_buf[PAGE_SIZE];
 	// TCP
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket == NULL) {
 		warn("socket write error: can\'t find target socket.\n");
 		// 原因可能是远端已关闭
-		kfree(write_buf);
 		return -EPIPE;
 	}
 
 	// mtx_lock(&targetSocket->lock);
-	copyIn(buf, write_buf, n);
+	copyIn(buf, write_buf, MIN(n, PAGE_SIZE));
 	while (i < n) {
 		mtx_lock(
 		    &localSocket->state.state_lock); // 获得自身socket的状态锁，从而来获得targetSocket是否关闭的状态
@@ -455,7 +452,6 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 				warn("socket write error: target socket is closed.\n");
 				mtx_unlock(&localSocket->state.state_lock);
 				mtx_unlock(&targetSocket->lock);
-				kfree(write_buf);
 				return -EPIPE;
 			} else {
 				warn("socket writer can\'t write more.\n");
@@ -468,19 +464,21 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			mtx_unlock(&localSocket->state.state_lock);
 
 			wakeup(&targetSocket->socketReadPos);
-			mtx_unlock_sleep(&fd->lock);
 			sleep(&targetSocket->socketWritePos, &targetSocket->lock,
 					"wait another socket to  read.\n");
-			mtx_lock_sleep(&fd->lock);
 		} else {
 			writePos = (char *)(targetSocket->bufferAddr +
 					    ((targetSocket->socketWritePos) % PAGE_SIZE));
 			if (writePos == NULL) {
 				// asm volatile("ebreak"); //
 			}
-			*writePos = write_buf[i];
+			*writePos = write_buf[i % PAGE_SIZE];
 			targetSocket->socketWritePos++;
 			i++;
+
+			if (i % PAGE_SIZE == 0) {
+				copyIn(buf + i, write_buf, MIN(n - i, PAGE_SIZE));
+			}
 
 			mtx_unlock(&localSocket->state.state_lock);
 		}
@@ -489,7 +487,6 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	fd->offset += i;
 	wakeup(&targetSocket->socketReadPos);
 	mtx_unlock(&targetSocket->lock);
-	kfree(write_buf);
 	return i;
 }
 

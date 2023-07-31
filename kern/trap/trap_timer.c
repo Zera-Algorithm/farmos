@@ -16,7 +16,7 @@ void ktrap_timer() {
 
 void utrap_timer() {
 	// 时钟中断
-	log(LEVEL_GLOBAL, "Timer Int On Hart %d\n", cpu_this_id());
+	// log(LEVEL_GLOBAL, "Timer Int On Hart %d\n", cpu_this_id());
 	// 先设置下次时钟中断的触发时间，再进行调度
 	ktrap_timer();
 	yield();

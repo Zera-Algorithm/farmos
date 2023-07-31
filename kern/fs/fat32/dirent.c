@@ -12,7 +12,7 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 
-#define MAX_DIRENT 1024
+#define MAX_DIRENT 8192
 
 /**
  * 本文件用于维护Dirent的分配以及维护和修改Dirent的树状结构
@@ -147,6 +147,7 @@ static int dir_lookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **f
 		}
 	}
 
+	// log(9999, "dir_lookup: %s not found in %s\n", name, dir->name);
 	return -ENOENT;
 }
 

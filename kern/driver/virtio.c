@@ -295,7 +295,7 @@ void virtio_disk_intr() {
 		int id = disk.used->ring[disk.used_idx % NUM].id;
 
 		if (disk.info[id].status != 0)
-			panic("virtio_disk_intr status");
+			panic("virtio_disk_intr %lx status", disk.info[id].b->blockno);
 
 		Buffer *b = disk.info[id].b;
 		// printf("intr: Buffer = %lx\n", b);

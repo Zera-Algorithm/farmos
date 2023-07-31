@@ -108,7 +108,8 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	// 2. 指定权限位
 	perm = get_perm_by_prot(prot);
 
-	if (flags & MAP_ANONYMOUS) {
+	// fd < 0是匿名映射
+	if ((flags & MAP_ANONYMOUS)) {
 		// A. 匿名映射
 		r = sys_map(start, len, perm);
 

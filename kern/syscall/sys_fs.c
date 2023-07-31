@@ -19,6 +19,7 @@
 #include <sys/syscall_fs.h>
 #include <sys/time.h>
 #include <dev/timer.h>
+#include <fs/pipe.h>
 #include <proc/tsleep.h>
 
 int sys_write(int fd, u64 buf, size_t count) {
@@ -241,6 +242,8 @@ static inline int check_pselect_r(int fd) {
 	// 目前只处理socket和其他
 	if (kfd->type == dev_socket) {
 		ret = socket_read_check(kfd);
+	} else if (kfd->type == dev_pipe) {
+		ret = pipe_check_read(kfd->pipe);
 	} else {
 		ret = 1;
 	}
@@ -260,9 +263,11 @@ static inline int check_pselect_w(int fd) {
 	}
 	mtx_lock_sleep(&kfd->lock);
 
-	// 目前只处理socket和其他
+	// 目前只处理socket,pipe,其他
 	if (kfd->type == dev_socket) {
 		ret = socket_write_check(kfd);
+	} else if (kfd->type == dev_pipe) {
+		ret = pipe_check_write(kfd->pipe);
 	} else {
 		ret = 1;
 	}
@@ -294,6 +299,10 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 
 	u64 start = getUSecs();
 	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
+
+	if (timeout_us != 0) {
+		warn("pselect6: timeout_us = %d\n", timeout_us);
+	}
 
 	// debug
 	log(FS_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
@@ -371,6 +380,9 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 			break;
 		}
 	}
+
+	// 不要返回任何异常情况
+	memset(&exceptfds_cur, 0, sizeof(exceptfds_cur));
 
 	// 将轮询状况返回
 	if (p_readfds) copyOut(p_readfds, &readfds_cur, sizeof(readfds_cur));

@@ -34,6 +34,7 @@ void itimer_get(thread_t *td, struct itimerval *itv) {
 			cycle_to_timeval(itimer->interval, &itv->it_interval);
 			cycle_to_timeval(itimer->start + itimer->last_time - getTime(), &itv->it_value);
 			mtx_unlock(&itimer_list.itimer_lock);
+			return;
 		}
 	}
 
