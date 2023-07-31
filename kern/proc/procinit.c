@@ -115,7 +115,7 @@ void proc_initustack(proc_t *p, thread_t *inittd) {
 	// 分配可拓展的用户栈空间
 	for (int i = 0; i < TD_USTACK_EXTEND_PAGE_NUM; i++) {
 		u64 va = TD_USTACK_BOTTOM + i * PAGE_SIZE;
-		panic_on(ptMap(p->p_pt, va, 0, PTE_R | PTE_W | PTE_U | PTE_PASSIVE));
+		panic_on(ptMap(p->p_pt, va, 0, PTE_R | PTE_W | PTE_U));
 	}
 	// 初始化用户栈空间指针
 	inittd->td_trapframe.sp = USTACKTOP;

@@ -19,7 +19,8 @@ err_t sys_map(u64 start, u64 len, u64 perm) {
 				panic_on(ptMap(pt, va, vmAlloc(), perm));
 			} else {
 				// 使用被动调页机制，若对应虚拟地址没有映射则添加被动映射
-				panic_on(ptMap(pt, va, 0, PTE_PASSIVE | perm));
+				assert(perm & PTE_U);
+				panic_on(ptMap(pt, va, 0, perm));
 			}
 		}
 	}

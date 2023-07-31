@@ -22,7 +22,9 @@
 
 // 用户定义标识
 #define PTE_COW (1 << 8) // 写时复制位
-#define PTE_PASSIVE (1 << 9) // 被动映射位
+#define PTE_SHARED (1 << 9) // 共享位
+
+#define PTE_PASSIVE(pte) ((!(pte & PTE_V)) && (pte & PTE_U))
 
 // 基于 Sv39 的页表结构
 #define PTE_PPNSHIFT (10ull)		      // 页表项中物理页号的偏移量

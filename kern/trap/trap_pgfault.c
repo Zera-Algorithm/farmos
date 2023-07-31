@@ -20,7 +20,7 @@ err_t cow_handler(pte_t *pd, pte_t pte, u64 badva) {
 err_t passive_handler(pte_t *pd, pte_t pte, u64 badva) {
 	assert((pte & PTE_PPNMASK) == 0);
 	u64 newpa = vmAlloc();
-	u64 perm = pte ^ PTE_PASSIVE;
+	u64 perm = pte;
 	warn("passive page fault: badva=%lx, pte=%lx, perm=%lx\n", badva, pte, perm);
 	return ptMap(pd, badva, newpa, perm);
 }
@@ -32,7 +32,7 @@ err_t page_fault_handler(pte_t *pd, u64 violate, u64 badva) {
 	if ((violate & PTE_W) && (pte != 0) && (pte & PTE_U) && !(pte & PTE_W) && (pte & PTE_COW)) {
 		// 写时复制：写错误且用户位、只读位、写时复制位
 		return cow_handler(pd, pte, badva);
-	} else if (pte & PTE_PASSIVE) {
+	} else if (!(pte & PTE_V) && (pte & PTE_U)) {
 		// 被动调页：不管违反了哪种权限，如果那一页是被动映射的，就先映射上
 		return passive_handler(pd, pte, badva);
 	} else {

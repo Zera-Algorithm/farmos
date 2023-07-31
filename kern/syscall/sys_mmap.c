@@ -168,9 +168,10 @@ err_t sys_mprotect(u64 addr, size_t len, int prot) {
 	for (u64 va = from; va < to; va += PAGE_SIZE) {
 		// 若虚拟地址对应的物理地址不存在，则跳过
 		u64 pte = ptLookup(pt, va);
-		if (pte & PTE_PASSIVE) {
+		if (!(pte & PTE_V) && (pte & PTE_U)) {
 			// 被动有效 -> 被动有效（更新权限）
-			panic_on(ptMap(pt, va, 0, perm | PTE_PASSIVE));
+			assert(perm & PTE_U);
+			panic_on(ptMap(pt, va, 0, perm));
 		} else if (pte & PTE_V) {
 			// 有效 -> 有效（更新权限）
 			panic_on(ptMap(pt, va, pteToPa(pte), perm));
