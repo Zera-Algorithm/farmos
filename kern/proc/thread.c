@@ -94,6 +94,8 @@ void td_destroy(err_t exitcode) {
 	// todo 线程残留的信号和futex
 
 	// 将线程从进程链表中移除
+	// 等待锁保证了 wait 的调用者在持有锁期间不会有进程被摧毁
+	mtx_lock(&wait_lock);
 	proc_lock(td->td_proc);
 	TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);
 	if (TAILQ_EMPTY(&td->td_proc->p_threads)) {
@@ -101,6 +103,7 @@ void td_destroy(err_t exitcode) {
 		proc_destroy(td->td_proc, exitcode);
 	}
 	proc_unlock(td->td_proc);
+	mtx_unlock(&wait_lock);
 
 	// 此时线程转为悬垂线程（不归属于任何进程），回收线程资源
 	mtx_lock(&td->td_lock);

@@ -117,15 +117,15 @@ static void proc_recycle(proc_t *p) {
 }
 
 void proc_destroy(proc_t *p, err_t exitcode) {
+	assert(mtx_hold(&wait_lock));
+
+	// 原子操作：线程队列清空、状态变为僵尸、设置退出码
 	p->p_exitcode = exitcode;
 	p->p_status = ZOMBIE;
-	// 拿等待锁，防止其它线程在此期间调用 wait
 	proc_unlock(p);
 
 	// 此时进程内只有一个线程，不需要对回收进程资源加锁
 	proc_recycle(p);
-
-	mtx_lock(&wait_lock);
 
 	// 处理子进程资源
 	proc_t *child;
@@ -157,5 +157,4 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 	}
 
 	proc_lock(p);
-	mtx_unlock(&wait_lock);
 }
