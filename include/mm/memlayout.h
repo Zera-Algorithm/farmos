@@ -98,12 +98,12 @@
 // PHYSTOP -- end RAM used by the kernel
 
 // qemu puts UART registers here in physical memory.
-#ifdef QEMU
-#define UART0 0x10000000ul
-#else // SiFive
+#ifdef SIFIVE
 #define UART0 0x10010000ul
 #define HIFIVE_UART UART0
-#endif // QEMU
+#else
+#define UART0 0x10000000ul
+#endif // SiFive
 #define UART0_IRQ 10
 
 // virtio mmio interface
