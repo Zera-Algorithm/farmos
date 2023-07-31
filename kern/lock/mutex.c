@@ -62,7 +62,9 @@ static void __mtx_lo_lock(mutex_t *m, bool need_critical) {
 	if (need_critical) {
 		lo_critical_enter();
 	}
-	assert(!lo_acquired(&m->mtx_lock_object));
+	if (lo_acquired(&m->mtx_lock_object)) {
+		asm volatile("ebreak");
+	}
 	lo_acquire(&m->mtx_lock_object);
 	// 离开时中断仍然是关闭的
 }

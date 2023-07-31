@@ -17,6 +17,7 @@ u64 clusterAlloc(FileSystem *fs, u64 prevCluster) __attribute__((warn_unused_res
 void clusterFree(FileSystem *fs, u64 cluster, u64 prevCluster);
 
 u32 fatRead(FileSystem *fs, u64 cluster);
+void fatWrite(FileSystem *fs, u64 cluster, u32 content);
 i64 fileBlockNo(FileSystem *fs, u64 firstclus, u64 fblockno);
 
 #endif

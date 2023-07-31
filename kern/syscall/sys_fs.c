@@ -305,18 +305,24 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 	}
 
 	// debug
-	log(FS_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
-	log(FS_GLOBAL, "readfds: \n");
+	log(LEVEL_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
+	log(LEVEL_GLOBAL, "readfds: \n");
 	FD_SET_FOREACH(fd, &readfds) {
-		log(FS_GLOBAL, "%d\n", fd);
+		log(LEVEL_GLOBAL, "%d\n", fd);
 	}
-	log(FS_GLOBAL, "\n");
+	log(LEVEL_GLOBAL, "\n");
 
-	log(FS_GLOBAL, "writefds: \n");
+	log(LEVEL_GLOBAL, "writefds: \n");
 	FD_SET_FOREACH(fd, &writefds) {
-		log(FS_GLOBAL, "%d\n", fd);
+		log(LEVEL_GLOBAL, "%d\n", fd);
 	}
-	log(FS_GLOBAL, "\n");
+	log(LEVEL_GLOBAL, "\n");
+
+	log(LEVEL_GLOBAL, "exceptfds: \n");
+	FD_SET_FOREACH(fd, &exceptfds) {
+		log(LEVEL_GLOBAL, "%d\n", fd);
+	}
+	log(LEVEL_GLOBAL, "\n");
 	// debug end
 
 	while (1) {
@@ -369,8 +375,11 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 			func_ret = tot;
 			break;
 		} else {
-			// 小睡10ms
-			tsleep(&timeout, NULL, "pselect", 10000);
+			if (timeout_us >= 10000) {
+				// 小睡10ms
+				tsleep(&timeout, NULL, "pselect", 10000);
+			}
+			// 否则，循环消耗时间即可
 		}
 
 		// 超时退出
@@ -545,5 +554,12 @@ int sys_ftruncate(int fd, off_t length) {
 	}
 
 	mtx_unlock_sleep(&mtx_file);
+	return 0;
+}
+
+void sys_sync() {
+}
+
+int sys_syncfs(int fd) {
 	return 0;
 }

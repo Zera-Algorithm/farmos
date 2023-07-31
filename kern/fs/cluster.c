@@ -146,7 +146,7 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 	}
 }
 
-static void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
+void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 	panic_on(cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1);
 
 	// fatno从0开始

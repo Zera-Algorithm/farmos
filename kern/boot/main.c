@@ -21,6 +21,7 @@
 #include <proc/sched.h>
 #include <proc/thread.h>
 #include <proc/tsleep.h>
+#include <ipc/shm.h>
 #include <riscv.h>
 #include <signal/itimer.h>
 #include <signal/signal.h>
@@ -150,6 +151,7 @@ void main() {
 		plicInit();	// 设置中断控制器
 		fd_init();	// include kload lock init
 		kmalloc_init();
+		shm_init();
 		log(LEVEL_GLOBAL, "kmalloc_init done\n");
 		socket_init();
 		log(LEVEL_GLOBAL, "socket_init done\n");

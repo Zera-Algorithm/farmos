@@ -12,6 +12,7 @@
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <sys/errno.h>
+#include <fs/cluster.h>
 
 extern mutex_t mtx_file;
 
@@ -53,18 +54,34 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 	}
 }
 
+// /**
+//  * @brief 递归地从文件的尾部释放其cluster
+//  * @note TODO: 可能有栈溢出风险
+//  */
+// static void recur_free_clus(FileSystem *fs, int clus, int prev_clus) {
+// 	int next_clus = fatRead(fs, clus);
+// 	if (!FAT32_NOT_END_CLUSTER(next_clus)) {
+// 		// clus is end cluster
+// 		clusterFree(fs, clus, prev_clus);
+// 	} else {
+// 		recur_free_clus(fs, next_clus, clus);
+// 		clusterFree(fs, clus, prev_clus);
+// 	}
+// }
+
 /**
- * @brief 递归地从文件的尾部释放其cluster
- * @note TODO: 可能有栈溢出风险
+ * @brief 顺序释放文件的cluster
+ * @param clus 第一个簇
  */
-static void recur_free_clus(FileSystem *fs, int clus, int prev_clus) {
-	int next_clus = fatRead(fs, clus);
-	if (!FAT32_NOT_END_CLUSTER(next_clus)) {
-		// clus is end cluster
-		clusterFree(fs, clus, prev_clus);
-	} else {
-		recur_free_clus(fs, next_clus, clus);
-		clusterFree(fs, clus, prev_clus);
+static void sequence_free_clus(FileSystem *fs, int clus, int prev_clus) {
+	while (1) {
+		int nxt_clus = fatRead(fs, clus);
+		fatWrite(fs, clus, 0);
+		clus = nxt_clus;
+
+		if (!FAT32_NOT_END_CLUSTER(clus)) {
+			break;
+		}
 	}
 }
 
@@ -141,7 +158,7 @@ static int rmfile(struct Dirent *file) {
 
 	// 4. 释放其占用的Cluster
 	int clus = file->first_clus;
-	recur_free_clus(file->file_system, clus, 0);
+	sequence_free_clus(file->file_system, clus, 0);
 
 	dirent_dealloc(file); // 释放目录项
 	return 0;

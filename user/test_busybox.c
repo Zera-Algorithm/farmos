@@ -11,6 +11,7 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
+	    (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
 	    // (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 	    // (char *const[]) {"/busybox", "dmesg", NULL},
 
@@ -39,7 +40,12 @@ int main() {
 	    (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
 	    (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
 
+		// iozone
+
 		// lua测试：pass
+	    // (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+		// libc-bench测试
+	    // (char *const[]){"/libc-bench", NULL},
 	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
 
 		// iperf

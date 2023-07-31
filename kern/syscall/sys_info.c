@@ -43,8 +43,18 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 // 此处不校验clockid,直接返回cpu时间
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
-	ts.tv_sec = getTime() / 10000000ul;
-	ts.tv_nsec = (getTime() * NSEC_PER_CLOCK) % 1000000000ul;
+	if (clockid == CLOCK_REALTIME) {
+		ts.tv_sec = getTime() / 10000000ul;
+		ts.tv_nsec = (getTime() * NSEC_PER_CLOCK) % 1000000000ul;
+	} else if (clockid == CLOCK_MONOTONIC) {
+		ts.tv_sec = getUSecs() / 1000000ul;
+		ts.tv_nsec = (getUSecs() % 1000000ul) * 1000ul;
+	} else {
+		// 其他情况
+		warn("clock_gettime: clockid %d not implemented, use boot time instead\n", clockid);
+		ts.tv_sec = getUSecs() / 1000000ul;
+		ts.tv_nsec = getUSecs() % 1000000ul;
+	}
 
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, tp, &ts, sizeof(ts));

@@ -113,7 +113,7 @@ void utrap_entry() {
 			     "\tStval(bad memory address): 0x%016lx\n",
 			     cpu_this_id(), exc_code, excCause[exc_code], r_sepc(), r_stval());
 			printf("[Page Fault] "
-			"%s(t:%08x|p:%08x) badva=%lx, pte=%lx\n", 
+			"%s(t:%08x|p:%08x) badva=%lx, pte=%lx\n",
 			td->td_name, td->td_tid, td->td_proc->p_pid, r_stval(), ptLookup(td->td_proc->p_pt, r_stval()));
 			sys_exit(-1); // errcode todo
 		}

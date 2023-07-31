@@ -71,6 +71,7 @@ static inline u64 get_perm_by_prot(int prot) {
 // TODO: 实现将映射地址区域与文件结合，实现msync同步内存到文件
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	mtx_lock(&cur_proc()->p_lock);
+	// TODO: 实现MAP_SHARED在父子进程之间共享内存
 
 	// 打印参数
 	log(LEVEL_GLOBAL,
@@ -107,6 +108,10 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 
 	// 2. 指定权限位
 	perm = get_perm_by_prot(prot);
+
+	if (flags & MAP_SHARED) {
+		perm |= PTE_SHARED;
+	}
 
 	// fd < 0是匿名映射
 	if ((flags & MAP_ANONYMOUS)) {

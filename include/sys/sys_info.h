@@ -1,3 +1,5 @@
+#ifndef _SYS_INFO_H
+#define _SYS_INFO_H
 #include <types.h>
 #include <sys/time.h>
 
@@ -37,3 +39,4 @@ struct sysinfo {
 	char _f[20-2*sizeof(long)-sizeof(int)];
 							/* Padding to 64 bytes */
 };
+#endif

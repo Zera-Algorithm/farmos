@@ -169,6 +169,9 @@ static void init_fs_other() {
 	makeDirAt(fatFs->root, "/lib", 0);
 	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
 	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
+	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/bin/busybox"));
+	panic_on(linkat(fatFs->root, "/iozone", fatFs->root, "/bin/iozone"));
+
 
 	makeDirAt(fatFs->root, "/sbin", 0);
 	panic_on(linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all"));

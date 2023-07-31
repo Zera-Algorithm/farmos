@@ -88,6 +88,7 @@ void td_destroy(err_t exitcode) {
 		mtx_unlock(&td->td_lock);
 	}
 
+	asm volatile("nop");
 	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
 
 	// todo 线程残留的信号和futex

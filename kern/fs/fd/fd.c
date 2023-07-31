@@ -90,7 +90,7 @@ int closeFd(int fd) {
 	} else {
 		if (cur_proc_fs_struct()->fdList[fd] < 0 ||
 		    cur_proc_fs_struct()->fdList[fd] >= FDNUM) {
-			warn("kern fd is wrong, please check\n");
+			warn("kern fd %d is wrong, please check\n", cur_proc_fs_struct()->fdList[fd]);
 			return -EBADF;
 		} else {
 			kernFd = cur_proc_fs_struct()->fdList[fd];
@@ -642,7 +642,7 @@ int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags) {
  bytes from the begin‐ ning of the file.  On error, -errno is returned.
  */
 off_t lseekFd(int fd, off_t offset, int whence) {
-	log(LEVEL_GLOBAL, "lseek fd %d, offset %ld, whence %d\n", fd, offset, whence);
+	// log(LEVEL_GLOBAL, "lseek fd %d, offset %ld, whence %d\n", fd, offset, whence);
 
 	int kFd_num;
 	int ret = 0;
