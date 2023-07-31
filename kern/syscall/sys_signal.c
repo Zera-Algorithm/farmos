@@ -110,6 +110,10 @@ int sys_kill(int pid, int sig) {
 		return -ESRCH;
 	}
 
+	if (sig == 0) {
+		return 0; // 不处理0信号
+	}
+
 	sig_send_proc(p, sig);
 
 	assert(pid == p->p_pid);

@@ -66,6 +66,8 @@ struct Dirent {
 	// 标记是文件、目录还是设备文件（仅在文件系统中出现，不出现在磁盘中）
 	u32 type;
 
+	u32 is_rm;
+
 	// 文件的时间戳
 	struct file_time time;
 

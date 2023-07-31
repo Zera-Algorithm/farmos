@@ -92,7 +92,7 @@ void td_destroy(err_t exitcode) {
 	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
 
 	// todo 线程残留的信号和futex
-
+	mtx_lock(&wait_lock);
 	// 将线程从进程链表中移除
 	proc_lock(td->td_proc);
 	TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);
@@ -101,6 +101,7 @@ void td_destroy(err_t exitcode) {
 		proc_destroy(td->td_proc, exitcode);
 	}
 	proc_unlock(td->td_proc);
+	mtx_unlock(&wait_lock);
 
 	// 此时线程转为悬垂线程（不归属于任何进程），回收线程资源
 	mtx_lock(&td->td_lock);

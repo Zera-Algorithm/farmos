@@ -520,14 +520,19 @@ int sys_statfs(u64 ppath, struct statfs *buf) {
 	} else {
 		FileSystem *fs = file->file_system;
 
+		// 分配出的扇区数
+		extern u64 alloced_clus;
+		// 使用中的dirent数
+		extern u64 used_dirents;
+		
 		assert(fs != NULL);
 		statfs.f_type = MSDOS_SUPER_MAGIC;
 		statfs.f_bsize = fs->superBlock.bytes_per_clus;
 		statfs.f_blocks = fs->superBlock.bpb.tot_sec / fs->superBlock.bpb.sec_per_clus;
-		statfs.f_bfree = statfs.f_blocks / 2;		 // 虚构的空闲块数
-		statfs.f_bavail = statfs.f_blocks / 2;		 // 虚构的空闲块数
-		statfs.f_files = 100000;			 // 虚构的文件数
-		statfs.f_ffree = 10000;				 // 虚构的空闲file node数
+		statfs.f_bfree = MAX(statfs.f_blocks / 2 - alloced_clus, 0);		 // TODO: 空闲块数（有意偏少）
+		statfs.f_bavail = statfs.f_bfree;		 // 空闲块数
+		statfs.f_files = 10000;			 // 虚构的文件数
+		statfs.f_ffree = MAX(2000 - used_dirents, 0);				 // 虚构的空闲file node数（有意偏少）
 		statfs.f_fsid.val[0] = statfs.f_fsid.val[1] = 0; // fsid，一般不用
 		statfs.f_namelen = MAX_NAME_LEN;
 		statfs.f_frsize = 0; // unknown

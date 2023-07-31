@@ -123,6 +123,10 @@ int getFile(Dirent *baseDir, char *path, Dirent **pfile) {
 void file_close(Dirent *file) {
 	mtx_lock_sleep(&mtx_file);
 	dput_path(file);
+	if (file->is_rm && file->refcnt == 0) {
+		warn("file close and is_rm is set, rm file %s\n", file->name);
+		rm_unused_file(file);
+	}
 	mtx_unlock_sleep(&mtx_file);
 }
 

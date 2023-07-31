@@ -12,7 +12,8 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 
-#define MAX_DIRENT 8192
+#define MAX_DIRENT 10460
+u64 used_dirents = 0;
 
 /**
  * 本文件用于维护Dirent的分配以及维护和修改Dirent的树状结构
@@ -46,6 +47,7 @@ Dirent *dirent_alloc() {
 	Dirent *dirent = LIST_FIRST(&dirent_free_list);
 	// TODO: 需要初始化dirent的睡眠锁
 	LIST_REMOVE(dirent, dirent_link);
+	used_dirents += 1;
 
 	mtx_unlock(&mtx_dirent);
 	return dirent;
@@ -56,6 +58,7 @@ void dirent_dealloc(Dirent *dirent) {
 
 	memset(dirent, 0, sizeof(Dirent));
 	LIST_INSERT_HEAD(&dirent_free_list, dirent, dirent_link);
+	used_dirents -= 1;
 
 	mtx_unlock(&mtx_dirent);
 }
@@ -147,7 +150,7 @@ static int dir_lookup(FileSystem *fs, Dirent *dir, char *name, struct Dirent **f
 		}
 	}
 
-	// log(9999, "dir_lookup: %s not found in %s\n", name, dir->name);
+	warn("dir_lookup: %s not found in %s\n", name, dir->name);
 	return -ENOENT;
 }
 

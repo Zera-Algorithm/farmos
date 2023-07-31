@@ -23,6 +23,7 @@ void dput(Dirent *dirent);
 
 int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *newPath);
 int unlinkat(struct Dirent *dir, char *path);
+int rm_unused_file(struct Dirent *file);
 int renameat2(Dirent *oldDir, char *oldPath, Dirent *newDir, char *newPath, u32 flags);
 
 int makeDirAt(Dirent *baseDir, char *path, int mode);

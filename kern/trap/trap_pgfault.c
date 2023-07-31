@@ -71,10 +71,10 @@ void trap_pgfault(thread_t *td, u64 exc_code) {
 		if (pte & PTE_COW)
 			prot[4] = 'C';
 
-		printf(FARM_ERROR"[Page Fault] "SGR_RED
-			"%s(t:%08x|p:%08x) violate %x, badva=%lx, pte=%lx (prot = %s)"SGR_RESET"\n",
-			td->td_name, td->td_tid, td->td_proc->p_pid, violation, badva, pte, prot);
-		warn("page fault caused 'SIGSEGV' on thread %d[%s]\n", td->td_tid, td->td_name);
+		// printf(FARM_ERROR"[Page Fault] "SGR_RED
+		// 	"%s(t:%08x|p:%08x) violate %x, badva=%lx, pte=%lx (prot = %s)"SGR_RESET"\n",
+		// 	td->td_name, td->td_tid, td->td_proc->p_pid, violation, badva, pte, prot);
+		warn("page fault caused 'SIGSEGV' on thread %d[%s] prot = %s\n", td->td_tid, td->td_name, prot);
 		sig_send_proc(td->td_proc, SIGSEGV);
 		// sys_exit(-1);
 	}

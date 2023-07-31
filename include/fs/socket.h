@@ -66,6 +66,9 @@ typedef struct Socket {
 	u64 tid; // 归属的tid
 
 	Message_list messages;
+
+	int udp_is_connect;
+	int opposite;
 } Socket;
 
 struct Fd;

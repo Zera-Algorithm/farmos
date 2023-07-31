@@ -61,7 +61,7 @@ sdrun: $(KERNEL_ELF) sdcard.img
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-qemu-gdb: $(KERNEL_ELF) .gdbinit sdcard.img
+qemu-gdb: $(KERNEL_ELF) sdcard.img
 	$(QEMU) $(QEMUOPTS) -S -s
 
 clean:

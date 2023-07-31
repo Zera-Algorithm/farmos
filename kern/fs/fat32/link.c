@@ -15,6 +15,7 @@
 #include <fs/cluster.h>
 
 extern mutex_t mtx_file;
+static int rmfile(struct Dirent *file);
 
 /**
  * @brief 创建链接
@@ -86,47 +87,13 @@ static void sequence_free_clus(FileSystem *fs, int clus, int prev_clus) {
 }
 
 /**
- * @brief 删除文件。支持递归删除文件夹
+ * @brief 需要保证传入的file->refcnt == 0
  */
-static int rmfile(struct Dirent *file) {
+int rm_unused_file(struct Dirent *file) {
+	assert(file->refcnt == 0);
 	char linked_file_path[MAX_NAME_LEN];
-
 	int cnt = get_entry_count_by_name(file->name);
 	char data = 0xE5;
-
-	if (file->refcnt > 1) {
-		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
-		int hold_by_cur = 1;
-		for (int i = 0; i < file->holder_cnt; i++) {
-			if (file->holders[i] != cpu_this()->cpu_running->td_name) {
-				hold_by_cur = 0;
-				break;
-			}
-		}
-
-		if (!hold_by_cur) {
-			warn("other process uses file %s! refcnt = %d\n", file->name, file->refcnt);
-
-#ifdef REFCNT_DEBUG
-			for (int i = 0; i < file->holder_cnt; i++) {
-				warn("holder: %s\n", file->holders[i]);
-			}
-#endif
-
-			return -EBUSY; // in use
-		} else {
-			warn("file %s is hold by current process(refcnt = %d), can't remove, "
-			     "continue!\n",
-			     file->name, file->refcnt);
-			return 0;
-			/**
-			 * 此实现是为了应对ftello_unflushed_append的unlink失败问题
-			 * TODO: 后续实现建议：
-			 * 在Dirent上置一个位is_rm，表示在refcnt归0时是否可以删除。如果可以删除，那么在
-			 * file_close()之后检测到 (refcnt == 0 && is_rm) 就将其删除
-			 */
-		}
-	}
 
 	// 1. 如果是链接文件，则减去其链接数
 	if (file->raw_dirent.DIR_Attr & ATTR_LINK) {
@@ -162,6 +129,50 @@ static int rmfile(struct Dirent *file) {
 
 	dirent_dealloc(file); // 释放目录项
 	return 0;
+}
+
+/**
+ * @brief 删除文件。支持递归删除文件夹
+ */
+static int rmfile(struct Dirent *file) {
+	if (file->refcnt > 1) {
+		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
+		int hold_by_cur = 1;
+		for (int i = 0; i < file->holder_cnt; i++) {
+			if (file->holders[i] != cpu_this()->cpu_running->td_name) {
+				hold_by_cur = 0;
+				break;
+			}
+		}
+
+		if (!hold_by_cur) {
+			warn("other process uses file %s! refcnt = %d\n", file->name, file->refcnt);
+
+#ifdef REFCNT_DEBUG
+			for (int i = 0; i < file->holder_cnt; i++) {
+				warn("holder: %s\n", file->holders[i]);
+			}
+#endif
+
+			return -EBUSY; // in use
+		} else {
+			// 自己持有的
+			warn("file %s is hold by current process(refcnt = %d), can't remove, will remove on close, "
+			     "continue!\n",
+			     file->name, file->refcnt);
+			file->is_rm = 1;
+			return 0;
+			/**
+			 * 此实现是为了应对ftello_unflushed_append的unlink失败问题
+			 * TODO: 后续实现建议：
+			 * 在Dirent上置一个位is_rm，表示在refcnt归0时是否可以删除。如果可以删除，那么在
+			 * file_close()之后检测到 (refcnt == 0 && is_rm) 就将其删除
+			 */
+		}
+	}
+
+	file->refcnt -= 1;
+	return rm_unused_file(file);
 }
 
 /**

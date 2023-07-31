@@ -75,6 +75,7 @@ static u64 wait_til_exit(thread_t *curtd, proc_t *childp, u64 pstatus, int optio
 }
 
 u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
+	log(LEVEL_GLOBAL, "wait: pid = %lx, pstatus = %lx, options = %x\n", pid, pstatus, options);
 	// 获取等待锁，且不应该有其他锁
 	assert(cpu_this()->cpu_lk_depth == 0);
 	mtx_lock(&wait_lock);
@@ -114,6 +115,7 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 		} else if (options & WNOHANG) {
 			// 未指定目标进程，且设置了 WNOHANG，直接返回
 			mtx_unlock(&wait_lock);
+			warn("WNOHANG: pid = %lx, exit wait\n", pid);
 			return WAIT_NOHANG_EXIT;
 		} else {
 			// 未指定目标进程，且未设置 WNOHANG，等待子进程退出
