@@ -71,6 +71,12 @@ void thread_init();
 // 线程回收
 void td_destroy(err_t exitcode) __attribute__((noreturn));
 
+// td的index，从1开始
+static inline u16 get_td_index(thread_t *td) {
+	extern thread_t threads[NPROC];
+	return (td - threads) + 1;
+}
+
 // 相关宏
 #define tdq_critical_enter(tdq) mtx_lock(&(tdq)->tq_lock)
 #define tdq_critical_try_enter(tdq) mtx_try_lock(&(tdq)->tq_lock)
