@@ -204,13 +204,18 @@ u64 sys_nanosleep(u64 pTimeSpec) {
 # define TIMER_ABSTIME			1
 // request是nanosleep类型的指针
 u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain) {
-	timeval_t timeVal;
+	timespec_t timeVal;
 	copyIn(request, &timeVal, sizeof(timeVal));
 	if (flags & TIMER_ABSTIME) {
 		// 以绝对时间睡眠
-		tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal));
+		if (clock_id == CLOCK_REALTIME) {
+			tsleep(&timeVal, NULL, "clock_nanosleep", TS_USEC(timeVal));
+		} else {
+			tsleep(&timeVal, NULL, "clock_nanosleep", TS_USEC(timeVal) + RTC_OFF);
+		}
+		
 	} else {
-		tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal) + getUSecs());
+		tsleep(&timeVal, NULL, "clock_nanosleep", TS_USEC(timeVal) + getUSecs());
 	}
 	return 0;
 }

@@ -45,7 +45,7 @@ u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
 	u64 time = getRealTime();
 	if (clockid == CLOCK_REALTIME) {
-		time += (1ul << 35); // todo
+		time = getTime(); // todo
 		ts.tv_sec = time / CLOCK_PER_SEC;
 		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
 	} else if (clockid == CLOCK_MONOTONIC) {

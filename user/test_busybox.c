@@ -11,6 +11,8 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
+		
+	    (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 		// (char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
 
 	    // (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
@@ -29,8 +31,8 @@ int main() {
 	    (char *const[]){"/time-test", NULL},
 		// (char *const[]) {"./lmbench_all", "lat_ctx", "-P", "1", "-s", "32", "2", "4", "8", "16", "24", "32", "64", "96", NULL},
 		// libc-bench测试
-		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 		(char *const[]){"/libc-bench", NULL},
+		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 	
 		// busybox测试
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
@@ -68,7 +70,6 @@ int main() {
 		// (char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
 
 	    // cyclictest测试
-	    // (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 
 	    // lmbench测试
 	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},

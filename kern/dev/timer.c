@@ -18,13 +18,17 @@ u64 getRealTime() {
 }
 
 u64 getTime() {
-	return getRealTime() + (1ul << 35);
+	return getRealTime() + RTC_OFF;
 }
 
 /**
  * @brief 获取以微秒记的时间
  */
 u64 getUSecs() {
+	return getTime() / CLOCK_PER_USEC;
+}
+
+u64 getRealUSecs() {
 	return getRealTime() / CLOCK_PER_USEC;
 }
 

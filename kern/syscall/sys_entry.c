@@ -112,6 +112,7 @@ static syscall_function_t sys_table[] = {
 	[SYS_shmget] = {sys_shmget, "shmget"},
 	[SYS_shmat] = {sys_shmat, "shmat"},
 	[SYS_shmctl] = {sys_shmctl, "shmctl"},
+    [SYS_clock_nanosleep] = {sys_clock_nanosleep, "clock_nanosleep"},
 };
 
 /**
@@ -146,7 +147,7 @@ void syscall_entry(trapframe_t *tf) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
         if (sysno != SYS_exit_group) {
-		    // printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
+		    printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
         }
         return;
 		// sys_exit(SYSCALL_ERROR);

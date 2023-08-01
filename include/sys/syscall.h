@@ -36,6 +36,8 @@ pid_t sys_getsid(pid_t pid);
 pid_t sys_setsid();
 void sys_reboot();
 
+u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain);
+
 struct rusage;
 struct sysinfo;
 

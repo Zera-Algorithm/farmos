@@ -15,9 +15,12 @@
 // 中断时间间隔为0.05s(20Hz)
 #define INTERVAL 500000
 
+#define RTC_OFF (1ul << 35)
+
 uint64 getRealTime();
 u64 getTime();
 u64 getUSecs();
+u64 getRealUSecs();
 void timerInit();
 void handler_timer_int();
 
