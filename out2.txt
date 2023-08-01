@@ -1,0 +1,1587 @@
+make build --directory=kern
+make[1]: 进入目录“/home/zrp/farmos/kern”
+make build --directory=boot/
+make[2]: 进入目录“/home/zrp/farmos/kern/boot”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/boot”
+make build --directory=dev/
+make[2]: 进入目录“/home/zrp/farmos/kern/dev”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/dev”
+make build --directory=driver/
+make[2]: 进入目录“/home/zrp/farmos/kern/driver”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/driver”
+make build --directory=fs/
+make[2]: 进入目录“/home/zrp/farmos/kern/fs”
+make build --directory=fat32
+make[3]: 进入目录“/home/zrp/farmos/kern/fs/fat32”
+make[3]: 对“build”无需做任何事。
+make[3]: 离开目录“/home/zrp/farmos/kern/fs/fat32”
+make build --directory=fd
+make[3]: 进入目录“/home/zrp/farmos/kern/fs/fd”
+make[3]: 对“build”无需做任何事。
+make[3]: 离开目录“/home/zrp/farmos/kern/fs/fd”
+make build --directory=proc
+make[3]: 进入目录“/home/zrp/farmos/kern/fs/proc”
+make[3]: 对“build”无需做任何事。
+make[3]: 离开目录“/home/zrp/farmos/kern/fs/proc”
+make build --directory=static_files
+make[3]: 进入目录“/home/zrp/farmos/kern/fs/static_files”
+make[3]: 对“build”无需做任何事。
+make[3]: 离开目录“/home/zrp/farmos/kern/fs/static_files”
+make[2]: 离开目录“/home/zrp/farmos/kern/fs”
+make build --directory=futex/
+make[2]: 进入目录“/home/zrp/farmos/kern/futex”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/futex”
+make build --directory=ipc/
+make[2]: 进入目录“/home/zrp/farmos/kern/ipc”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/ipc”
+make build --directory=lib/
+make[2]: 进入目录“/home/zrp/farmos/kern/lib”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/lib”
+make build --directory=lock/
+make[2]: 进入目录“/home/zrp/farmos/kern/lock”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/lock”
+make build --directory=mm/
+make[2]: 进入目录“/home/zrp/farmos/kern/mm”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/mm”
+make build --directory=proc/
+make[2]: 进入目录“/home/zrp/farmos/kern/proc”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/proc”
+make build --directory=signal/
+make[2]: 进入目录“/home/zrp/farmos/kern/signal”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/signal”
+make build --directory=syscall/
+make[2]: 进入目录“/home/zrp/farmos/kern/syscall”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/syscall”
+make build --directory=trap/
+make[2]: 进入目录“/home/zrp/farmos/kern/trap”
+make[2]: 对“build”无需做任何事。
+make[2]: 离开目录“/home/zrp/farmos/kern/trap”
+make[1]: 离开目录“/home/zrp/farmos/kern”
+make build --directory=lib
+make[1]: 进入目录“/home/zrp/farmos/lib”
+make[1]: 对“build”无需做任何事。
+make[1]: 离开目录“/home/zrp/farmos/lib”
+make build --directory=user
+make[1]: 进入目录“/home/zrp/farmos/user”
+riscv64-unknown-elf-gcc -Wall -Werror -fno-omit-frame-pointer -gdwarf-2 -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -DNCPU=2 -DQEMU -fno-pie -no-pie -DVIRT -O3 -I./include/ -I../include -c -o test_busybox.o test_busybox.c
+riscv64-unknown-elf-ld -o test_busybox.b -z max-page-size=4096 -O --gc-sections -G 0 -static -n -nostdlib -T ../linker/user.ld entry.o test_busybox.o libMain.o syscallLib.o clone.o stdio.o stdlib.o string.o
+riscv64-unknown-elf-objdump -D test_busybox.b > test_busybox.b.asm
+python3 ../scripts/binToC.py test_busybox.b test_busybox.b.c
+riscv64-unknown-elf-gcc -Wall -Werror -fno-omit-frame-pointer -gdwarf-2 -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -DNCPU=2 -DQEMU -fno-pie -no-pie -DVIRT -O3 -c -o test_busybox.x test_busybox.b.c
+rm test_busybox.o test_busybox.b
+make[1]: 离开目录“/home/zrp/farmos/user”
+riscv64-unknown-elf-ld -z max-page-size=4096 -O --gc-sections -T linker/kernel.ld -o kernel-qemu kern/*/*.o lib/*.o user/*.x kern/*/*/*.o
+riscv64-unknown-elf-objdump -xS kernel-qemu > kern/kernel.asm
+cp sdcard.img fs.img
+qemu-img resize fs.img 64M
+Image resized.
+qemu-system-riscv64 -machine virt -bios default -kernel kernel-qemu -m 128M -smp 2 -nographic -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -device virtio-net-device
+
+OpenSBI v1.0
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name             : riscv-virtio,qemu
+Platform Features         : medeleg
+Platform HART Count       : 2
+Platform IPI Device       : aclint-mswi
+Platform Timer Device     : aclint-mtimer @ 10000000Hz
+Platform Console Device   : uart8250
+Platform HSM Device       : ---
+Platform Reboot Device    : sifive_test
+Platform Shutdown Device  : sifive_test
+Firmware Base             : 0x80000000
+Firmware Size             : 260 KB
+Runtime SBI Version       : 0.3
+
+Domain0 Name              : root
+Domain0 Boot HART         : 0
+Domain0 HARTs             : 0*,1*
+Domain0 Region00          : 0x0000000002000000-0x000000000200ffff (I)
+Domain0 Region01          : 0x0000000080000000-0x000000008007ffff ()
+Domain0 Region02          : 0x0000000000000000-0xffffffffffffffff (R,W,X)
+Domain0 Next Address      : 0x0000000080200000
+Domain0 Next Arg1         : 0x0000000087000000
+Domain0 Next Mode         : S-mode
+Domain0 SysReset          : yes
+
+Boot HART ID              : 0
+Boot HART Domain          : root
+Boot HART ISA             : rv64imafdcsuh
+Boot HART Features        : scounteren,mcounteren,time
+Boot HART PMP Count       : 16
+Boot HART PMP Granularity : 4
+Boot HART PMP Address Bits: 54
+Boot HART MHPM Count      : 0
+Boot HART MIDELEG         : 0x0000000000001666
+Boot HART MEDELEG         : 0x0000000000f0b509
+FarmOS kernel is booting (on hart 0) total: 2
+Hart 0's vm is enabled, booting.
+FarmOS kernel boot end, start all harts.
+Hart 0 is waiting
+Hart 1 started.
+Hart 1's vm is enabled, booting.
+Hart 1 is waiting
+Hart 1 start running.
+Hart 0 start running.
+test_busybox started!
+[test_init]: before execve! I'm 20001
+
+$ /time-test 
+time-test: time/iteration: 0.119ns total time: 528ms
+
+$ /libc-bench 
+b_malloc_sparse (0)
+  time: 0.829156900, virt: 0, res: 0, dirty: 0
+
+b_malloc_bubble (0)
+  time: 0.687175000, virt: 0, res: 0, dirty: 0
+
+b_malloc_tiny1 (0)
+  time: 0.026755300, virt: 0, res: 0, dirty: 0
+
+b_malloc_tiny2 (0)
+  time: 0.031461700, virt: 0, res: 0, dirty: 0
+
+b_malloc_big1 (0)
+  time: 0.321134000, virt: 0, res: 0, dirty: 0
+
+b_malloc_big2 (0)
+  time: 0.305305400, virt: 0, res: 0, dirty: 0
+
+b_malloc_thread_stress (0)
+malloc thread stress test start1
+malloc thread stress test start2
+sub thread running...
+sub thread's thread_self = 600022e54
+malloc thread stress test join1
+sub thread running...
+sub thread's thread_self = 600045e54
+End stress test of sub thread 600022e54
+malloc thread stress test join2
+End stress test of sub thread 600045e54
+malloc join done
+  time: 0.154429500, virt: 0, res: 0, dirty: 0
+
+b_malloc_thread_local (0)
+sub thread running...
+sub thread's thread_self = 600022e54
+sub thread running...
+sub thread's thread_self = 600045e54
+End stress test of sub thread 600022e54
+End stress test of sub thread 600045e54
+  time: 0.146919300, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("abcdefghijklmnopqrstuvwxyz")
+  time: 0.032979600, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("azbycxdwevfugthsirjqkplomn")
+  time: 0.043157100, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("aaaaaaaaaaaaaacccccccccccc")
+  time: 0.038598600, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("aaaaaaaaaaaaaaaaaaaaaaaaac")
+  time: 0.030793200, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaac")
+  time: 0.040461600, virt: 0, res: 0, dirty: 0
+
+b_string_memset (0)
+  time: 0.019368700, virt: 0, res: 0, dirty: 0
+
+b_string_strchr (0)
+  time: 0.044785000, virt: 0, res: 0, dirty: 0
+
+b_string_strlen (0)
+  time: 0.036467900, virt: 0, res: 0, dirty: 0
+
+b_pthread_createjoin_serial1 (0)
+  time: 2.814352600, virt: 0, res: 0, dirty: 0
+
+b_pthread_createjoin_serial2 (0)
+  time: 1.879306300, virt: 0, res: 0, dirty: 0
+
+b_pthread_create_serial1 (0)
+  time: 0.913630400, virt: 0, res: 0, dirty: 0
+
+b_pthread_uselesslock (0)
+  time: 0.190833400, virt: 0, res: 0, dirty: 0
+
+b_utf8_bigbuf (0)
+  time: 0.107015100, virt: 0, res: 0, dirty: 0
+
+b_utf8_onebyone (0)
+  time: 0.273189900, virt: 0, res: 0, dirty: 0
+
+b_stdio_putcgetc (0)
+  time: 0.007777100, virt: 0, res: 0, dirty: 0
+
+b_stdio_putcgetc_unlocked (0)
+  time: 0.006468600, virt: 0, res: 0, dirty: 0
+
+b_regex_compile ("(a|b|c)*d*b")
+  time: 0.210257000, virt: 0, res: 0, dirty: 0
+
+b_regex_search ("(a|b|c)*d*b")
+  time: 0.464766300, virt: 0, res: 0, dirty: 0
+
+b_regex_search ("a{25}b")
+  time: 0.862388000, virt: 0, res: 0, dirty: 0
+
+
+$ /busybox ash busybox_testcode.sh 
+#### independent command test
+ash: "####: unknown operand
+testcase busybox echo "#### independent command test" success
+ash: -c: unknown operand
+testcase busybox ash -c exit success
+ash: -c: unknown operand
+testcase busybox sh -c exit success
+bbb
+ash: /aaa/bbb: unknown operand
+testcase busybox basename /aaa/bbb success
+    January 1970
+Su Mo Tu We Th Fr Sa
+             1  2  3
+ 4  5  6  7  8  9 10
+11 12 13 14 15 16 17
+18 19 20 21 22 23 24
+25 26 27 28 29 30 31
+                     
+testcase busybox cal success
+[H[Jtestcase busybox clear success
+Thu Jan  1 00:57:29 UTC 1970
+testcase busybox date success
+Filesystem           1K-blocks      Used Available Use% Mounted on
+testcase busybox df success
+/aaa
+ash: /aaa/bbb: unknown operand
+testcase busybox dirname /aaa/bbb success
+testcase busybox dmesg success
+du: ./bin/.          : No such file or directory
+du: ./bin/..         : No such file or directory
+3328	./bin
+256	./dev/misc
+256	./dev/shm
+1024	./dev
+256	./proc/sys/kernel
+512	./proc/sys
+1024	./proc
+256	./etc
+256	./tmp
+768	./lib
+768	./sbin
+5042944	.
+testcase busybox du fail
+2
+ash: 1: unknown operand
+testcase busybox expr 1 + 1 success
+testcase busybox false success
+testcase busybox true success
+/bin/ls
+ash: ls: unknown operand
+testcase busybox which ls success
+FarmOS
+testcase busybox uname success
+ 00:57:30 up 0 min,  0 users,  load average: 0.00, 0.00, 0.00
+testcase busybox uptime success
+abcnash: "abcn": unknown operand
+testcase busybox printf "abcn" success
+PID   USER     TIME  COMMAND
+testcase busybox ps success
+/
+testcase busybox pwd success
+              total        used        free      shared  buff/cache   available
+Mem:         131072       83560       47512           0           0           0
+-/+ buffers/cache:        83560       47512
+Swap:             0           0           0
+testcase busybox free success
+Sun Dec 31 00:00:00 1899  0.000000 seconds
+testcase busybox hwclock success
+ash: 10: unknown operand
+testcase busybox kill 10 success
+[1;32marithoh[m                     [1;32mlong[m
+[1;34mbin[m                         [1;32mlooper[m
+[1;32mbusybox[m                     [1;32mlua[m
+[1;32mbusybox_cmd.txt[m             [1;32mlua_testcode.sh[m
+[1;32mbusybox_testcode.sh[m         [1;32mmax_min.lua[m
+[1;32mcontext1[m                    [1;32mmulti.sh[m
+[1;32mcyclictest[m                  [1;32mnetperf[m
+[1;32mcyclictest_testcode.sh[m      [1;32mnetperf_testcode.sh[m
+[1;32mdate.lua[m                    [1;32mnetserver[m
+[1;34mdev[m                         [1;32mpipe[m
+[1;32mdhry2[m                       [1;34mproc[m
+[1;32mdhry2reg[m                    [1;32mrandom.lua[m
+[1;32mdlopen_dso.so[m               [1;32mregister[m
+[1;32mdouble[m                      [1;32mremove.lua[m
+[1;32mentry-dynamic.exe[m           [1;32mround_num.lua[m
+[1;32mentry-static.exe[m            [1;32mrun-dynamic.sh[m
+[1;34metc[m                         [1;32mrun-static.sh[m
+[1;32mexecl[m                       [1;32mruntest.exe[m
+[1;32mfile_io.lua[m                 [1;34msbin[m
+[1;32mfloat[m                       [1;32mshort[m
+[1;32mfstime[m                      [1;32msin30.lua[m
+[1;32mhackbench[m                   [1;32msort.lua[m
+[1;32mhanoi[m                       [1;32msort.src[m
+[1;32mhello[m                       [1;32mspawn[m
+[1;32mint[m                         [1;32mstrings.lua[m
+[1;32miozone[m                      [1;32msyscall[m
+[1;32miozone_testcode.sh[m          [1;32mtest.sh[m
+[1;32miperf3[m                      [1;32mtest_all.sh[m
+[1;32miperf_testcode.sh[m           [1;32mtime-test[m
+[1;35miperf_testcode_part.sh[m      [1;32mtls_align_dso.so[m
+[1;32mlat_sig[m                     [1;32mtls_get_new-dtv_dso.so[m
+[1;34mlib[m                         [1;32mtls_init_dso.so[m
+[1;32mlibc-bench[m                  [1;34mtmp[m
+[1;32mlibc.so[m                     [1;32mtst.sh[m
+[1;32mlibctest_testcode.sh[m        [1;32munixbench_testcode.sh[m
+[1;32mlmbench_all[m                 [1;35munixbench_testcode_part.sh[m
+[1;32mlmbench_testcode.sh[m         [1;32mwhetstone-double[m
+[1;32mlmbench_testcode_part.sh[m
+testcase busybox ls success
+ash: 1: unknown operand
+testcase busybox sleep 1 success
+#### file opration test
+ash: "####: unknown operand
+testcase busybox echo "#### file opration test" success
+ash: test.txt: unknown operand
+testcase busybox touch test.txt success
+ash: "hello: unknown operand
+testcase busybox echo "hello world" > test.txt success
+hello world
+ash: test.txt: unknown operand
+testcase busybox cat test.txt success
+l
+ash: -c: unknown operand
+testcase busybox cut -c 3 test.txt success
+0000000 062550 066154 020157 067567 066162 005144
+0000014
+ash: test.txt: unknown operand
+testcase busybox od test.txt success
+hello world
+ash: test.txt: unknown operand
+testcase busybox head test.txt success
+hello world
+ash: test.txt: unknown operand
+testcase busybox tail test.txt success
+00000000  68 65 6c 6c 6f 20 77 6f  72 6c 64 0a              |hello world.|
+0000000c
+ash: -C: unknown operand
+testcase busybox hexdump -C test.txt success
+6f5902ac237024bdd0c176cb93063dc4  test.txt
+ash: test.txt: unknown operand
+testcase busybox md5sum test.txt success
+ash: "ccccccc": unknown operand
+testcase busybox echo "ccccccc" >> test.txt success
+ash: "bbbbbbb": unknown operand
+testcase busybox echo "bbbbbbb" >> test.txt success
+ash: "aaaaaaa": unknown operand
+testcase busybox echo "aaaaaaa" >> test.txt success
+ash: "2222222": unknown operand
+testcase busybox echo "2222222" >> test.txt success
+ash: "1111111": unknown operand
+testcase busybox echo "1111111" >> test.txt success
+ash: "bbbbbbb": unknown operand
+testcase busybox echo "bbbbbbb" >> test.txt success
+1111111
+2222222
+aaaaaaa
+bbbbbbb
+ccccccc
+hello world
+ash: test.txt: unknown operand
+testcase busybox sort test.txt | ./busybox uniq success
+  File: test.txt
+  Size: 60        	Blocks: 512        IO Block: 512    regular file
+Device: 0h/0d	Inode: 22951744    Links: 1
+Access: (0777/-rwxrwxrwx)  Uid: (    0/ UNKNOWN)   Gid: (    0/ UNKNOWN)
+Access: 1970-01-01 00:00:00.000000000 +0000
+Modify: 1970-01-01 00:00:00.000000000 +0000
+Change: 1970-01-01 00:00:00.000000000 +0000
+ash: test.txt: unknown operand
+testcase busybox stat test.txt success
+hello world
+ccccccc
+bbbbbbb
+aaaaaaa
+2222222
+1111111
+bbbbbbb
+ash: test.txt: unknown operand
+testcase busybox strings test.txt success
+        7         8        60 test.txt
+ash: test.txt: unknown operand
+testcase busybox wc test.txt success
+ash: -f: unknown operand
+testcase busybox [ -f test.txt ] success
+hello world
+ccccccc
+bbbbbbb
+aaaaaaa
+2222222
+1111111
+bbbbbbb
+ash: test.txt: unknown operand
+testcase busybox more test.txt success
+ash: test.txt: unknown operand
+testcase busybox rm test.txt success
+ash: test_dir: unknown operand
+testcase busybox mkdir test_dir success
+ash: test_dir: unknown operand
+testcase busybox mv test_dir test success
+ash: test: unknown operand
+testcase busybox rmdir test success
+echo "hello world" > test.txt
+grep hello busybox_cmd.txt
+ash: hello: unknown operand
+testcase busybox grep hello busybox_cmd.txt success
+ash: busybox_cmd.txt: unknown operand
+testcase busybox cp busybox_cmd.txt busybox_cmd.bak success
+ash: busybox_cmd.bak: unknown operand
+testcase busybox rm busybox_cmd.bak success
+find: ./bin/.          : No such file or directory
+find: ./bin/..         : No such file or directory
+./busybox_cmd.txt
+ash: -name: unknown operand
+testcase busybox find -name "busybox_cmd.txt" success
+
+$ /busybox ash run-static.sh 
+========== START entry-static.exe argv ==========
+Pass!
+========== END entry-static.exe argv ==========
+========== START entry-static.exe basename ==========
+Pass!
+========== END entry-static.exe basename ==========
+========== START entry-static.exe clocale_mbfuncs ==========
+Pass!
+========== END entry-static.exe clocale_mbfuncs ==========
+========== START entry-static.exe clock_gettime ==========
+Pass!
+========== END entry-static.exe clock_gettime ==========
+========== START entry-static.exe crypt ==========
+Pass!
+========== END entry-static.exe crypt ==========
+========== START entry-static.exe dirname ==========
+Pass!
+========== END entry-static.exe dirname ==========
+========== START entry-static.exe env ==========
+Pass!
+========== END entry-static.exe env ==========
+========== START entry-static.exe fdopen ==========
+Pass!
+========== END entry-static.exe fdopen ==========
+========== START entry-static.exe fnmatch ==========
+Pass!
+========== END entry-static.exe fnmatch ==========
+========== START entry-static.exe fscanf ==========
+Pass!
+========== END entry-static.exe fscanf ==========
+========== START entry-static.exe fwscanf ==========
+Pass!
+========== END entry-static.exe fwscanf ==========
+========== START entry-static.exe iconv_open ==========
+Pass!
+========== END entry-static.exe iconv_open ==========
+========== START entry-static.exe inet_pton ==========
+Pass!
+========== END entry-static.exe inet_pton ==========
+========== START entry-static.exe mbc ==========
+Pass!
+========== END entry-static.exe mbc ==========
+========== START entry-static.exe memstream ==========
+Pass!
+========== END entry-static.exe memstream ==========
+========== START entry-static.exe pthread_cancel_points ==========
+Pass!
+========== END entry-static.exe pthread_cancel_points ==========
+========== START entry-static.exe pthread_cancel ==========
+Pass!
+========== END entry-static.exe pthread_cancel ==========
+========== START entry-static.exe pthread_cond ==========
+Pass!
+========== END entry-static.exe pthread_cond ==========
+========== START entry-static.exe pthread_tsd ==========
+Pass!
+========== END entry-static.exe pthread_tsd ==========
+========== START entry-static.exe qsort ==========
+Pass!
+========== END entry-static.exe qsort ==========
+========== START entry-static.exe random ==========
+Pass!
+========== END entry-static.exe random ==========
+========== START entry-static.exe search_hsearch ==========
+Pass!
+========== END entry-static.exe search_hsearch ==========
+========== START entry-static.exe search_insque ==========
+Pass!
+========== END entry-static.exe search_insque ==========
+========== START entry-static.exe search_lsearch ==========
+Pass!
+========== END entry-static.exe search_lsearch ==========
+========== START entry-static.exe search_tsearch ==========
+Pass!
+========== END entry-static.exe search_tsearch ==========
+========== START entry-static.exe setjmp ==========
+Pass!
+========== END entry-static.exe setjmp ==========
+========== START entry-static.exe snprintf ==========
+Pass!
+========== END entry-static.exe snprintf ==========
+========== START entry-static.exe socket ==========
+Pass!
+========== END entry-static.exe socket ==========
+========== START entry-static.exe sscanf ==========
+Pass!
+========== END entry-static.exe sscanf ==========
+========== START entry-static.exe sscanf_long ==========
+Pass!
+========== END entry-static.exe sscanf_long ==========
+========== START entry-static.exe stat ==========
+Pass!
+========== END entry-static.exe stat ==========
+========== START entry-static.exe strftime ==========
+Pass!
+========== END entry-static.exe strftime ==========
+========== START entry-static.exe string ==========
+Pass!
+========== END entry-static.exe string ==========
+========== START entry-static.exe string_memcpy ==========
+Pass!
+========== END entry-static.exe string_memcpy ==========
+========== START entry-static.exe string_memmem ==========
+Pass!
+========== END entry-static.exe string_memmem ==========
+========== START entry-static.exe string_memset ==========
+Pass!
+========== END entry-static.exe string_memset ==========
+========== START entry-static.exe string_strchr ==========
+Pass!
+========== END entry-static.exe string_strchr ==========
+========== START entry-static.exe string_strcspn ==========
+Pass!
+========== END entry-static.exe string_strcspn ==========
+========== START entry-static.exe string_strstr ==========
+Pass!
+========== END entry-static.exe string_strstr ==========
+========== START entry-static.exe strptime ==========
+Pass!
+========== END entry-static.exe strptime ==========
+========== START entry-static.exe strtod ==========
+Pass!
+========== END entry-static.exe strtod ==========
+========== START entry-static.exe strtod_simple ==========
+Pass!
+========== END entry-static.exe strtod_simple ==========
+========== START entry-static.exe strtof ==========
+Pass!
+========== END entry-static.exe strtof ==========
+========== START entry-static.exe strtol ==========
+Pass!
+========== END entry-static.exe strtol ==========
+========== START entry-static.exe strtold ==========
+Pass!
+========== END entry-static.exe strtold ==========
+========== START entry-static.exe swprintf ==========
+Pass!
+========== END entry-static.exe swprintf ==========
+========== START entry-static.exe tgmath ==========
+Pass!
+========== END entry-static.exe tgmath ==========
+========== START entry-static.exe time ==========
+Pass!
+========== END entry-static.exe time ==========
+========== START entry-static.exe tls_align ==========
+Pass!
+========== END entry-static.exe tls_align ==========
+========== START entry-static.exe udiv ==========
+Pass!
+========== END entry-static.exe udiv ==========
+========== START entry-static.exe ungetc ==========
+Pass!
+========== END entry-static.exe ungetc ==========
+========== START entry-static.exe utime ==========
+Pass!
+========== END entry-static.exe utime ==========
+========== START entry-static.exe wcsstr ==========
+Pass!
+========== END entry-static.exe wcsstr ==========
+========== START entry-static.exe wcstol ==========
+Pass!
+========== END entry-static.exe wcstol ==========
+========== START entry-static.exe pleval ==========
+Pass!
+========== END entry-static.exe pleval ==========
+========== START entry-static.exe daemon_failure ==========
+Pass!
+========== END entry-static.exe daemon_failure ==========
+========== START entry-static.exe dn_expand_empty ==========
+Pass!
+========== END entry-static.exe dn_expand_empty ==========
+========== START entry-static.exe dn_expand_ptr_0 ==========
+Pass!
+========== END entry-static.exe dn_expand_ptr_0 ==========
+========== START entry-static.exe fflush_exit ==========
+Pass!
+========== END entry-static.exe fflush_exit ==========
+========== START entry-static.exe fgets_eof ==========
+Pass!
+========== END entry-static.exe fgets_eof ==========
+========== START entry-static.exe fgetwc_buffering ==========
+Pass!
+========== END entry-static.exe fgetwc_buffering ==========
+========== START entry-static.exe fpclassify_invalid_ld80 ==========
+Pass!
+========== END entry-static.exe fpclassify_invalid_ld80 ==========
+========== START entry-static.exe ftello_unflushed_append ==========
+Pass!
+========== END entry-static.exe ftello_unflushed_append ==========
+========== START entry-static.exe getpwnam_r_crash ==========
+Pass!
+========== END entry-static.exe getpwnam_r_crash ==========
+========== START entry-static.exe getpwnam_r_errno ==========
+Pass!
+========== END entry-static.exe getpwnam_r_errno ==========
+========== START entry-static.exe iconv_roundtrips ==========
+Pass!
+========== END entry-static.exe iconv_roundtrips ==========
+========== START entry-static.exe inet_ntop_v4mapped ==========
+Pass!
+========== END entry-static.exe inet_ntop_v4mapped ==========
+========== START entry-static.exe inet_pton_empty_last_field ==========
+Pass!
+========== END entry-static.exe inet_pton_empty_last_field ==========
+========== START entry-static.exe iswspace_null ==========
+Pass!
+========== END entry-static.exe iswspace_null ==========
+========== START entry-static.exe lrand48_signextend ==========
+Pass!
+========== END entry-static.exe lrand48_signextend ==========
+========== START entry-static.exe lseek_large ==========
+Pass!
+========== END entry-static.exe lseek_large ==========
+========== START entry-static.exe malloc_0 ==========
+Pass!
+========== END entry-static.exe malloc_0 ==========
+========== START entry-static.exe mbsrtowcs_overflow ==========
+Pass!
+========== END entry-static.exe mbsrtowcs_overflow ==========
+========== START entry-static.exe memmem_oob_read ==========
+Pass!
+========== END entry-static.exe memmem_oob_read ==========
+========== START entry-static.exe memmem_oob ==========
+Pass!
+========== END entry-static.exe memmem_oob ==========
+========== START entry-static.exe mkdtemp_failure ==========
+Pass!
+========== END entry-static.exe mkdtemp_failure ==========
+========== START entry-static.exe mkstemp_failure ==========
+Pass!
+========== END entry-static.exe mkstemp_failure ==========
+========== START entry-static.exe printf_1e9_oob ==========
+Pass!
+========== END entry-static.exe printf_1e9_oob ==========
+========== START entry-static.exe printf_fmt_g_round ==========
+Pass!
+========== END entry-static.exe printf_fmt_g_round ==========
+========== START entry-static.exe printf_fmt_g_zeros ==========
+Pass!
+========== END entry-static.exe printf_fmt_g_zeros ==========
+========== START entry-static.exe printf_fmt_n ==========
+Pass!
+========== END entry-static.exe printf_fmt_n ==========
+========== START entry-static.exe pthread_robust_detach ==========
+Pass!
+========== END entry-static.exe pthread_robust_detach ==========
+========== START entry-static.exe pthread_cancel_sem_wait ==========
+Pass!
+========== END entry-static.exe pthread_cancel_sem_wait ==========
+========== START entry-static.exe pthread_cond_smasher ==========
+Pass!
+========== END entry-static.exe pthread_cond_smasher ==========
+========== START entry-static.exe pthread_condattr_setclock ==========
+Pass!
+========== END entry-static.exe pthread_condattr_setclock ==========
+========== START entry-static.exe pthread_exit_cancel ==========
+Pass!
+========== END entry-static.exe pthread_exit_cancel ==========
+========== START entry-static.exe pthread_once_deadlock ==========
+Pass!
+========== END entry-static.exe pthread_once_deadlock ==========
+========== START entry-static.exe pthread_rwlock_ebusy ==========
+Pass!
+========== END entry-static.exe pthread_rwlock_ebusy ==========
+========== START entry-static.exe putenv_doublefree ==========
+Pass!
+========== END entry-static.exe putenv_doublefree ==========
+========== START entry-static.exe regex_backref_0 ==========
+Pass!
+========== END entry-static.exe regex_backref_0 ==========
+========== START entry-static.exe regex_bracket_icase ==========
+Pass!
+========== END entry-static.exe regex_bracket_icase ==========
+========== START entry-static.exe regex_ere_backref ==========
+Pass!
+========== END entry-static.exe regex_ere_backref ==========
+========== START entry-static.exe regex_escaped_high_byte ==========
+Pass!
+========== END entry-static.exe regex_escaped_high_byte ==========
+========== START entry-static.exe regex_negated_range ==========
+Pass!
+========== END entry-static.exe regex_negated_range ==========
+========== START entry-static.exe regexec_nosub ==========
+Pass!
+========== END entry-static.exe regexec_nosub ==========
+========== START entry-static.exe rewind_clear_error ==========
+Pass!
+========== END entry-static.exe rewind_clear_error ==========
+========== START entry-static.exe rlimit_open_files ==========
+Pass!
+========== END entry-static.exe rlimit_open_files ==========
+========== START entry-static.exe scanf_bytes_consumed ==========
+Pass!
+========== END entry-static.exe scanf_bytes_consumed ==========
+========== START entry-static.exe scanf_match_literal_eof ==========
+Pass!
+========== END entry-static.exe scanf_match_literal_eof ==========
+========== START entry-static.exe scanf_nullbyte_char ==========
+Pass!
+========== END entry-static.exe scanf_nullbyte_char ==========
+========== START entry-static.exe setvbuf_unget ==========
+Pass!
+========== END entry-static.exe setvbuf_unget ==========
+========== START entry-static.exe sigprocmask_internal ==========
+Pass!
+========== END entry-static.exe sigprocmask_internal ==========
+========== START entry-static.exe sscanf_eof ==========
+Pass!
+========== END entry-static.exe sscanf_eof ==========
+========== START entry-static.exe statvfs ==========
+Pass!
+========== END entry-static.exe statvfs ==========
+========== START entry-static.exe strverscmp ==========
+Pass!
+========== END entry-static.exe strverscmp ==========
+========== START entry-static.exe syscall_sign_extend ==========
+Pass!
+========== END entry-static.exe syscall_sign_extend ==========
+========== START entry-static.exe uselocale_0 ==========
+Pass!
+========== END entry-static.exe uselocale_0 ==========
+========== START entry-static.exe wcsncpy_read_overflow ==========
+Pass!
+========== END entry-static.exe wcsncpy_read_overflow ==========
+========== START entry-static.exe wcsstr_false_negative ==========
+Pass!
+========== END entry-static.exe wcsstr_false_negative ==========
+
+$ /busybox ash run-dynamic.sh 
+========== START entry-dynamic.exe argv ==========
+Pass!
+========== END entry-dynamic.exe argv ==========
+========== START entry-dynamic.exe basename ==========
+Pass!
+========== END entry-dynamic.exe basename ==========
+========== START entry-dynamic.exe clocale_mbfuncs ==========
+Pass!
+========== END entry-dynamic.exe clocale_mbfuncs ==========
+========== START entry-dynamic.exe clock_gettime ==========
+Pass!
+========== END entry-dynamic.exe clock_gettime ==========
+========== START entry-dynamic.exe crypt ==========
+Pass!
+========== END entry-dynamic.exe crypt ==========
+========== START entry-dynamic.exe dirname ==========
+Pass!
+========== END entry-dynamic.exe dirname ==========
+========== START entry-dynamic.exe dlopen ==========
+Pass!
+========== END entry-dynamic.exe dlopen ==========
+========== START entry-dynamic.exe env ==========
+Pass!
+========== END entry-dynamic.exe env ==========
+========== START entry-dynamic.exe fdopen ==========
+Pass!
+========== END entry-dynamic.exe fdopen ==========
+========== START entry-dynamic.exe fnmatch ==========
+Pass!
+========== END entry-dynamic.exe fnmatch ==========
+========== START entry-dynamic.exe fscanf ==========
+Pass!
+========== END entry-dynamic.exe fscanf ==========
+========== START entry-dynamic.exe fwscanf ==========
+Pass!
+========== END entry-dynamic.exe fwscanf ==========
+========== START entry-dynamic.exe iconv_open ==========
+Pass!
+========== END entry-dynamic.exe iconv_open ==========
+========== START entry-dynamic.exe inet_pton ==========
+Pass!
+========== END entry-dynamic.exe inet_pton ==========
+========== START entry-dynamic.exe mbc ==========
+Pass!
+========== END entry-dynamic.exe mbc ==========
+========== START entry-dynamic.exe memstream ==========
+Pass!
+========== END entry-dynamic.exe memstream ==========
+========== START entry-dynamic.exe pthread_cancel_points ==========
+Pass!
+========== END entry-dynamic.exe pthread_cancel_points ==========
+========== START entry-dynamic.exe pthread_cancel ==========
+Pass!
+========== END entry-dynamic.exe pthread_cancel ==========
+========== START entry-dynamic.exe pthread_cond ==========
+Pass!
+========== END entry-dynamic.exe pthread_cond ==========
+========== START entry-dynamic.exe pthread_tsd ==========
+Pass!
+========== END entry-dynamic.exe pthread_tsd ==========
+========== START entry-dynamic.exe qsort ==========
+Pass!
+========== END entry-dynamic.exe qsort ==========
+========== START entry-dynamic.exe random ==========
+Pass!
+========== END entry-dynamic.exe random ==========
+========== START entry-dynamic.exe search_hsearch ==========
+Pass!
+========== END entry-dynamic.exe search_hsearch ==========
+========== START entry-dynamic.exe search_insque ==========
+Pass!
+========== END entry-dynamic.exe search_insque ==========
+========== START entry-dynamic.exe search_lsearch ==========
+Pass!
+========== END entry-dynamic.exe search_lsearch ==========
+========== START entry-dynamic.exe search_tsearch ==========
+Pass!
+========== END entry-dynamic.exe search_tsearch ==========
+========== START entry-dynamic.exe sem_init ==========
+Pass!
+========== END entry-dynamic.exe sem_init ==========
+========== START entry-dynamic.exe setjmp ==========
+Pass!
+========== END entry-dynamic.exe setjmp ==========
+========== START entry-dynamic.exe snprintf ==========
+Pass!
+========== END entry-dynamic.exe snprintf ==========
+========== START entry-dynamic.exe socket ==========
+Pass!
+========== END entry-dynamic.exe socket ==========
+========== START entry-dynamic.exe sscanf ==========
+Pass!
+========== END entry-dynamic.exe sscanf ==========
+========== START entry-dynamic.exe sscanf_long ==========
+Pass!
+========== END entry-dynamic.exe sscanf_long ==========
+========== START entry-dynamic.exe stat ==========
+Pass!
+========== END entry-dynamic.exe stat ==========
+========== START entry-dynamic.exe strftime ==========
+Pass!
+========== END entry-dynamic.exe strftime ==========
+========== START entry-dynamic.exe string ==========
+Pass!
+========== END entry-dynamic.exe string ==========
+========== START entry-dynamic.exe string_memcpy ==========
+Pass!
+========== END entry-dynamic.exe string_memcpy ==========
+========== START entry-dynamic.exe string_memmem ==========
+Pass!
+========== END entry-dynamic.exe string_memmem ==========
+========== START entry-dynamic.exe string_memset ==========
+Pass!
+========== END entry-dynamic.exe string_memset ==========
+========== START entry-dynamic.exe string_strchr ==========
+Pass!
+========== END entry-dynamic.exe string_strchr ==========
+========== START entry-dynamic.exe string_strcspn ==========
+Pass!
+========== END entry-dynamic.exe string_strcspn ==========
+========== START entry-dynamic.exe string_strstr ==========
+Pass!
+========== END entry-dynamic.exe string_strstr ==========
+========== START entry-dynamic.exe strptime ==========
+Pass!
+========== END entry-dynamic.exe strptime ==========
+========== START entry-dynamic.exe strtod ==========
+Pass!
+========== END entry-dynamic.exe strtod ==========
+========== START entry-dynamic.exe strtod_simple ==========
+Pass!
+========== END entry-dynamic.exe strtod_simple ==========
+========== START entry-dynamic.exe strtof ==========
+Pass!
+========== END entry-dynamic.exe strtof ==========
+========== START entry-dynamic.exe strtol ==========
+Pass!
+========== END entry-dynamic.exe strtol ==========
+========== START entry-dynamic.exe strtold ==========
+Pass!
+========== END entry-dynamic.exe strtold ==========
+========== START entry-dynamic.exe swprintf ==========
+Pass!
+========== END entry-dynamic.exe swprintf ==========
+========== START entry-dynamic.exe tgmath ==========
+Pass!
+========== END entry-dynamic.exe tgmath ==========
+========== START entry-dynamic.exe time ==========
+Pass!
+========== END entry-dynamic.exe time ==========
+========== START entry-dynamic.exe tls_init ==========
+Pass!
+========== END entry-dynamic.exe tls_init ==========
+========== START entry-dynamic.exe tls_local_exec ==========
+Pass!
+========== END entry-dynamic.exe tls_local_exec ==========
+========== START entry-dynamic.exe udiv ==========
+Pass!
+========== END entry-dynamic.exe udiv ==========
+========== START entry-dynamic.exe ungetc ==========
+Pass!
+========== END entry-dynamic.exe ungetc ==========
+========== START entry-dynamic.exe utime ==========
+Pass!
+========== END entry-dynamic.exe utime ==========
+========== START entry-dynamic.exe wcsstr ==========
+Pass!
+========== END entry-dynamic.exe wcsstr ==========
+========== START entry-dynamic.exe wcstol ==========
+Pass!
+========== END entry-dynamic.exe wcstol ==========
+========== START entry-dynamic.exe daemon_failure ==========
+Pass!
+========== END entry-dynamic.exe daemon_failure ==========
+========== START entry-dynamic.exe dn_expand_empty ==========
+Pass!
+========== END entry-dynamic.exe dn_expand_empty ==========
+========== START entry-dynamic.exe dn_expand_ptr_0 ==========
+Pass!
+========== END entry-dynamic.exe dn_expand_ptr_0 ==========
+========== START entry-dynamic.exe fflush_exit ==========
+Pass!
+========== END entry-dynamic.exe fflush_exit ==========
+========== START entry-dynamic.exe fgets_eof ==========
+Pass!
+========== END entry-dynamic.exe fgets_eof ==========
+========== START entry-dynamic.exe fgetwc_buffering ==========
+Pass!
+========== END entry-dynamic.exe fgetwc_buffering ==========
+========== START entry-dynamic.exe fpclassify_invalid_ld80 ==========
+Pass!
+========== END entry-dynamic.exe fpclassify_invalid_ld80 ==========
+========== START entry-dynamic.exe ftello_unflushed_append ==========
+Pass!
+========== END entry-dynamic.exe ftello_unflushed_append ==========
+========== START entry-dynamic.exe getpwnam_r_crash ==========
+Pass!
+========== END entry-dynamic.exe getpwnam_r_crash ==========
+========== START entry-dynamic.exe getpwnam_r_errno ==========
+Pass!
+========== END entry-dynamic.exe getpwnam_r_errno ==========
+========== START entry-dynamic.exe iconv_roundtrips ==========
+Pass!
+========== END entry-dynamic.exe iconv_roundtrips ==========
+========== START entry-dynamic.exe inet_ntop_v4mapped ==========
+Pass!
+========== END entry-dynamic.exe inet_ntop_v4mapped ==========
+========== START entry-dynamic.exe inet_pton_empty_last_field ==========
+Pass!
+========== END entry-dynamic.exe inet_pton_empty_last_field ==========
+========== START entry-dynamic.exe iswspace_null ==========
+Pass!
+========== END entry-dynamic.exe iswspace_null ==========
+========== START entry-dynamic.exe lrand48_signextend ==========
+Pass!
+========== END entry-dynamic.exe lrand48_signextend ==========
+========== START entry-dynamic.exe lseek_large ==========
+Pass!
+========== END entry-dynamic.exe lseek_large ==========
+========== START entry-dynamic.exe malloc_0 ==========
+Pass!
+========== END entry-dynamic.exe malloc_0 ==========
+========== START entry-dynamic.exe mbsrtowcs_overflow ==========
+Pass!
+========== END entry-dynamic.exe mbsrtowcs_overflow ==========
+========== START entry-dynamic.exe memmem_oob_read ==========
+Pass!
+========== END entry-dynamic.exe memmem_oob_read ==========
+========== START entry-dynamic.exe memmem_oob ==========
+Pass!
+========== END entry-dynamic.exe memmem_oob ==========
+========== START entry-dynamic.exe mkdtemp_failure ==========
+Pass!
+========== END entry-dynamic.exe mkdtemp_failure ==========
+========== START entry-dynamic.exe mkstemp_failure ==========
+Pass!
+========== END entry-dynamic.exe mkstemp_failure ==========
+========== START entry-dynamic.exe printf_1e9_oob ==========
+Pass!
+========== END entry-dynamic.exe printf_1e9_oob ==========
+========== START entry-dynamic.exe printf_fmt_g_round ==========
+Pass!
+========== END entry-dynamic.exe printf_fmt_g_round ==========
+========== START entry-dynamic.exe printf_fmt_g_zeros ==========
+Pass!
+========== END entry-dynamic.exe printf_fmt_g_zeros ==========
+========== START entry-dynamic.exe printf_fmt_n ==========
+Pass!
+========== END entry-dynamic.exe printf_fmt_n ==========
+========== START entry-dynamic.exe pthread_robust_detach ==========
+Pass!
+========== END entry-dynamic.exe pthread_robust_detach ==========
+========== START entry-dynamic.exe pthread_cond_smasher ==========
+Pass!
+========== END entry-dynamic.exe pthread_cond_smasher ==========
+========== START entry-dynamic.exe pthread_condattr_setclock ==========
+Pass!
+========== END entry-dynamic.exe pthread_condattr_setclock ==========
+========== START entry-dynamic.exe pthread_exit_cancel ==========
+Pass!
+========== END entry-dynamic.exe pthread_exit_cancel ==========
+========== START entry-dynamic.exe pthread_once_deadlock ==========
+Pass!
+========== END entry-dynamic.exe pthread_once_deadlock ==========
+========== START entry-dynamic.exe pthread_rwlock_ebusy ==========
+Pass!
+========== END entry-dynamic.exe pthread_rwlock_ebusy ==========
+========== START entry-dynamic.exe putenv_doublefree ==========
+Pass!
+========== END entry-dynamic.exe putenv_doublefree ==========
+========== START entry-dynamic.exe regex_backref_0 ==========
+Pass!
+========== END entry-dynamic.exe regex_backref_0 ==========
+========== START entry-dynamic.exe regex_bracket_icase ==========
+Pass!
+========== END entry-dynamic.exe regex_bracket_icase ==========
+========== START entry-dynamic.exe regex_ere_backref ==========
+Pass!
+========== END entry-dynamic.exe regex_ere_backref ==========
+========== START entry-dynamic.exe regex_escaped_high_byte ==========
+Pass!
+========== END entry-dynamic.exe regex_escaped_high_byte ==========
+========== START entry-dynamic.exe regex_negated_range ==========
+Pass!
+========== END entry-dynamic.exe regex_negated_range ==========
+========== START entry-dynamic.exe regexec_nosub ==========
+Pass!
+========== END entry-dynamic.exe regexec_nosub ==========
+========== START entry-dynamic.exe rewind_clear_error ==========
+Pass!
+========== END entry-dynamic.exe rewind_clear_error ==========
+========== START entry-dynamic.exe rlimit_open_files ==========
+Pass!
+========== END entry-dynamic.exe rlimit_open_files ==========
+========== START entry-dynamic.exe scanf_bytes_consumed ==========
+Pass!
+========== END entry-dynamic.exe scanf_bytes_consumed ==========
+========== START entry-dynamic.exe scanf_match_literal_eof ==========
+Pass!
+========== END entry-dynamic.exe scanf_match_literal_eof ==========
+========== START entry-dynamic.exe scanf_nullbyte_char ==========
+Pass!
+========== END entry-dynamic.exe scanf_nullbyte_char ==========
+========== START entry-dynamic.exe setvbuf_unget ==========
+Pass!
+========== END entry-dynamic.exe setvbuf_unget ==========
+========== START entry-dynamic.exe sigprocmask_internal ==========
+Pass!
+========== END entry-dynamic.exe sigprocmask_internal ==========
+========== START entry-dynamic.exe sscanf_eof ==========
+Pass!
+========== END entry-dynamic.exe sscanf_eof ==========
+========== START entry-dynamic.exe statvfs ==========
+Pass!
+========== END entry-dynamic.exe statvfs ==========
+========== START entry-dynamic.exe strverscmp ==========
+Pass!
+========== END entry-dynamic.exe strverscmp ==========
+========== START entry-dynamic.exe syscall_sign_extend ==========
+Pass!
+========== END entry-dynamic.exe syscall_sign_extend ==========
+========== START entry-dynamic.exe tls_get_new_dtv ==========
+Pass!
+========== END entry-dynamic.exe tls_get_new_dtv ==========
+========== START entry-dynamic.exe uselocale_0 ==========
+Pass!
+========== END entry-dynamic.exe uselocale_0 ==========
+========== START entry-dynamic.exe wcsncpy_read_overflow ==========
+Pass!
+========== END entry-dynamic.exe wcsncpy_read_overflow ==========
+========== START entry-dynamic.exe wcsstr_false_negative ==========
+Pass!
+========== END entry-dynamic.exe wcsstr_false_negative ==========
+
+$ /busybox ash lua_testcode.sh 
+testcase lua date.lua success
+testcase lua file_io.lua success
+testcase lua max_min.lua success
+testcase lua random.lua success
+testcase lua remove.lua success
+testcase lua round_num.lua success
+testcase lua sin30.lua success
+testcase lua sort.lua success
+testcase lua strings.lua success
+
+$ /busybox ash iozone_testcode.sh 
+iozone automatic measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 00:58:08 1970
+
+	Auto Mode
+	Record Size 1 kB
+	File size set to 4096 kB
+	Command line used: iozone -a -r 1k -s 4m
+	Output is in kBytes/sec
+	Time Resolution = 0.000034 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+                                                                    random    random      bkwd     record     stride                                        
+              kB  reclen    write    rewrite      read    reread      read     write      read    rewrite       read    fwrite  frewrite     fread   freread
+            4096       1       228       870       857       880       815       806       823       7077        792       837       824       422       415
+
+iozone test complete.
+iozone throughput write/read measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 00:59:36 1970
+
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 0 -i 1 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000035 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for  4 initial writers 	=    1181.44 kB/sec
+	Parent sees throughput for  4 initial writers 	=     849.43 kB/sec
+	Min throughput per process 			=     252.18 kB/sec 
+	Max throughput per process 			=     354.26 kB/sec
+	Avg throughput per process 			=     295.36 kB/sec
+	Min xfer 					=     736.00 kB
+
+	Children see throughput for  4 rewriters 	=    2940.84 kB/sec
+	Parent sees throughput for  4 rewriters 	=    2756.49 kB/sec
+	Min throughput per process 			=     674.99 kB/sec 
+	Max throughput per process 			=     807.63 kB/sec
+	Avg throughput per process 			=     735.21 kB/sec
+	Min xfer 					=     856.00 kB
+
+	Children see throughput for  4 readers 		=    3013.89 kB/sec
+	Parent sees throughput for  4 readers 		=    2768.91 kB/sec
+	Min throughput per process 			=     614.15 kB/sec 
+	Max throughput per process 			=     916.34 kB/sec
+	Avg throughput per process 			=     753.47 kB/sec
+	Min xfer 					=     699.00 kB
+
+	Children see throughput for 4 re-readers 	=    2820.79 kB/sec
+	Parent sees throughput for 4 re-readers 	=    2658.26 kB/sec
+	Min throughput per process 			=     602.36 kB/sec 
+	Max throughput per process 			=     767.25 kB/sec
+	Avg throughput per process 			=     705.20 kB/sec
+	Min xfer 					=     804.00 kB
+
+
+
+iozone test complete.
+iozone throughput random-read measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 00:59:59 1970
+
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 0 -i 2 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000036 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for  4 initial writers 	=    1084.20 kB/sec
+	Parent sees throughput for  4 initial writers 	=     885.34 kB/sec
+	Min throughput per process 			=     235.25 kB/sec 
+	Max throughput per process 			=     300.97 kB/sec
+	Avg throughput per process 			=     271.05 kB/sec
+	Min xfer 					=     801.00 kB
+
+	Children see throughput for  4 rewriters 	=    2855.91 kB/sec
+	Parent sees throughput for  4 rewriters 	=    2647.75 kB/sec
+	Min throughput per process 			=     630.09 kB/sec 
+	Max throughput per process 			=     796.44 kB/sec
+	Avg throughput per process 			=     713.98 kB/sec
+	Min xfer 					=     810.00 kB
+
+	Children see throughput for 4 random readers 	=    2618.28 kB/sec
+	Parent sees throughput for 4 random readers 	=    2471.93 kB/sec
+	Min throughput per process 			=     625.06 kB/sec 
+	Max throughput per process 			=     698.64 kB/sec
+	Avg throughput per process 			=     654.57 kB/sec
+	Min xfer 					=     935.00 kB
+
+	Children see throughput for 4 random writers 	=    2643.09 kB/sec
+	Parent sees throughput for 4 random writers 	=    2482.72 kB/sec
+	Min throughput per process 			=     643.18 kB/sec 
+	Max throughput per process 			=     674.25 kB/sec
+	Avg throughput per process 			=     660.77 kB/sec
+	Min xfer 					=     981.00 kB
+
+
+
+iozone test complete.
+iozone throughput read-backwards measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 01:00:27 1970
+
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 0 -i 3 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000044 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for  4 initial writers 	=     847.81 kB/sec
+	Parent sees throughput for  4 initial writers 	=     785.19 kB/sec
+	Min throughput per process 			=     198.58 kB/sec 
+	Max throughput per process 			=     221.14 kB/sec
+	Avg throughput per process 			=     211.95 kB/sec
+	Min xfer 					=     925.00 kB
+
+	Children see throughput for  4 rewriters 	=    2726.66 kB/sec
+	Parent sees throughput for  4 rewriters 	=    2580.37 kB/sec
+	Min throughput per process 			=     661.62 kB/sec 
+	Max throughput per process 			=     706.82 kB/sec
+	Avg throughput per process 			=     681.67 kB/sec
+	Min xfer 					=     971.00 kB
+
+	Children see throughput for 4 reverse readers 	=    2236.27 kB/sec
+	Parent sees throughput for 4 reverse readers 	=    2133.26 kB/sec
+	Min throughput per process 			=     484.02 kB/sec 
+	Max throughput per process 			=     647.74 kB/sec
+	Avg throughput per process 			=     559.07 kB/sec
+	Min xfer 					=     775.00 kB
+
+
+
+iozone test complete.
+iozone throughput stride-read measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 01:00:51 1970
+
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 0 -i 5 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000039 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for  4 initial writers 	=     986.63 kB/sec
+	Parent sees throughput for  4 initial writers 	=     864.28 kB/sec
+	Min throughput per process 			=     231.45 kB/sec 
+	Max throughput per process 			=     266.15 kB/sec
+	Avg throughput per process 			=     246.66 kB/sec
+	Min xfer 					=     897.00 kB
+
+	Children see throughput for  4 rewriters 	=    3008.72 kB/sec
+	Parent sees throughput for  4 rewriters 	=    2772.72 kB/sec
+	Min throughput per process 			=     601.71 kB/sec 
+	Max throughput per process 			=     840.93 kB/sec
+	Avg throughput per process 			=     752.18 kB/sec
+	Min xfer 					=     734.00 kB
+
+	Children see throughput for 4 stride readers 	=    2027.86 kB/sec
+	Parent sees throughput for 4 stride readers 	=    1895.17 kB/sec
+	Min throughput per process 			=     463.07 kB/sec 
+	Max throughput per process 			=     557.41 kB/sec
+	Avg throughput per process 			=     506.96 kB/sec
+	Min xfer 					=     910.00 kB
+
+
+
+iozone test complete.
+iozone throughput fwrite/fread measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 01:01:14 1970
+
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 6 -i 7 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000066 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for  4 fwriters 	=    1077.01 kB/sec
+	Parent sees throughput for  4 fwriters 		=     969.41 kB/sec
+	Min throughput per process 			=     243.50 kB/sec 
+	Max throughput per process 			=     317.25 kB/sec
+	Avg throughput per process 			=     269.25 kB/sec
+	Min xfer 					=    1024.00 kB
+
+	Children see throughput for  4 freaders 	=    1395.06 kB/sec
+	Parent sees throughput for  4 freaders 		=    1239.19 kB/sec
+	Min throughput per process 			=     311.79 kB/sec 
+	Max throughput per process 			=     424.91 kB/sec
+	Avg throughput per process 			=     348.76 kB/sec
+	Min xfer 					=    1024.00 kB
+
+
+
+iozone test complete.
+iozone throughput pwrite/pread measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 01:01:32 1970
+
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 9 -i 10 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000036 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for 4 pwrite writers 	=    1142.69 kB/sec
+	Parent sees throughput for 4 pwrite writers 	=     817.80 kB/sec
+	Min throughput per process 			=     223.50 kB/sec 
+	Max throughput per process 			=     340.85 kB/sec
+	Avg throughput per process 			=     285.67 kB/sec
+	Min xfer 					=     674.00 kB
+
+	Children see throughput for 4 pread readers 	=    2727.79 kB/sec
+	Parent sees throughput for 4 pread readers 	=    2562.36 kB/sec
+	Min throughput per process 			=     599.69 kB/sec 
+	Max throughput per process 			=     827.73 kB/sec
+	Avg throughput per process 			=     681.95 kB/sec
+	Min xfer 					=     742.00 kB
+
+
+
+iozone test complete.
+iozone throughtput pwritev/preadv measurements
+	Iozone: Performance Test of File I/O
+	        Version $Revision: 3.506 $
+		Compiled for 64 bit mode.
+		Build: linux 
+
+	Contributors:William Norcott, Don Capps, Isom Crawford, Kirby Collins
+	             Al Slater, Scott Rhine, Mike Wisner, Ken Goss
+	             Steve Landherr, Brad Smith, Mark Kelly, Dr. Alain CYR,
+	             Randy Dunlap, Mark Montague, Dan Million, Gavin Brebner,
+	             Jean-Marc Zucconi, Jeff Blomberg, Benny Halevy, Dave Boone,
+	             Erik Habbinga, Kris Strecker, Walter Wong, Joshua Root,
+	             Fabrice Bacchella, Zhenghua Xue, Qin Li, Darren Sawyer,
+	             Vangel Bojaxhi, Ben England, Vikentsi Lapa,
+	             Alexey Skidanov, Sudhir Kumar.
+
+	Run began: Thu Jan  1 01:01:51 1970
+
+	Selected test not available on the version.
+	Record Size 1 kB
+	File size set to 1024 kB
+	Command line used: iozone -t 4 -i 11 -i 12 -r 1k -s 1m
+	Output is in kBytes/sec
+	Time Resolution = 0.000037 seconds.
+	Processor cache size set to 1024 kBytes.
+	Processor cache line size set to 32 bytes.
+	File stride size set to 17 * record size.
+	Throughput test with 4 processes
+	Each process writes a 1024 kByte file in 1 kByte records
+
+	Children see throughput for  4 initial writers 	=    1012.29 kB/sec
+	Parent sees throughput for  4 initial writers 	=     936.25 kB/sec
+	Min throughput per process 			=     230.14 kB/sec 
+	Max throughput per process 			=     264.96 kB/sec
+	Avg throughput per process 			=     253.07 kB/sec
+	Min xfer 					=     891.00 kB
+
+	Children see throughput for  4 rewriters 	=    2950.21 kB/sec
+	Parent sees throughput for  4 rewriters 	=    2752.17 kB/sec
+	Min throughput per process 			=     654.05 kB/sec 
+	Max throughput per process 			=     810.79 kB/sec
+	Avg throughput per process 			=     737.55 kB/sec
+	Min xfer 					=     875.00 kB
+
+
+
+iozone test complete.
+
+$ /busybox ash unixbench_testcode_part.sh 
+Unixbench DHRY2 test(lps): 20906823
+Unixbench WHETSTONE test(MFLOPS): 552.793
+Unixbench SYSCALL test(lps): 47885
+Unixbench CONTEXT test(lps): 23660
+Unixbench PIPE test(lps): 2097
+Unixbench SPAWN test(lps): 6717
+Unixbench EXECL test(lps): 717
+Unixbench FS_WRITE_SMALL test(KBps): 941
+Unixbench FS_READ_SMALL test(KBps): 986
+Unixbench FS_COPY_SMALL test(KBps): 472
+Unixbench FS_WRITE_MIDDLE test(KBps): 1229
+Unixbench FS_READ_MIDDLE test(KBps): 1447
+Unixbench FS_COPY_MIDDLE test(KBps): 579
+Unixbench FS_WRITE_BIG test(KBps): 731
+Unixbench FS_READ_BIG test(KBps): 1558
+Unixbench FS_COPY_BIG test(KBps): 357
+Unixbench ARITHOH test(lps): 2819189794
+Unixbench SHORT test(lps): 54786612
+Unixbench INT test(lps): 50124451
+Unixbench LONG test(lps): 52649446
+Unixbench FLOAT test(lps): 55547731
+Unixbench DOUBLE test(lps): 52841646
+Unixbench HANOI test(lps): 275390
+Unixbench EXEC test(lps): 2412
+
+$ /busybox ash lmbench_testcode_part.sh 
+lmbench_testcode_part.sh: line 1: !/bin/bash: not found
+latency measurements
+Simple syscall: 30.3605 microseconds
+Simple read: 60.5743 microseconds
+Simple write: 60.2377 microseconds
+Simple stat: 150.3124 microseconds
+Simple fstat: 78.8274 microseconds
+Simple open/close: 171.5517 microseconds
+Select on 100 fd's: 1885.9304 microseconds
+Signal handler installation: 48.2038 microseconds
+Signal handler overhead: 66.0748 microseconds
+Protection fault: 45.2729 microseconds
+Pipe latency: 207.6553 microseconds
+Process fork+exit: 4526.8340 microseconds
+Process fork+execve: 3959.3769 microseconds
+Process fork+/bin/sh -c: 3490.0000 microseconds
+File /var/tmp/XXX write bandwidth:6560 KB/sec
+file system latency
+0k	163	153[1m[31m[ERROR][0m[31m  1     dirent.c:46   dirent_alloc()[0m: 'LIST_EMPTY(&dirent_free_list)' returned 1
+
+
