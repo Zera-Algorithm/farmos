@@ -102,7 +102,7 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [RISCV64寄存器](./docs/RISCV64%E5%AF%84%E5%AD%98%E5%99%A8.md)
 * [SBI中文介绍(译)](./docs/SBI%EF%BC%9ASupervisor%20Software%20Binary%20Interface%20%E8%BD%AF%E4%BB%B6%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%8E%A5%E5%8F%A3%EF%BC%88%E8%AF%91%EF%BC%89.md)
 
-### 各模块文档
+### 区域赛文档
 
 * [引导](./docs/FarmOS%20-%20boot.md)
 * [Trap和中断](./docs/FarmOS%20-%20Trap%E4%B8%8E%E6%97%B6%E9%92%9F%E4%B8%AD%E6%96%AD.md)
@@ -110,6 +110,9 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [用户进程与调度](./docs/FarmOS%20-%20%E7%94%A8%E6%88%B7%E8%BF%9B%E7%A8%8B%E4%B8%8E%E8%B0%83%E5%BA%A6.md)
 * [系统调用的处理](./docs/FarmOS%20-%20%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E7%9A%84%E5%AE%9E%E7%8E%B0.md)
 * [VFS](./docs/FarmOS%20-%20VFS.md)
+
+### 初赛第一阶段文档
+
 
 
 ## 一些说明
@@ -131,15 +134,15 @@ riscv64-unknown-elf-gdb kernel-qemu
 ## 未来想做的事情
 <!-- 打钩： -->
 <!-- [&#10004;] -->
-[ ] 做一个工具，能够自动从.c文件生成其对应的.h文件，并在Makefile中实现
+[x] 做一个工具，能够自动从.c文件生成其对应的.h文件，并在Makefile中实现（gcc本身可实现）
 
-[&#10004;] 引入分级日志，能够显示INFO, WARNING, FATAL三种类型的信息
+[x] 引入分级日志，能够显示INFO, WARNING, FATAL三种类型的信息
 
-[ ] 实现内核的动态内存分配，可参考Linux的buddy systemh和slab等
+[x] 实现内核的动态内存分配，可参考Linux的buddy systemh和slab等
 
-[ ] 更改Makefile的逻辑，将 `.c` 文件引入的 `.h` 加入到 `.c` 文件的依赖中，从而支持根据日期决定是否编译。教训：之前没有写 `.c` 到 `.h` 的依赖，结果 `.h` 中的定义改变之后 `.c` 编译成的 `.o` 文件并没有改变，导致出问题。
+[x] 更改Makefile的逻辑，将 `.c` 文件引入的 `.h` 加入到 `.c` 文件的依赖中，从而支持根据日期决定是否编译。教训：之前没有写 `.c` 到 `.h` 的依赖，结果 `.h` 中的定义改变之后 `.c` 编译成的 `.o` 文件并没有改变，导致出问题。
 
-[ ] 检测内核栈溢出是否会发出告警，之后设置一个尽量大的内核栈
+[x] 检测内核栈溢出是否会发出告警，之后设置一个尽量大的内核栈
 
 [ ] 解决make不能多线程编译的问题
 
