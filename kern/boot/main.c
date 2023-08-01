@@ -34,7 +34,7 @@
 #define IGNORE_HART0 0
 #endif
 
-// #define SINGLE
+#define SINGLE
 
 // 用于记录当前哪个核已被启动
 volatile static int hart_started[NCPU];
@@ -129,11 +129,18 @@ void main() {
 		printf("FarmOS kernel is booting (on hart %d) total: %d\n", cpu_this_id(), NCPU);
 
 		// 读取 dtb
-		parseDtb();
+		// parseDtb();
+		extern struct MemInfo memInfo;
+		// memInfo.size = 8 * 1024ul * 1024ul * 1024ul;
+		memInfo.size = 128ul * 1024ul * 1024ul;
+
+		printf("dtb init success!\n");
 
 		// 内存管理机制初始化
 		pmmInit();
+		printf("pmm init success!\n");
 		vmmInit();
+		printf("vmm init success!\n");
 
 		// 初始化核心（开启分页、设置内核异常向量、初始化 timer/plic）
 		hart_init();

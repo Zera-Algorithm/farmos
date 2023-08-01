@@ -60,7 +60,7 @@ static void ptModify(Pte *pte, Pte value) {
 }
 
 /**
- * @brief 将传入的页表项指针指向的页表项清零，若指向物理页则取消映射 
+ * @brief 将传入的页表项指针指向的页表项清零，若指向物理页则取消映射
  */
 static void ptClear(Pte *pte) {
 	// 取消原先的映射
@@ -127,6 +127,7 @@ void vmmInit() {
 
 	// 第二步：映射UART寄存器，用于串口输入输出
 	vmInitMap(UART0, UART0, PAGE_SIZE, PTE_R | PTE_W);
+	log(LEVEL_GLOBAL, "UART map ok!\n");
 
 	// SD卡
 	vmInitMap(SPI_CTRL_ADDR, SPI_CTRL_ADDR, PAGE_SIZE, PTE_R | PTE_W);
@@ -190,7 +191,7 @@ Pte ptLookup(Pte *pgdir, u64 va) {
 }
 
 /**
- * @brief 修改已有映射、或添加映射 
+ * @brief 修改已有映射、或添加映射
  */
 err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 	mtx_lock(&kvmlock);
@@ -226,7 +227,7 @@ err_t ptMap(Pte *pgdir, u64 va, u64 pa, u64 perm) {
 		// 原页表项有效时，修改映射（此时不应该是添加被动映射）
 		assert(pa != 0);
 		ptModify(pte, paToPte(pa) | perm | PTE_V | PTE_MACHINE);
-		
+
 	} else if (pa == 0) {
 		// 原页表项无效，添加被动映射（传入的物理地址必须为零）
 		assert(perm & PTE_U);

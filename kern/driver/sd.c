@@ -12,6 +12,9 @@
 #error Must define TL_CLK
 #endif
 
+#define SD_FAT_FS_OFFSET 286720
+// #define QEMU_SD
+
 #define F_CLK TL_CLK
 
 static volatile u32 *const spi = (void *)(SPI_CTRL_ADDR);
@@ -111,7 +114,7 @@ static int sd_acmd41(void) {
 }
 
 static int sd_cmd58(void) {
-#ifdef QEMU
+#ifdef QEMU_SD
 	return 0;
 #else
 	int rc;
@@ -141,6 +144,8 @@ static int sd_cmd16(void) {
 #define SPIN_INDEX(i) (((i) >> SPIN_SHIFT) & 0x3)
 
 int sdRead(u8 *buf, u64 startSector, u32 sectorNumber) {
+	startSector = startSector + SD_FAT_FS_OFFSET;
+	warn("sdRead: startSec = %d, secNum = %d", startSector, sectorNumber);
 	// printf("[SD Read]Read: %x\n", startSector);
 	int readTimes = 0;
 	int tot = 0;
@@ -151,7 +156,7 @@ start:
 	int rc = 0;
 	int timeout;
 	u8 x;
-#ifdef QEMU
+#ifdef QEMU_SD
 	if (sd_cmd(0x52, startSector * 512, 0xE1) != 0x00)
 #else
 	if (sd_cmd(0x52, startSector, 0xE1) != 0x00)
@@ -211,6 +216,8 @@ retry:
 }
 
 int sdWrite(u8 *buf, u64 startSector, u32 sectorNumber) {
+	startSector = startSector + SD_FAT_FS_OFFSET;
+	warn("sdWrite: startSec = %d, secNum = %d", startSector, sectorNumber);
 	// printf("[SD Write]Write: %x %d\n", startSector, sectorNumber);
 	u8 *p = buf;
 	u8 x;
@@ -222,7 +229,7 @@ int sdWrite(u8 *buf, u64 startSector, u32 sectorNumber) {
 		writeTimes = 0;
 	start:
 		p = st;
-#ifdef QEMU
+#ifdef QEMU_SD
 		if (sd_cmd(24 | 0x40, now * 512, 0) != 0)
 #else
 		if (sd_cmd(24 | 0x40, now, 0) != 0)
@@ -279,25 +286,31 @@ retry:
 }
 
 int sdCardRead(int isUser, u64 dst, u64 blockno) {
+	log(FS_GLOBAL, "sd card read blockno %d\n", blockno);
 	if (isUser) {
 		char buf[512];
 		sdRead((u8 *)buf, blockno, 1);
 		copyOut(dst, buf, 512);
+		log(FS_GLOBAL, "sd card read blockno %d end\n", blockno);
 		return 0;
 	}
 
 	sdRead((u8 *)dst, blockno, 1);
+	log(FS_GLOBAL, "sd card read blockno %d end\n", blockno);
 	return 0;
 }
 
 int sdCardWrite(int isUser, u64 src, u64 blockno) {
+	log(FS_GLOBAL, "sd card write blockno %d\n", blockno);
 	if (isUser) {
 		char buf[512];
 		copyIn(src, buf, 512);
 		sdWrite((u8 *)buf, blockno, 1);
+		log(FS_GLOBAL, "sd card write blockno %d\n", blockno);
 		return 0;
 	}
 	sdWrite((u8 *)src, blockno, 1);
+	log(FS_GLOBAL, "sd card write blockno %d\n", blockno);
 	return 0;
 }
 
