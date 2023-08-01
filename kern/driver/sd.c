@@ -12,8 +12,8 @@
 #error Must define TL_CLK
 #endif
 
-#define SD_FAT_FS_OFFSET 286720
-// #define SD_FAT_FS_OFFSET 0
+// #define SD_FAT_FS_OFFSET 286720
+#define SD_FAT_FS_OFFSET 0
 // #define QEMU_SD
 
 #define F_CLK TL_CLK

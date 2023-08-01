@@ -163,7 +163,9 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 		     file->file_size - off);
 		n = file->file_size - off;
 	}
-	assert(n != 0);
+	if (n == 0) {
+		return 0;
+	}
 
 	u64 start = off, end = off + n - 1;
 	u32 clusSize = file->file_system->superBlock.bytes_per_clus;
