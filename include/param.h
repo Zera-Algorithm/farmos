@@ -6,6 +6,7 @@
 #endif	       // !NCPU
 
 #define NPROC 10240		  // maximum number of processes
+#define MAX_DIRENT 80460
 #define NOFILE 16		  // open files per process
 #define NFILE 100		  // open files per system
 #define NINODE 50		  // maximum number of active i-nodes

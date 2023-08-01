@@ -12,6 +12,7 @@
 #include <param.h>
 #include <proc/proc.h>
 #include <proc/thread.h>
+#include <fs/dirent.h>
 
 struct Page {
 	u32 ref;
@@ -55,6 +56,8 @@ void pmmInit() {
 	threads = pmInitPush(freemem, NPROC * sizeof(thread_t), &freemem);
 	extern proc_t *procs;
 	procs = pmInitPush(freemem, NPROC * sizeof(proc_t), &freemem);
+	extern Dirent *dirents;
+	dirents = pmInitPush(freemem, MAX_DIRENT * sizeof(Dirent), &freemem);
 
 	// 为内核栈分配内存
 	extern void *kstacks;
