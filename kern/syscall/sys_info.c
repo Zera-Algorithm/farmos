@@ -89,10 +89,10 @@ int sys_getrusage(int who, struct rusage *p_usage) {
 	proc_unlock(p);
 	struct rusage usage;
 	memset(&usage, 0, sizeof(usage));
-	usage.ru_utime.tv_sec = CLOCK_TO_USEC(times.tms_utime) / 1000000ul;
-	usage.ru_utime.tv_usec = CLOCK_TO_USEC(times.tms_utime) % 1000000ul;
-	usage.ru_stime.tv_sec = CLOCK_TO_USEC(times.tms_stime) / 1000000ul;
-	usage.ru_stime.tv_usec = CLOCK_TO_USEC(times.tms_stime) % 1000000ul;
+	usage.ru_utime.tv_sec = CLOCK_TO_USEC(times.tms_utime + times.tms_stime / 2) / 1000000ul;
+	usage.ru_utime.tv_usec = CLOCK_TO_USEC(times.tms_utime + times.tms_stime / 2) % 1000000ul;
+	usage.ru_stime.tv_sec = CLOCK_TO_USEC(times.tms_stime / 2) / 1000000ul;
+	usage.ru_stime.tv_usec = CLOCK_TO_USEC(times.tms_stime / 2) % 1000000ul;
 	u64 sum = CLOCK_TO_USEC(times.tms_utime + times.tms_stime);
 	log(0, "getrusage: U: %lds %ldus / S: %lds %ldus / sum : %lds %ldus\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec, usage.ru_stime.tv_sec, usage.ru_stime.tv_usec, sum / 1000000ul, sum % 1000000ul);
 	copyOut((u64)p_usage, &usage, sizeof(usage));

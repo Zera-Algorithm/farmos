@@ -7,7 +7,7 @@
 #include <mm/memlayout.h>
 #include <types.h>
 
-#define MAX_NAME_LEN 256
+#define MAX_NAME_LEN 64
 #define DIRENT_HOLDER_CNT 128
 
 typedef struct FileSystem FileSystem;
@@ -53,18 +53,18 @@ struct Dirent {
 	// 文件系统相关属性
 	FileSystem *file_system; // 所在的文件系统
 	u32 first_clus;		 // 第一个簇的簇号
-	u64 file_size;		 // 文件大小
+	u32 file_size;		 // 文件大小
 
 	/* for OS */
 	// 操作系统相关的数据结构
 	// 仅用于是挂载点的目录，指向该挂载点所对应的文件系统。用于区分mount目录和非mount目录
 	FileSystem *head;
 
-	DirentPointer pointer;
+	// DirentPointer pointer;
 
 	// [暂不用] 标记此Dirent节点是否已扩展子节点，用于弹性伸缩Dirent缓存，不过一般设置此字段为1
 	// 我们会在初始化时扫描所有文件，并构建Dirent
-	u16 is_extend;
+	// u16 is_extend;
 
 	// 在上一个目录项中的内容偏移，用于写回
 	u32 parent_dir_off;
@@ -91,8 +91,8 @@ struct Dirent {
 	    parent_dirent; // 即使是mount的目录，也指向其上一级目录。如果该字段为NULL，表示为总的根目录
 
 	// 各种计数
-	u32 linkcnt; // 链接计数
-	u32 refcnt;  // 引用计数
+	u16 linkcnt; // 链接计数
+	u16 refcnt;  // 引用计数
 
 	struct holder_info holders[DIRENT_HOLDER_CNT];
 	int holder_cnt;

@@ -27,6 +27,7 @@ int main() {
 
 		// time-test
 	    (char *const[]){"/time-test", NULL},
+	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
 		// (char *const[]) {"./lmbench_all", "lat_ctx", "-P", "1", "-s", "32", "2", "4", "8", "16", "24", "32", "64", "96", NULL},
 		// libc-bench测试
 		(char *const[]){"/libc-bench", NULL},
@@ -71,7 +72,6 @@ int main() {
 	    // cyclictest测试
 
 	    // lmbench测试
-	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
 	    (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 	    NULL};
 

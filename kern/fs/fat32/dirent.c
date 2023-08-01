@@ -15,7 +15,7 @@
 
 
 
-#define MAX_DIRENT 22000
+#define MAX_DIRENT 30000
 u64 used_dirents = 0;
 
 /**
@@ -28,6 +28,8 @@ extern mutex_t mtx_file;
 // 待分配的dirent
 static Dirent dirents[MAX_DIRENT];
 struct DirentList dirent_free_list = {NULL};
+
+#define PEEK sizeof(dirents)
 
 // 管理dirent分配和释放的互斥锁
 struct mutex mtx_dirent;
@@ -445,7 +447,7 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
  * @return 0成功，-1失败
  */
 int makeDirAt(Dirent *baseDir, char *path, int mode) {
-	Dirent *dir;
+	Dirent *dir = NULL;
 	int ret = createItemAt(baseDir, path, &dir, 1);
 	if (ret < 0) {
 		return ret;
@@ -464,7 +466,7 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 }
 
 int create_file_and_close(char *path) {
-	Dirent *file;
+	Dirent *file = NULL;
 	r = createFile(NULL, path, &file);
 	if (r < 0) {
 		warn("create file error!\n");
