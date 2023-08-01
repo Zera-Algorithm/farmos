@@ -227,7 +227,7 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 
 	Socket *local_socket = fds[sfd].socket;
 
-	warn("Thread %s: connect sockfd = %d, type = %d, family = %d, port = %d, addr = %lx\n",
+	warn("Thread %s: sockfd = %d  type = %d,  connect to socket: family = %d, port = %d, addr = %lx\n",
 		cpu_this()->cpu_running->td_name, sfd, local_socket->type, addr.family, addr.port, addr.addr);
 
 	mtx_lock(&local_socket->lock);
@@ -245,7 +245,8 @@ int connect(int sockfd, const SocketAddr *p_addr, socklen_t addrlen) {
 		if (target_socket == NULL) {
 			// asm volatile("ebreak"); //
 			warn("server socket doesn't exists or isn't listening\n");
-			return -1;
+			// return -1;
+			return 0;
 		}
 		mtx_lock(&local_socket->lock);
 		local_socket->udp_is_connect = 1;
@@ -332,6 +333,7 @@ int accept(int sockfd, SocketAddr *p_addr, socklen_t * addrlen) {
 	mtx_unlock(&local_socket->lock);
 
 	copyOut((u64)p_addr, &addr, sizeof(SocketAddr));
+	warn("Thread %s: sockfd = %d, accept socket addr = %x, port = %d\n", cpu_this()->cpu_running->td_name, sfd, addr.addr, addr.port);
 	return newUerFd;
 }
 
@@ -608,7 +610,7 @@ static Socket * find_udp_connect_socket(SocketAddr * addr, int self_type, int so
 			i != socket_index && // 不能找到自己
 			sockets[i].type == self_type &&
 			// sockets[i].addr.family == addr->family &&
-		    sockets[i].addr.port == addr->port // &&
+		    (sockets[i].addr.port == addr->port)// &&
 		    // sockets[i].addr.addr == addr->addr
 			&& (!sockets[i].udp_is_connect || (sockets[i].udp_is_connect && sockets[i].opposite == socket_index))
 		) {
@@ -741,6 +743,9 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 		}
 
 		local_socket = fds[sfd].socket;
+		if (local_socket->type == 1) {
+			return fd_socket_write(&fds[sfd], (u64)buffer,  (u64)len, 0);
+		}
 		ws = sfd;
 	} else {
 		local_socket = fds[sockfd].socket;

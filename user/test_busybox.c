@@ -47,14 +47,14 @@ int main() {
 		// (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u","-P", "5", "-b", "1000G", NULL},
 	    // (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-R", "-b", "1000G", NULL}, // Reverse UDP
 	    // (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-R", NULL}, // Reverse TCP
-	    (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 
 
 
 		// unixbench测试
 		// (char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
 
-		// (char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
+		(char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
 
 	    // (char *const[]) {"./runtest.exe", "-w", "entry-dynamic.exe", "tls_get_new_dtv", NULL},
 
