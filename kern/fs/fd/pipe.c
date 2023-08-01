@@ -147,6 +147,7 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+			mtx_unlock_sleep(&fd->lock);
 	int i = 0;
 	char ch;
 	struct Pipe *p = fd->pipe;
@@ -159,15 +160,14 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		if (pipeIsClose(p) || td->td_killed) {
 			mtx_unlock(&p->lock);
 			warn("writer can\'t write! pipe is closed or process is destoried.\n");
+			mtx_lock_sleep(&fd->lock);
 			return -EPIPE;
 		}
 
 		if (p->pipeWritePos - p->pipeReadPos == PIPE_BUF_SIZE) {
 			wakeup(&p->pipeReadPos);
 
-			mtx_unlock_sleep(&fd->lock);
 			sleep(&p->pipeWritePos, &p->lock, "pipe writer wait for pipe reader.\n");
-			mtx_lock_sleep(&fd->lock);
 			// 唤醒之后进入下一个while轮次，继续判断管道是否关闭和进程是否结束
 			// 我们采取的唤醒策略是：尽可能地接受唤醒信号，但唤醒信号不一定对本睡眠进程有效，唤醒后还需要做额外检查，若不满足条件(管道非空)应当继续睡眠
 		} else {
@@ -182,6 +182,7 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	// 唤醒读者
 	wakeup(&p->pipeReadPos);
 	mtx_unlock(&p->lock);
+			mtx_lock_sleep(&fd->lock);
 	return i;
 }
 

@@ -297,7 +297,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 	if (p_exceptfds) copyIn(p_exceptfds, &exceptfds, sizeof(exceptfds));
 	if (p_timeout) copyIn(p_timeout, &timeout, sizeof(timeout));
 
-	u64 start = getUSecs();
+	u64 start = time_rtc_us();
 	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
 
 	if (timeout_us != 0) {
@@ -383,7 +383,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 		}
 
 		// 超时退出
-		u64 now = getUSecs();
+		u64 now = time_rtc_us();
 		if (timeout_us == 0 || now - start >= timeout_us) {
 			func_ret = 0;
 			break;
@@ -567,4 +567,10 @@ void sys_sync() {
 
 int sys_syncfs(int fd) {
 	return 0;
+}
+
+
+int sys_socketpair(int domain, int type, int protocol, int *fds) {
+	warn("socketpair not implemented\n");
+	return sys_pipe2((u64)fds);
 }

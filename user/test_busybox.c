@@ -12,7 +12,6 @@ int main() {
 
 	char *const *argvs[] = {
 		
-	    (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 		// (char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
 
 	    // (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
@@ -73,7 +72,7 @@ int main() {
 
 	    // lmbench测试
 	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
-	    
+	    (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 	    NULL};
 
 	/*

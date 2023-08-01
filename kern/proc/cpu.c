@@ -30,8 +30,8 @@ void cpu_idle() {
 // DEBUG：发现长时间睡眠的线程
 #ifdef SLEEP_DEBUG
 	// 距离上次打印的时间差大于1s，打印一次
-	if (getTime() - last_idle[cpu_this_id()] > 20000000ul) {
-		last_idle[cpu_this_id()] = getTime();
+	if (time_mono_us() - last_idle[cpu_this_id()] > 20000000ul) {
+		last_idle[cpu_this_id()] = time_mono_us();
 
 		// 检查睡眠队列是否有线程睡眠时间过长
 		tdq_critical_enter(&thread_sleepq);

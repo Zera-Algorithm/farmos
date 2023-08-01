@@ -109,7 +109,7 @@ err_t tsleep(void *chan, mutex_t *mtx, const char *msg, u64 wakeus) {
     tsevent_t *tse = tse_alloc(cpu_this()->cpu_running, chan, wakeus);
     // 已经获取了 tsevent_usedq 的锁，释放 mtx 后再睡眠
     // 睡眠时先获取睡眠队列的锁，然后再释放 tsevent_usedq 的锁
-    log(999, "%08x(%08x) TSLEEP UNTIL %lu->%lu\n", cpu_this()->cpu_running->td_tid, cpu_this()->cpu_running->td_proc->p_pid, getUSecs(), wakeus);
+    log(0, "%08x(%08x) TSLEEP(%s) UNTIL %lu->%lu\n", cpu_this()->cpu_running->td_tid, cpu_this()->cpu_running->td_proc->p_pid, msg, time_mono_us(), wakeus);
     if (mtx) {
         tseq_critical_exit(&tsevent_usedq);
     }
@@ -137,7 +137,7 @@ void twakeup(void *chan) {
 void tsleep_check() {
     tseq_critical_enter(&tsevent_usedq);
     tsevent_t *tse;
-    u64 now = getUSecs();
+    u64 now = time_mono_us();
     while ((tse = TAILQ_FIRST(&tsevent_usedq.tseq_head))) {
         if (tse->tse_wakeus > now || tse->tse_wakeus == 0) {
             break;

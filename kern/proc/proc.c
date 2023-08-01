@@ -119,6 +119,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 	// 原子操作: 线程队列清空、状态变为僵尸
 	p->p_exitcode = exitcode;
 	p->p_status = ZOMBIE;
+
 	proc_unlock(p);
 
 	// 此时进程内只有一个线程，不需要对回收进程资源加锁

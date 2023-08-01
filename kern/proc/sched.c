@@ -18,6 +18,7 @@ void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
 	if (cpu_this()->cpu_lk_depth != 1) {
+		asm volatile("ebreak");
 		panic("schedule: cpu_lk_depth %d\n", cpu_this()->cpu_lk_depth);
 	}
 	if (cpu_this()->cpu_running->td_lock.mtx_depth != 1) {

@@ -2,6 +2,7 @@
 #define _TIMER_H_
 
 #include <types.h>
+#include <sys/time.h>
 
 #define USEC_PER_SEC 1000000ul
 #define NSEC_PER_SEC 1000000000ul
@@ -15,13 +16,23 @@
 // 中断时间间隔为0.05s(20Hz)
 #define INTERVAL 500000
 
-#define RTC_OFF (1ul << 35)
+#define RTC_OFF (10000000000000ul)
 
-uint64 getRealTime();
-u64 getTime();
-u64 getUSecs();
-u64 getRealUSecs();
 void timerInit();
 void handler_timer_int();
+
+
+// Modified
+time_t time_mono_clock();
+time_t time_rtc_clock();
+time_t time_mono_ns();
+time_t time_mono_us();
+time_t time_rtc_ns();
+time_t time_rtc_us();
+timeval_t time_rtc_tv();
+timeval_t time_mono_tv();
+timespec_t time_rtc_ts();
+timespec_t time_mono_ts();
+
 
 #endif

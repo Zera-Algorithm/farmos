@@ -39,7 +39,7 @@ futexevent_t *futexevent_alloc(u64 uaddr, u64 pid, u64 timeout) {
 
 	fe->ftx_upaddr = uaddr;
 	fe->ftx_waiterpid = pid;
-	fe->ftx_waketime = timeout == 0 ? 0 : timeout + getUSecs();
+	fe->ftx_waketime = timeout == 0 ? 0 : timeout + time_mono_us();
 	warn("futexevent_alloc: until %d\n", timeout);
 
 	feq_critical_enter(&fe_usedq);

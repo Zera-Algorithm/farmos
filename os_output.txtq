@@ -1,0 +1,151 @@
+make build --directory=kern
+make[1]: Entering directory '/home/ubuntu/farmos/kern'
+make build --directory=boot/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/boot'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/boot'
+make build --directory=dev/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/dev'
+riscv64-unknown-elf-gcc -Wall -Werror -fno-omit-frame-pointer -gdwarf-2 -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -DNCPU=2 -DQEMU -fno-pie -no-pie -DVIRT -O3 -I../../include -c timer.c
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/dev'
+make build --directory=driver/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/driver'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/driver'
+make build --directory=fs/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/fs'
+make build --directory=fat32
+make[3]: Entering directory '/home/ubuntu/farmos/kern/fs/fat32'
+make[3]: Nothing to be done for 'build'.
+make[3]: Leaving directory '/home/ubuntu/farmos/kern/fs/fat32'
+make build --directory=fd
+make[3]: Entering directory '/home/ubuntu/farmos/kern/fs/fd'
+make[3]: Nothing to be done for 'build'.
+make[3]: Leaving directory '/home/ubuntu/farmos/kern/fs/fd'
+make build --directory=proc
+make[3]: Entering directory '/home/ubuntu/farmos/kern/fs/proc'
+make[3]: Nothing to be done for 'build'.
+make[3]: Leaving directory '/home/ubuntu/farmos/kern/fs/proc'
+make build --directory=static_files
+make[3]: Entering directory '/home/ubuntu/farmos/kern/fs/static_files'
+make[3]: Nothing to be done for 'build'.
+make[3]: Leaving directory '/home/ubuntu/farmos/kern/fs/static_files'
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/fs'
+make build --directory=futex/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/futex'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/futex'
+make build --directory=ipc/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/ipc'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/ipc'
+make build --directory=lib/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/lib'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/lib'
+make build --directory=lock/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/lock'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/lock'
+make build --directory=mm/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/mm'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/mm'
+make build --directory=proc/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/proc'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/proc'
+make build --directory=signal/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/signal'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/signal'
+make build --directory=syscall/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/syscall'
+riscv64-unknown-elf-gcc -Wall -Werror -fno-omit-frame-pointer -gdwarf-2 -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -DNCPU=2 -DQEMU -fno-pie -no-pie -DVIRT -O3 -I../../include -c sys_info.c
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/syscall'
+make build --directory=trap/
+make[2]: Entering directory '/home/ubuntu/farmos/kern/trap'
+make[2]: Nothing to be done for 'build'.
+make[2]: Leaving directory '/home/ubuntu/farmos/kern/trap'
+make[1]: Leaving directory '/home/ubuntu/farmos/kern'
+make build --directory=lib
+make[1]: Entering directory '/home/ubuntu/farmos/lib'
+make[1]: Nothing to be done for 'build'.
+make[1]: Leaving directory '/home/ubuntu/farmos/lib'
+make build --directory=user
+make[1]: Entering directory '/home/ubuntu/farmos/user'
+riscv64-unknown-elf-gcc -Wall -Werror -fno-omit-frame-pointer -gdwarf-2 -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -DNCPU=2 -DQEMU -fno-pie -no-pie -DVIRT -O3 -I./include/ -I../include -c -o test_busybox.o test_busybox.c
+riscv64-unknown-elf-ld -o test_busybox.b -z max-page-size=4096 -O --gc-sections -G 0 -static -n -nostdlib -T ../linker/user.ld entry.o test_busybox.o libMain.o syscallLib.o clone.o stdio.o stdlib.o string.o
+riscv64-unknown-elf-objdump -D test_busybox.b > test_busybox.b.asm
+python3 ../scripts/binToC.py test_busybox.b test_busybox.b.c
+riscv64-unknown-elf-gcc -Wall -Werror -fno-omit-frame-pointer -gdwarf-2 -MD -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. -fno-stack-protector -DNCPU=2 -DQEMU -fno-pie -no-pie -DVIRT -O3 -c -o test_busybox.x test_busybox.b.c
+rm test_busybox.o test_busybox.b
+make[1]: Leaving directory '/home/ubuntu/farmos/user'
+riscv64-unknown-elf-ld -z max-page-size=4096 -O --gc-sections -T linker/kernel.ld -o kernel-qemu kern/*/*.o lib/*.o user/*.x kern/*/*/*.o
+riscv64-unknown-elf-objdump -xS kernel-qemu > kern/kernel.asm
+cp sdcard.img fs.img
+qemu-img resize fs.img 64M
+Image resized.
+qemu-system-riscv64 -machine virt -bios default -kernel kernel-qemu -m 128M -smp 2 -nographic -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -device virtio-net-device
+
+OpenSBI v1.2
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name             : riscv-virtio,qemu
+Platform Features         : medeleg
+Platform HART Count       : 2
+Platform IPI Device       : aclint-mswi
+Platform Timer Device     : aclint-mtimer @ 10000000Hz
+Platform Console Device   : uart8250
+Platform HSM Device       : ---
+Platform PMU Device       : ---
+Platform Reboot Device    : sifive_test
+Platform Shutdown Device  : sifive_test
+Firmware Base             : 0x80000000
+Firmware Size             : 220 KB
+Runtime SBI Version       : 1.0
+
+Domain0 Name              : root
+Domain0 Boot HART         : 0
+Domain0 HARTs             : 0*,1*
+Domain0 Region00          : 0x0000000002000000-0x000000000200ffff (I)
+Domain0 Region01          : 0x0000000080000000-0x000000008003ffff ()
+Domain0 Region02          : 0x0000000000000000-0xffffffffffffffff (R,W,X)
+Domain0 Next Address      : 0x0000000080200000
+Domain0 Next Arg1         : 0x0000000087e00000
+Domain0 Next Mode         : S-mode
+Domain0 SysReset          : yes
+
+Boot HART ID              : 0
+Boot HART Domain          : root
+Boot HART Priv Version    : v1.12
+Boot HART Base ISA        : rv64imafdch
+Boot HART ISA Extensions  : time,sstc
+Boot HART PMP Count       : 16
+Boot HART PMP Granularity : 4
+Boot HART PMP Address Bits: 54
+Boot HART MHPM Count      : 16
+Boot HART MIDELEG         : 0x0000000000001666
+Boot HART MEDELEG         : 0x0000000000f0b509
+FarmOS kernel is booting (on hart 0) total: 2
+Hart 0's vm is enabled, booting.
+FarmOS kernel boot end, start all harts.
+Hart 0 is waiting
+Hart 1 started.
+Hart 1's vm is enabled, booting.
+Hart 1 is waiting
+Hart 1 start running.
+Hart 0 start running.
+test_busybox started!
+[test_init]: before execve! I'm 20001
+
+$ /busybox ash cyclictest_testcode.sh 
+QEMU: Terminated
+

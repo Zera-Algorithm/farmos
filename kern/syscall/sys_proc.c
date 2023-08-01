@@ -121,7 +121,6 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	char pathbuf[MAX_PROC_NAME_LEN];
 	copy_in_str(p->p_pt, path, pathbuf, MAX_PROC_NAME_LEN);
 	safestrcpy(td->td_name, pathbuf, MAX_PROC_NAME_LEN);
-
 	void *bin;
 	size_t size;
 	fileid_t file_id = file_load(pathbuf, &bin, &size);
@@ -195,9 +194,9 @@ u64 sys_wait4(u64 pid, u64 status, u64 options) {
  * @param pTimeSpec 包含秒和微秒两个字段，指明进程要睡眠的时间数
  */
 u64 sys_nanosleep(u64 pTimeSpec) {
-	timeval_t timeVal;
+	timespec_t timeVal;
 	copyIn(pTimeSpec, &timeVal, sizeof(timeVal));
-	tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal) + getUSecs());
+	tsleep(&timeVal, NULL, "nanosleep", TS_USEC(timeVal) + time_mono_us());
 	return 0;
 }
 
@@ -209,13 +208,14 @@ u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain) {
 	if (flags & TIMER_ABSTIME) {
 		// 以绝对时间睡眠
 		if (clock_id == CLOCK_REALTIME) {
-			tsleep(&timeVal, NULL, "clock_nanosleep", TS_USEC(timeVal));
+			tsleep(&timeVal, NULL, "clock_nanosleep1", TS_USEC(timeVal) - RTC_OFF);
 		} else {
-			tsleep(&timeVal, NULL, "clock_nanosleep", TS_USEC(timeVal) + RTC_OFF);
+			log(0, "clock_nanosleep: clock_id = %d, %d, %d\n", clock_id, timeVal.tv_sec, timeVal.tv_nsec);
+			tsleep(&timeVal, NULL, "clock_nanosleep2", TS_USEC(timeVal));
 		}
 		
 	} else {
-		tsleep(&timeVal, NULL, "clock_nanosleep", TS_USEC(timeVal) + getUSecs());
+		tsleep(&timeVal, NULL, "clock_nanosleep3", TS_USEC(timeVal) + time_mono_us());
 	}
 	return 0;
 }
@@ -253,7 +253,7 @@ clock_t sys_times(u64 utms) {
 	times_t times = cpu_this()->cpu_running->td_proc->p_times;
 	proc_unlock(p);
 	copy_out(p->p_pt, utms, &times, sizeof(times));
-	return getRealTime();
+	return time_mono_clock();
 }
 
 /**

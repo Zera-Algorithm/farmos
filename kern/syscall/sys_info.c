@@ -26,10 +26,8 @@ void sys_uname(u64 upuname) {
  * @brief 获取当前时间，当uptv和uptz不为0时，将时间和时区写入用户态
  */
 void sys_gettimeofday(u64 uptv, u64 uptz) {
-	timeval_t tv;
+	timeval_t tv = time_rtc_tv();
 	timezone_t tz;
-	tv.tv_sec = getUSecs() / 1000000ul;
-	tv.tv_usec = getUSecs() % 1000000ul;
 	tz.tz_minuteswest = 0; // todo
 	tz.tz_dsttime = 0;     // todo
 
@@ -43,19 +41,14 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 // 此处不校验clockid,直接返回cpu时间
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
-	u64 time = getRealTime();
 	if (clockid == CLOCK_REALTIME) {
-		time = getTime(); // todo
-		ts.tv_sec = time / CLOCK_PER_SEC;
-		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
+		ts = time_rtc_ts();
 	} else if (clockid == CLOCK_MONOTONIC) {
-		ts.tv_sec = time / CLOCK_PER_SEC;
-		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
+		ts = time_mono_ts();
 	} else {
 		// 其他情况
 		warn("clock_gettime: clockid %d not implemented, use boot time instead\n", clockid);
-		ts.tv_sec = time / CLOCK_PER_SEC;
-		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
+		ts = time_mono_ts();
 	}
 
 	thread_t *td = cpu_this()->cpu_running;
@@ -120,7 +113,7 @@ int sys_sysinfo(struct sysinfo *info) {
 
 	struct sysinfo si;
 	memset(&si, 0, sizeof(si));
-	si.uptime = getUSecs() / 1000000ul;
+	si.uptime = time_mono_us() / USEC_PER_SEC;
 	si.totalram = memInfo.size;
 	si.freeram = pageleft * PAGE_SIZE;
 	si.sharedram = 0;
