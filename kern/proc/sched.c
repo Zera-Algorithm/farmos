@@ -126,9 +126,7 @@ context_t *sched_switch(context_t *old_ctx, register_t param) {
 
 	// 选择新线程
 	thread_t *ret = sched_runnable(old);
-	// log(LEVEL_GLOBAL, "Hart Sched %s(%d) -> %s(%d)\n", old->td_name, old->td_tid,
-	// ret->td_name,
-	//     ret->td_tid);
+	log(0, "Hart Sched %s(%x) -> %s(%x)\n", old->td_name, old->td_tid,ret->td_name,    ret->td_tid);
 
 	cpu->cpu_running = ret;
 	ret->td_status = RUNNING;

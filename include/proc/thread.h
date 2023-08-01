@@ -11,7 +11,7 @@
 
 typedef struct proc proc_t;
 
-#define SLEEP_DEBUG
+// #define SLEEP_DEBUG
 
 typedef struct thread {
 	mutex_t td_lock; // 线程锁（已被全局初始化）
@@ -85,5 +85,10 @@ void stime_end(thread_t *td);
 
 #define TID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000 + 0x1000) << 16))
 #define TID_TO_INDEX(tid) (tid & 0xffff)
+
+static inline u16 get_td_index(thread_t *td) {
+	extern thread_t threads[NPROC];
+	return (td - threads) + 1;
+}
 
 #endif // _THREAD_H_
