@@ -101,6 +101,7 @@ int pipe(int fd[2]) {
  * @param offset 无用参数
  */
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+		mtx_unlock_sleep(&fd->lock);
 
 	int i;
 	char ch;
@@ -121,9 +122,7 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		 * 此处不涉及丢失唤醒的问题。因为唤醒的主体是读写端共享的pipe锁
 		 */
 
-		mtx_unlock_sleep(&fd->lock);
 		sleep(&p->pipeReadPos, &p->lock, "wait for pipe writer to write");
-		mtx_lock_sleep(&fd->lock);
 	}
 
 	for (i = 0; i < n; i++) {
@@ -143,6 +142,7 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	if (i == 0) {
 		warn("read fd %d empty: maybe target pipe closed.\n", fd - fds);
 	}
+		mtx_lock_sleep(&fd->lock);
 	return i;
 }
 
