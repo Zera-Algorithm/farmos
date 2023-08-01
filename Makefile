@@ -32,6 +32,9 @@ $(KERNEL_ELF): $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
 	$(OBJDUMP) -xS $(KERNEL_ELF) > $(KERN)/kernel.asm
 
+transfer: os.bin
+	cp os.bin /srv/tftp
+
 # modules即为 kern 各目录的生成产物，一般是一些 .o 文件
 $(modules):
 	$(MAKE) build --directory=$@

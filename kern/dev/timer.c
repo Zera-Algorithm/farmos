@@ -15,7 +15,7 @@ u64 getRealTime() {
 	uint64 n;
 	asm volatile("rdtime %0" : "=r"(n));
 	// unmatched平台的时钟频率为10^6Hz
-	return n;
+	return (n * 10);
 }
 
 u64 getTime() {
@@ -26,7 +26,7 @@ u64 getTime() {
  * @brief 获取以微秒记的时间
  */
 u64 getUSecs() {
-	return getRealTime() / CLOCK_PER_USEC;
+	return getTime() / CLOCK_PER_USEC;
 }
 
 /**
