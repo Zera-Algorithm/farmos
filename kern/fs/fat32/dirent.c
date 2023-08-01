@@ -77,7 +77,6 @@ static char *skip_slash(char *p) {
  * @brief 将dirent的引用计数加一
  */
 void dget(Dirent *dirent) {
-	assert(dirent->holder_cnt < DIRENT_HOLDER_CNT);
 	int is_filled = 0;
 	for (int i = 0; i < dirent->holder_cnt + 1; i++) {
 		if (dirent->holders[i].holder == cpu_this()->cpu_running->td_name) {

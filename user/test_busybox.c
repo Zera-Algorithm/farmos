@@ -27,10 +27,11 @@ int main() {
 
 		// time-test
 	    (char *const[]){"/time-test", NULL},
-
+		// (char *const[]) {"./lmbench_all", "lat_ctx", "-P", "1", "-s", "32", "2", "4", "8", "16", "24", "32", "64", "96", NULL},
 		// libc-bench测试
+		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 		(char *const[]){"/libc-bench", NULL},
-
+	
 		// busybox测试
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 
@@ -55,6 +56,8 @@ int main() {
 	    // (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-R", "-b", "1000G", NULL}, // Reverse UDP
 	    // (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-R", NULL}, // Reverse TCP
 	    // (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+		// lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96
+		
 
 	    (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
 
@@ -69,7 +72,7 @@ int main() {
 
 	    // lmbench测试
 	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
-	    (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+	    
 	    NULL};
 
 	/*
