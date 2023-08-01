@@ -110,19 +110,15 @@ static void proc_recycle(proc_t *p) {
 	// 回收进程的fs资源
 	// 需要保证thread里面的fs结构在进程结束时不会被访问，以保证原子性（现状是，只有本进程不处于结束状态时才会通过自己的系统调用访问自己的fs资源）
 	// 放在td_recycle前面是因为要避免因为睡眠唤醒，把进程的td_status改为RUNNABLE，而不是维持ZOMBIE
-	recycle_thread_fs(&p->p_fs_struct);
 	proc_recycleupt(p);
 	sigaction_free(p);
-
 }
 
 void proc_destroy(proc_t *p, err_t exitcode) {
-	// 原子操作: 线程队列清空、状态变为僵尸
 	assert(mtx_hold(&wait_lock));
-
+	// 原子操作: 线程队列清空、状态变为僵尸
 	p->p_exitcode = exitcode;
 	p->p_status = ZOMBIE;
-
 	proc_unlock(p);
 
 	// 此时进程内只有一个线程，不需要对回收进程资源加锁

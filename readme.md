@@ -144,3 +144,7 @@ riscv64-unknown-elf-gdb kernel-qemu
 [ ] 解决make不能多线程编译的问题
 
 [ ] Syscall的Profiling
+
+[ ] 发送SIGKILL信号后，将阻塞在IO上的syscall唤醒，继续完成接下来的事务，待syscall结束时才会最终kill。
+syscall要保证自己只会进入一个阻塞IO，即被唤醒后就能立刻返回用户空间。现在一般的睡眠过程是睡眠等待某个条件成立，
+比如管道读取是等待管道不为空或者管道关闭这二者之一成立。那么由SIGKILL完成的唤醒肯定不会满足这个条件，需要加一个额外的条件(td->td_killed)，帮助其顺利完成**拖尾**的syscall返回用户空间。TODO：之后需要检查每一个IO等待的睡眠是否存在这个问题。

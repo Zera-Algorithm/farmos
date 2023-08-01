@@ -51,8 +51,9 @@ void socket_init() {
 	mtx_init(&mtx_messages, "message_alloc", 1, MTX_SPIN);
 
 	for (int i = 0; i < SOCKET_COUNT; i++) {
-		mtx_init(&sockets[i].lock, "socket_lock", 1, MTX_SPIN);
-		mtx_init(&sockets[i].state.state_lock, "socket_state_lock", 1, MTX_SPIN);
+		// TODO: debug socket_lock重入的问题
+		mtx_init(&sockets[i].lock, "socket_lock", 1, MTX_SPIN | MTX_RECURSE);
+		mtx_init(&sockets[i].state.state_lock, "socket_state_lock", 1, MTX_SPIN | MTX_RECURSE);
 		TAILQ_INIT(&sockets[i].messages);
 	}
 
@@ -122,6 +123,9 @@ int socket(int domain, int type, int protocol) {
 		return -1;
 	}
 
+	mtx_unlock(&socket->lock);
+	// 释放socket结构体的锁
+
 	// fds list加锁
 	mtx_lock_sleep(&fds[sfd].lock);
 	fds[sfd].dirent = NULL;
@@ -134,11 +138,7 @@ int socket(int domain, int type, int protocol) {
 	fds[sfd].socket = socket;
 	mtx_unlock_sleep(&fds[sfd].lock);
 
-
 	cur_proc_fs_struct()->fdList[usfd] = sfd;
-
-	mtx_unlock(&socket->lock);
-	// 释放socket结构体的锁
 
 	mtx_lock(&socket->state.state_lock);
 	socket->state.is_close = false;
@@ -591,7 +591,7 @@ static Message * message_alloc() {
 
 	message->message_link.tqe_next= NULL;
 	message->message_link.tqe_prev = NULL;
-	message->bufferAddr = (void *)kmalloc(4000);
+	message->bufferAddr = (void *)kvmAlloc();
 	message->length = 0;
 
 	return message;
@@ -643,7 +643,7 @@ static void message_free(Message * message) {
 	message->port = 0;
 	message->addr = 0;
 	message->length = 0;
-	kfree(message->bufferAddr);
+	kvmFree((u64)message->bufferAddr);
 
 	mtx_lock(&mtx_messages);
 	TAILQ_INSERT_TAIL(&message_free_list, message, message_link);
@@ -750,7 +750,7 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 	} else {
 		socketaddr = *dst_addr;
 	}
-	
+
 
 	Socket * target_socket = find_udp_remote_socket(&socketaddr, local_socket->type, local_socket - sockets);
 

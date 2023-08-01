@@ -187,6 +187,7 @@ static void init_fs_other() {
 	extern const unsigned char bin2c_iperf_testcode_sh[637];
 	extern const unsigned char bin2c_unixbench_testcode_sh[4556];
 	extern const unsigned char bin2c_sort_src[8546];
+	extern const unsigned char bin2c_lmbench_testcode_sh[1170];
 	create_chardev_file("/iperf_testcode_part.sh", (char *)bin2c_iperf_testcode_sh, NULL, NULL);
 	create_chardev_file("/unixbench_testcode_part.sh", (char *)bin2c_unixbench_testcode_sh, NULL, NULL);
 
@@ -197,6 +198,7 @@ static void init_fs_other() {
 	kfree(cont);
 
 	create_file_and_write("sort.src", (void *)bin2c_sort_src, sizeof(bin2c_sort_src));
+	create_file_and_write("/lmbench_testcode_part.sh", (void *)bin2c_lmbench_testcode_sh, sizeof(bin2c_lmbench_testcode_sh));
 }
 
 void init_files() {

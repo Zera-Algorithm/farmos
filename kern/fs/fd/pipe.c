@@ -64,7 +64,7 @@ int pipe(int fd[2]) {
 			return kernfd2;
 		}
 
-		pipeAlloc = (u64)kmalloc(sizeof(struct Pipe));
+		pipeAlloc = kvmAlloc();
 		struct Pipe *p = (struct Pipe *)pipeAlloc;
 		p->count = 2;
 		p->pipeReadPos = 0;
@@ -105,11 +105,12 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	int i;
 	char ch;
 	struct Pipe *p = fd->pipe;
+	thread_t *td = cpu_this()->cpu_running;
 
 	mtx_lock(&p->lock);
 	// 如果管道为空，则一直等待
 	warn("Thread %s: fd_pipe_read pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
-	while (p->pipeReadPos == p->pipeWritePos && !pipeIsClose(p)) {
+	while (p->pipeReadPos == p->pipeWritePos && !pipeIsClose(p) && !td->td_killed) {
 		// TODO：判断进程是否被kill，如被kill，就释放锁并返回负数
 		// read时的channel是readPos，对方也应该以此方式唤醒
 		// 睡眠时暂时放掉管道的锁
@@ -150,10 +151,12 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	char ch;
 	struct Pipe *p = fd->pipe;
 
+	// SIGKILL时，先设置td->killed，再唤醒，之后td才会继续执行，所以td->killed不需要加锁访问
+	thread_t *td = cpu_this()->cpu_running;
 	mtx_lock(&p->lock);
 	warn("Thread %s: fd_pipe_write pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
 	while (i < n) {
-		if (pipeIsClose(p) /* || TODO: 进程已结束*/) {
+		if (pipeIsClose(p) || td->td_killed) {
 			mtx_unlock(&p->lock);
 			warn("writer can\'t write! pipe is closed or process is destoried.\n");
 			return -EPIPE;
@@ -195,7 +198,7 @@ static int fd_pipe_close(struct Fd *fd) {
 
 	if (p && p->count == 0) {
 		// 这里每个pipe占据一个页的空间？
-		kfree(p); // 释放pipe结构体所在的物理内存
+		kvmFree((u64)p); // 释放pipe结构体所在的物理内存
 	}
 	return 0;
 }

@@ -46,9 +46,8 @@ static u64 wait_exit(thread_t *curtd, proc_t *childp, u64 pstatus) {
 	curtd->td_proc->p_times.tms_cutime += childp->p_times.tms_utime;
 	curtd->td_proc->p_times.tms_cstime += childp->p_times.tms_stime;
 
-	proc_free(childp);
 	LIST_REMOVE(childp, p_sibling); // p_children 中删除，已持有父进程的锁
-
+	proc_free(childp);
 	proc_unlock(childp);
 	proc_unlock(curtd->td_proc);
 	mtx_unlock(&wait_lock);

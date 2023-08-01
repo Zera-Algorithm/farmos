@@ -88,20 +88,30 @@ void td_destroy(err_t exitcode) {
 		mtx_unlock(&td->td_lock);
 	}
 
-	asm volatile("nop");
 	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
 
-	// todo 线程残留的信号和futex
-	mtx_lock(&wait_lock);
-	// 将线程从进程链表中移除
-	proc_lock(td->td_proc);
-	TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);
-	if (TAILQ_EMPTY(&td->td_proc->p_threads)) {
-		// 触发进程的摧毁
-		proc_destroy(td->td_proc, exitcode);
+	proc_t *p = td->td_proc;
+	bool is_last_thread = false;
+	// 检查是否是进程的最后一个线程
+	proc_lock(p);
+	if (TAILQ_FIRST(&p->p_threads) == TAILQ_LAST(&p->p_threads, thread_tailq_head)) {
+		is_last_thread = true;
 	}
-	proc_unlock(td->td_proc);
-	mtx_unlock(&wait_lock);
+	proc_unlock(p);
+
+	if (is_last_thread) {
+		recycle_thread_fs(&p->p_fs_struct);
+		mtx_lock(&wait_lock);
+		proc_lock(td->td_proc);
+		TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);
+		proc_destroy(td->td_proc, exitcode);
+		proc_unlock(td->td_proc);
+		mtx_unlock(&wait_lock);
+	} else {
+		proc_lock(td->td_proc);
+		TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);
+		proc_unlock(td->td_proc);
+	}
 
 	// 此时线程转为悬垂线程（不归属于任何进程），回收线程资源
 	mtx_lock(&td->td_lock);

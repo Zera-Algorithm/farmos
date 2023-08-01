@@ -39,10 +39,6 @@ void sleep(void *chan, mutex_t *mtx, const char *msg) {
 	// 释放进程锁，重新获取传入的另一个锁
 	mtx_unlock(&td->td_lock);
 
-	// 判断自己是否被 KILL 掉
-	if (td->td_killed) {
-		td_destroy(-1);
-	}
 	// 当前不持有任何锁
 	mtx_lock(mtx);
 }

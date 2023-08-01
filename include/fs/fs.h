@@ -8,6 +8,7 @@
 #include <types.h>
 
 #define MAX_NAME_LEN 256
+#define DIRENT_HOLDER_CNT 32
 
 typedef struct FileSystem FileSystem;
 typedef struct Dirent Dirent;
@@ -35,9 +36,14 @@ typedef struct DirentPointer {
 } DirentPointer;
 
 // 用于调试Dirent引用计数次数的开关
-// #define REFCNT_DEBUG
+#define REFCNT_DEBUG
 
 struct file_time;
+
+struct holder_info {
+	char* holder;
+	u64 cnt;
+};
 
 // FarmOS Dirent
 struct Dirent {
@@ -88,7 +94,7 @@ struct Dirent {
 	u32 linkcnt; // 链接计数
 	u32 refcnt;  // 引用计数
 
-	char *holders[128];
+	struct holder_info holders[DIRENT_HOLDER_CNT];
 	int holder_cnt;
 };
 

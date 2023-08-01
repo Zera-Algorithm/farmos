@@ -100,19 +100,11 @@ fileid_t file_load(const char *path, void **bin, size_t *size) {
 	return file_load_by_dirent(file, bin, size);
 }
 
-void file_unload(fileid_t fileid) {
-	assert(fileid >= 0 && fileid < MAX_KLOAD_FILE);
-	Dirent *file = file_load_info[fileid].file;
-
-	assert(file != NULL);
+static void __file_unload(fileid_t fileid, Dirent *file) {
+	// 2. 解除页面映射
 	int _size = file->file_size;
 	int npage = (_size) % PAGE_SIZE == 0 ? (_size / PAGE_SIZE) : (_size / PAGE_SIZE + 1);
 	u64 start_va = FILEID_TO_KVA(fileid);
-
-	// 1. 释放文件
-	file_close(file);
-
-	// 2. 解除页面映射
 	for (int i = 0; i < npage; i++) {
 		u64 va = start_va + i * PAGE_SIZE;
 		panic_on(ptUnmap(kernPd, va));
@@ -121,6 +113,18 @@ void file_unload(fileid_t fileid) {
 	// 3. 释放fileid
 	free_fileid(fileid);
 }
+
+void file_unload(fileid_t fileid) {
+	assert(fileid >= 0 && fileid < MAX_KLOAD_FILE);
+	Dirent *file = file_load_info[fileid].file;
+	assert(file != NULL);
+
+	// 1. 释放文件
+	file_close(file);
+
+	__file_unload(fileid, file);
+}
+
 
 /**
  * @brief 读取一个文件内容到内存，并映射其内容到某个页表
@@ -175,7 +179,7 @@ void *file_map(thread_t *td, Dirent *file, u64 va, size_t len, int perm, int fil
 
 	mtx_unlock(&td->td_proc->p_lock);
 
-	// 5. 释放内核加载的文件
-	file_unload(fileid);
+	// 5. 释放内核空间，但不释放文件
+	__file_unload(fileid, file);
 	return (void *)va;
 }

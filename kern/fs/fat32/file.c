@@ -65,6 +65,7 @@ int get_file_raw(Dirent *baseDir, char *path, Dirent **pfile) {
 		} else {
 			// 如果path为NULL，则直接返回baseDir（即上层的dirfd解析出的Dirent）
 			*pfile = baseDir;
+			dget_path(baseDir); // 此时复用一次，也需要加引用
 			mtx_unlock_sleep(&mtx_file);
 			return 0;
 		}

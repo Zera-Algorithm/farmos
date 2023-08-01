@@ -77,8 +77,22 @@ static char *skip_slash(char *p) {
  * @brief 将dirent的引用计数加一
  */
 void dget(Dirent *dirent) {
-	assert(dirent->holder_cnt < 64);
-	dirent->holders[dirent->holder_cnt++] = cpu_this()->cpu_running->td_name;
+	assert(dirent->holder_cnt < DIRENT_HOLDER_CNT);
+	int is_filled = 0;
+	for (int i = 0; i < dirent->holder_cnt + 1; i++) {
+		if (dirent->holders[i].holder == cpu_this()->cpu_running->td_name) {
+			dirent->holders[i].cnt += 1;
+			is_filled = 1;
+			break;
+		} else if (dirent->holders[i].holder == NULL) {
+			dirent->holders[i].holder = cpu_this()->cpu_running->td_name;
+			dirent->holders[i].cnt = 1;
+			dirent->holder_cnt += 1;
+			is_filled = 1;
+			break;
+		}
+	}
+	assert(is_filled);
 
 #ifdef REFCNT_DEBUG
 	mtx_lock_sleep(&mtx_file);
@@ -94,9 +108,13 @@ void dget(Dirent *dirent) {
 void dput(Dirent *dirent) {
 	char *name = cpu_this()->cpu_running->td_name;
 	for (int i = 0; i < dirent->holder_cnt; i++) {
-		if (dirent->holders[i] == name) {
-			dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
-			dirent->holder_cnt -= 1;
+		if (dirent->holders[i].holder == name) {
+			dirent->holders[i].cnt -= 1;
+			if (dirent->holders[i].cnt == 0) {
+				dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
+				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){NULL, 0};
+				dirent->holder_cnt -= 1;
+			}
 			break;
 		}
 	}

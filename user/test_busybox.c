@@ -11,7 +11,6 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
-		// (char *const[]) {"./spawn", "10", NULL},
 		// (char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
 
 	    // (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
@@ -25,8 +24,6 @@ int main() {
 
 		// (char *const[]) {"/busybox", "ash", "iperf_testcode_part.sh", NULL},
 		// (char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
-
-
 
 		// time-test
 	    (char *const[]){"/time-test", NULL},
@@ -44,10 +41,10 @@ int main() {
 		// iozone
 
 		// lua测试：pass
-	    // (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
 		// libc-bench测试
 	    // (char *const[]){"/libc-bench", NULL},
-	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+	    // (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
 
 		// iperf
 	    // (char *const[]){"/iperf3", "-s", "-p", "5001", "-D", NULL}, // server
@@ -57,21 +54,22 @@ int main() {
 		// (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u","-P", "5", "-b", "1000G", NULL},
 	    // (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-u", "-R", "-b", "1000G", NULL}, // Reverse UDP
 	    // (char *const[]){"/iperf3", "-c", "127.0.0.1", "-p", "5001", "-t", "2", "-i", "0", "-R", NULL}, // Reverse TCP
-	    (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 
 	    (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
 
 		// unixbench测试
 		(char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
 
-	    (char *const[]) {"/busybox", "ash", "lmbench_testcode.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "lmbench_testcode.sh", NULL},
 		// (char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
 
 	    // cyclictest测试
 	    // (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 
 	    // lmbench测试
-
+	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
+	    (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 	    NULL};
 
 	/*
@@ -127,7 +125,6 @@ int main() {
 	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "pleval", NULL},
 	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "wcstol", NULL},
 	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "wcsstr", NULL},
-	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "utime", NULL},
 	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "ungetc", NULL},
 	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "udiv", NULL},
 	    (char *const[]){"./runtest.exe", "-w", "entry-static.exe", "tls_align", NULL},
