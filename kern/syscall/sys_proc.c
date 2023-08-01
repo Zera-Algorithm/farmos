@@ -243,9 +243,12 @@ u64 sys_getppid() {
 }
 
 clock_t sys_times(u64 utms) {
-	thread_t *td = cpu_this()->cpu_running;
-	copy_out(td->td_pt, utms, &td->td_times, sizeof(td->td_times));
-	return ticks;
+	proc_t *p = cpu_this()->cpu_running->td_proc;
+	proc_lock(p);
+	times_t times = cpu_this()->cpu_running->td_proc->p_times;
+	proc_unlock(p);
+	copy_out(p->p_pt, utms, &times, sizeof(times));
+	return getRealTime();
 }
 
 /**

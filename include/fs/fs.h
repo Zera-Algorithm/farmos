@@ -8,7 +8,7 @@
 #include <types.h>
 
 #define MAX_NAME_LEN 256
-#define DIRENT_HOLDER_CNT 64
+#define DIRENT_HOLDER_CNT 48
 
 typedef struct FileSystem FileSystem;
 typedef struct Dirent Dirent;

@@ -194,12 +194,12 @@ static int fd_pipe_close(struct Fd *fd) {
 	// 唤醒读写端的程序。这里不需要考虑当前是读端还是写端，直接全部唤醒就可
 	wakeup(&p->pipeReadPos);
 	wakeup(&p->pipeWritePos);
-	mtx_unlock(&p->lock);
-
 	if (p && p->count == 0) {
 		// 这里每个pipe占据一个页的空间？
 		kvmFree((u64)p); // 释放pipe结构体所在的物理内存
 	}
+	mtx_unlock(&p->lock);
+
 	return 0;
 }
 

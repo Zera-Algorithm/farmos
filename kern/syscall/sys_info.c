@@ -43,22 +43,24 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 // 此处不校验clockid,直接返回cpu时间
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
+	u64 time = getRealTime();
 	if (clockid == CLOCK_REALTIME) {
-		ts.tv_sec = getTime() / 10000000ul;
-		ts.tv_nsec = (getTime() * NSEC_PER_CLOCK) % 1000000000ul;
+		time += (1ul << 35); // todo
+		ts.tv_sec = time / CLOCK_PER_SEC;
+		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
 	} else if (clockid == CLOCK_MONOTONIC) {
-		ts.tv_sec = getUSecs() / 1000000ul;
-		ts.tv_nsec = (getUSecs() % 1000000ul) * 1000ul;
+		ts.tv_sec = time / CLOCK_PER_SEC;
+		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
 	} else {
 		// 其他情况
 		warn("clock_gettime: clockid %d not implemented, use boot time instead\n", clockid);
-		ts.tv_sec = getUSecs() / 1000000ul;
-		ts.tv_nsec = getUSecs() % 1000000ul;
+		ts.tv_sec = time / CLOCK_PER_SEC;
+		ts.tv_nsec = (time * NSEC_PER_CLOCK) % NSEC_PER_SEC;
 	}
 
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, tp, &ts, sizeof(ts));
-	// warn("clock_gettime: %lds %ldns\n", ts.tv_sec, ts.tv_nsec);
+	log(0,"clock_gettime: %lds %ldns(%x)\n", ts.tv_sec, ts.tv_nsec, clockid);
 	return 0;
 }
 
@@ -88,14 +90,18 @@ u64 sys_setpgid(u64 pid, u64 pgid) {
 }
 
 int sys_getrusage(int who, struct rusage *p_usage) {
+	proc_t *p = cpu_this()->cpu_running->td_proc;
+	proc_lock(p);
+	times_t times = cpu_this()->cpu_running->td_proc->p_times;
+	proc_unlock(p);
 	struct rusage usage;
-	times_t *times = &cpu_this()->cpu_running->td_proc->p_times;
 	memset(&usage, 0, sizeof(usage));
-	usage.ru_utime.tv_sec = times->tms_utime / 1000000ul;
-	usage.ru_utime.tv_usec = times->tms_utime % 1000000ul;
-	usage.ru_stime.tv_sec = times->tms_stime / 1000000ul;
-	usage.ru_stime.tv_usec = times->tms_stime % 1000000ul;
-	// warn("getrusage: U: %lds %ldus / S: %lds %ldus\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec, usage.ru_stime.tv_sec, usage.ru_stime.tv_usec);
+	usage.ru_utime.tv_sec = CLOCK_TO_USEC(times.tms_utime) / 1000000ul;
+	usage.ru_utime.tv_usec = CLOCK_TO_USEC(times.tms_utime) % 1000000ul;
+	usage.ru_stime.tv_sec = CLOCK_TO_USEC(times.tms_stime) / 1000000ul;
+	usage.ru_stime.tv_usec = CLOCK_TO_USEC(times.tms_stime) % 1000000ul;
+	u64 sum = CLOCK_TO_USEC(times.tms_utime + times.tms_stime);
+	log(0, "getrusage: U: %lds %ldus / S: %lds %ldus / sum : %lds %ldus\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec, usage.ru_stime.tv_sec, usage.ru_stime.tv_usec, sum / 1000000ul, sum % 1000000ul);
 	copyOut((u64)p_usage, &usage, sizeof(usage));
 	return 0;
 }

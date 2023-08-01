@@ -34,6 +34,8 @@ typedef struct thread {
 	bool td_killed;		// 线程是否被杀死（线程锁保护）
 	sigset_t td_cursigmask; // 线程正在处理的信号屏蔽字（线程锁保护）
 	u64 td_ctid;		// 清空tid地址标识
+	u64 td_ustart;    // 线程时间戳（用于统计时间，仅被当前线程访问）
+	u64 td_sstart;	// 线程时间戳（用于统计时间，仅被当前线程访问）
 #define td_startcopy td_sigmask
 	sigset_t td_sigmask; // 线程信号屏蔽字（线程锁保护）
 #define td_endcopy td_kstack
@@ -50,7 +52,6 @@ typedef struct thread {
 #define td_pt td_proc->p_pt
 #define td_fs_struct td_proc->p_fs_struct
 #define td_brk td_proc->p_brk
-#define td_times td_proc->p_times
 } thread_t;
 
 // 线程队列
@@ -70,6 +71,12 @@ void thread_init();
 
 // 线程回收
 void td_destroy(err_t exitcode) __attribute__((noreturn));
+
+
+void utime_start(thread_t *td);
+void utime_end(thread_t *td);
+void stime_start(thread_t *td);
+void stime_end(thread_t *td);
 
 // 相关宏
 #define tdq_critical_enter(tdq) mtx_lock(&(tdq)->tq_lock)

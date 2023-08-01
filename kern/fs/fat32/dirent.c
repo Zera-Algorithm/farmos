@@ -12,7 +12,7 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 
-#define MAX_DIRENT 10460
+#define MAX_DIRENT 22000
 u64 used_dirents = 0;
 
 /**

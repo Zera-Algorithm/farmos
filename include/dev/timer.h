@@ -9,6 +9,7 @@
 // 每us的时钟数
 #define CLOCK_PER_SEC 10000000ul
 #define CLOCK_PER_USEC (CLOCK_PER_SEC / USEC_PER_SEC)
+#define CLOCK_TO_USEC(clk) ((clk) / CLOCK_PER_USEC)
 #define NSEC_PER_CLOCK 100
 
 // 中断时间间隔为0.05s(20Hz)
