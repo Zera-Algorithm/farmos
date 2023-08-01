@@ -12,6 +12,7 @@
 #define NSEC_PER_CLOCK 100
 
 // 中断时间间隔为0.05s(20Hz)
+// 这个时间间隔以us计算
 #define INTERVAL 50000
 
 uint64 getRealTime();

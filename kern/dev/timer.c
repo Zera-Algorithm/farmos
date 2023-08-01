@@ -15,11 +15,14 @@ u64 getRealTime() {
 	uint64 n;
 	asm volatile("rdtime %0" : "=r"(n));
 	// unmatched平台的时钟频率为10^6Hz
-	return (n * 10);
+	return n;
 }
 
+#define RTC_TIME_BASE (1ul << 35ul)
+
+// 获取以cycles计量的RTC时间
 u64 getTime() {
-	return getRealTime() + (1ul << 35);
+	return (getRealTime() + RTC_TIME_BASE) * 10;
 }
 
 /**

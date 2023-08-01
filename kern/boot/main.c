@@ -60,6 +60,8 @@ static inline void hart_start_all() {
 	for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 		if (!hart_started[i]) {
 			SBI_HART_START(i, 0x80200000, 0);
+			// unsigned long mask = (1 << i);
+			// SBI_SEND_IPI(&mask, 0);
 		}
 	}
 #endif
@@ -123,6 +125,7 @@ static inline void hart_init() {
 void main() {
 	if (hart_first == 1) {
 		hart_first = 0;
+		// __sync_synchronize();
 
 		// 初始化串口
 		cons_init();
