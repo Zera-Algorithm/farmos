@@ -8,6 +8,10 @@ KERNEL_ELF := kernel-qemu
 
 include include.mk
 
+# kernel的二进制文件
+KERNEL_BIN := hifive.bin
+KERNEL_UIMAGE := hifive.uImage
+
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
@@ -31,6 +35,13 @@ $(KERNEL_ELF): $(modules) $(KERNEL_LD)
 # modules即为 kern 各目录的生成产物，一般是一些 .o 文件
 $(modules):
 	$(MAKE) build --directory=$@
+
+objcopy: $(KERNEL_ELF)
+	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
+
+mkimage: objcopy
+	mkimage -A riscv -O linux -C none -a 0x80200000 -e 0x80200000 \
+		-n farmos -d $(KERNEL_BIN) $(KERNEL_UIMAGE)
 
 # TODO: 需要实现。现在仅仅是使用了一个使用mkfs创建的默认镜像
 fs.img:

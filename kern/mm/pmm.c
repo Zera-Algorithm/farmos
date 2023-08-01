@@ -10,6 +10,8 @@
 #include <lib/string.h>
 #include <mm/pmm.h>
 #include <param.h>
+#include <proc/proc.h>
+#include <proc/thread.h>
 
 struct Page {
 	u32 ref;
@@ -49,6 +51,10 @@ void pmmInit() {
 	bufferData = pmInitPush(freemem, BGROUP_NUM * sizeof(BufferDataGroup), &freemem);
 	extern void *bufferGroups;
 	bufferGroups = pmInitPush(freemem, BGROUP_NUM * sizeof(BufferGroup), &freemem);
+	extern thread_t *threads;
+	threads = pmInitPush(freemem, NPROC * sizeof(thread_t), &freemem);
+	extern proc_t *procs;
+	procs = pmInitPush(freemem, NPROC * sizeof(proc_t), &freemem);
 
 	// 为内核栈分配内存
 	extern void *kstacks;

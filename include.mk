@@ -15,11 +15,11 @@ OBJDUMP = $(TOOLPREFIX)objdump
 
 # 系统编译时参数
 ifndef NCPU
-NCPU := 2
+NCPU := 5
 endif
 
 ifndef MACHINE
-MACHINE := virt
+MACHINE := sifive_u
 endif
 
 # 编译 C 语言时的参数
@@ -30,7 +30,7 @@ CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS += -DNCPU=$(NCPU)
-CFLAGS += -DQEMU
+# CFLAGS += -DQEMU
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie
 endif
@@ -61,7 +61,7 @@ else
 endif
 
 # QEMU 启动参数
-QEMUOPTS = -machine $(MACHINE) -bios default -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU) -nographic
+QEMUOPTS = -machine $(MACHINE) -bios dynamic.bin -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU) -nographic
 
 ifeq ($(MACHINE),virt)
 	QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0

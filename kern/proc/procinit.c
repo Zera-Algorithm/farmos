@@ -15,10 +15,10 @@
 threadq_t thread_runq;
 threadq_t thread_freeq;
 threadq_t thread_sleepq;
-thread_t threads[NPROC];
+thread_t *threads;
 
 proclist_t proc_freelist;
-proc_t procs[NPROC];
+proc_t *procs;
 
 void *kstacks;
 

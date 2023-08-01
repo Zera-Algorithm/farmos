@@ -163,6 +163,8 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	log(DEBUG, "END LOAD CODE SEGMENT\n");
 
 	file_unload(file_id);
+	// 刷新指令cache，防止数据不正常
+	asm volatile("fence.i");
 	return ret;
 }
 

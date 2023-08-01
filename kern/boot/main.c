@@ -132,7 +132,7 @@ void main() {
 		// parseDtb();
 		extern struct MemInfo memInfo;
 		// memInfo.size = 8 * 1024ul * 1024ul * 1024ul;
-		memInfo.size = 128ul * 1024ul * 1024ul;
+		memInfo.size = 8 * 1024ul * 1024ul * 1024ul;
 
 		printf("dtb init success!\n");
 
