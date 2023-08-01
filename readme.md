@@ -114,7 +114,14 @@ riscv64-unknown-elf-gdb kernel-qemu
 
 ### 第一阶段文档
 
-* []
+说明：我们国赛的第一阶段qemu赛道的提交放置在本仓库的archive/final1-qemu分支；hifive unmatched开发板赛道的提交放置在本仓库的archive/final2-unmatced分支。
+
+* [文件系统](./docs/第一阶段-文件系统.md)
+* [sd卡驱动](./docs/FarmOS%20-%20SD%20卡驱动.md)
+* [Socket](./docs/FarmOS%20-%20Socket.md)
+* [内存管理](./docs/FarmOS%20-%20内存管理.md)
+* [进程与线程](./docs/FarmOS%20-%20进程与线程.md)
+* [多核同步互斥机制设计](./docs/FarmOS%20-%20多核同步互斥机制.md)
 
 ## 一些说明
 1. Qemu默认加载的OpenSBI位于
