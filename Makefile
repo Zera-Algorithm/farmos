@@ -26,7 +26,7 @@ modules := $(KERN) $(LIB) $(USER)
 .PHONY: all clean $(modules) fs.img sdcard.img
 
 all: $(KERNEL_ELF)
-
+	$(OBJCOPY) -O binary $(KERNEL_ELF) os.bin
 # 生成 kernel，并将其反汇编到kernel.asm
 $(KERNEL_ELF): $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)

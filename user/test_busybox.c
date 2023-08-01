@@ -323,6 +323,7 @@ int main() {
 			}
 		}
 	}
+	printf("!TEST FINISH!\n");
 	reboot();
 	return 0;
 }
