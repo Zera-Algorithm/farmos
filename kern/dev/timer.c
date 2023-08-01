@@ -14,6 +14,7 @@
 u64 getRealTime() {
 	uint64 n;
 	asm volatile("rdtime %0" : "=r"(n));
+	// unmatched平台的时钟频率为10^6Hz
 	return n;
 }
 

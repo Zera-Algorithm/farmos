@@ -12,7 +12,7 @@
 #define NSEC_PER_CLOCK 100
 
 // 中断时间间隔为0.05s(20Hz)
-#define INTERVAL 500000
+#define INTERVAL 50000
 
 uint64 getRealTime();
 u64 getTime();

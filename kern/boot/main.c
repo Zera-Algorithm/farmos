@@ -128,6 +128,14 @@ void main() {
 		cons_init();
 		printf("FarmOS kernel is booting (on hart %d) total: %d\n", cpu_this_id(), NCPU);
 
+		// // 测试时间
+		// for (int i = 0; i <= 500; i++) {
+		// 	for (int j = 0; j <= 100000000; j++) {
+		// 		asm volatile("nop");
+		// 	}
+		// 	printf("now realtime: %ld\n", getRealTime());
+		// }
+
 		// 读取 dtb
 		// parseDtb();
 		extern struct MemInfo memInfo;
