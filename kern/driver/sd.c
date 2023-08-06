@@ -12,9 +12,18 @@
 #error Must define TL_CLK
 #endif
 
+// 只有sifive能进入这个文件执行
+// 但是qemu模拟的sifive与板子实际的sifive还是有不同
+
+#ifdef QEMU_SIFIVE
+#define SD_FAT_FS_OFFSET 0
+#else
 #define SD_FAT_FS_OFFSET 286720
-// #define SD_FAT_FS_OFFSET 0
-// #define QEMU_SD
+#endif
+
+#ifdef QEMU_SIFIVE
+#define QEMU_SD
+#endif
 
 #define F_CLK TL_CLK
 

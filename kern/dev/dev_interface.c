@@ -14,13 +14,13 @@ void dev_test() {
 }
 
 void cons_init() {
-	SBI_PUTCHAR("s");
-	SBI_PUTCHAR("b");
-	SBI_PUTCHAR("i");
-	SBI_PUTCHAR(" ");
-	SBI_PUTCHAR("o");
-	SBI_PUTCHAR("k");
-	SBI_PUTCHAR("\n");
+	SBI_PUTCHAR('s');
+	SBI_PUTCHAR('b');
+	SBI_PUTCHAR('i');
+	SBI_PUTCHAR(' ');
+	SBI_PUTCHAR('o');
+	SBI_PUTCHAR('k');
+	SBI_PUTCHAR('\n');
 	printInit();
 	uart_init();
 }

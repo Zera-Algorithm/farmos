@@ -92,6 +92,8 @@ The remote fence function acts as a full TLB flush if
 
   指示远程Hart执行SFENCE.VMA指令，刷新TLB表项，刷新的虚拟地址范围位`start_addr` 到`start_addr + size` 的这一段
 
+  如果start_addr和size均为0，则刷新整个TLB
+
   ![image-20230501173112170](assets/image-20230501173112170.png)
 
 * ```c

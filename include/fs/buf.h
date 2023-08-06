@@ -6,7 +6,13 @@
 #include <mm/memlayout.h>
 #include <types.h>
 
+#ifdef QEMU_SIFIVE
 #define BUF_SUM_SIZE (32 * 1024 * 1024) // 32MB
+#else
+#define BUF_SUM_SIZE (64 * 1024 * 1024) // 64MB
+#endif
+
+
 #define BUF_SIZE (512)			// 512B
 #define BGROUP_NUM (1 << 13)		// 1024 * 8
 

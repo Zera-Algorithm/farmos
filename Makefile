@@ -68,8 +68,10 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 fsrun: $(KERNEL_ELF) fs.img
 	$(QEMU) $(QEMUOPTS)
 
+# qemu-img resize sdcard.img 64M
 # 以sd卡运行
-sdrun: $(KERNEL_ELF) sdcard.img
+qemu: sdcard.img $(KERNEL_ELF)
+	cp sdcard.img fs.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv

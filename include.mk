@@ -19,7 +19,7 @@ NCPU := 5
 endif
 
 ifndef MACHINE
-MACHINE := sifive_u
+MACHINE := board
 endif
 
 # 编译 C 语言时的参数
@@ -37,10 +37,15 @@ endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
+
+# 机器类型：
 ifeq ($(MACHINE), sifive_u)
 CFLAGS += -DSIFIVE
-else
+CFLAGS += -DQEMU_SIFIVE
+else ifeq ($(MACHINE), virt)
 CFLAGS += -DVIRT
+else
+CFLAGS += -DSIFIVE
 endif
 
 
@@ -51,6 +56,7 @@ RELEASE_CFLAGS   := $(CFLAGS) -O3
 RELEASE_LDFLAGS  := $(LDFLAGS) -O --gc-sections
 DEBUG_CFLAGS     := $(CFLAGS) -O0 -g -ggdb
 
+# 优化模式：
 # 设为release模式，会使用O2优化
 # 设为debug模式，开O1
 ifeq ($(FARMOS_PROFILE),debug)

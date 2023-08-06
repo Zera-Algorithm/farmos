@@ -34,7 +34,7 @@
 #define IGNORE_HART0 0
 #endif
 
-#define SINGLE
+// #define SINGLE
 
 // 用于记录当前哪个核已被启动
 volatile static int hart_started[NCPU];
@@ -125,7 +125,7 @@ static inline void hart_init() {
 void main() {
 	if (hart_first == 1) {
 		hart_first = 0;
-		// __sync_synchronize();
+		__sync_synchronize();
 
 		// 初始化串口
 		cons_init();
@@ -140,10 +140,12 @@ void main() {
 		// }
 
 		// 读取 dtb
-		// parseDtb();
+		#ifdef QEMU_SIFIVE
+		parseDtb();
+		#else
 		extern struct MemInfo memInfo;
-		// memInfo.size = 8 * 1024ul * 1024ul * 1024ul;
-		memInfo.size = 8 * 1024ul * 1024ul * 1024ul;
+		memInfo.size = 16 * 1024ul * 1024ul * 1024ul;
+		#endif
 
 		printf("dtb init success!\n");
 

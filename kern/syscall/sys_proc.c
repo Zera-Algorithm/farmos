@@ -164,7 +164,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 
 	file_unload(file_id);
 	// 刷新指令cache，防止数据不正常
-	asm volatile("fence.i");
+	__asm__ __volatile__("fence.i" : : : "memory");
 	return ret;
 }
 
