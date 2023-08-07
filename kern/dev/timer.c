@@ -23,9 +23,9 @@ u64 getRealTime() {
 // 获取以cycles计量的RTC时间
 u64 getTime() {
 	#ifdef QEMU_SIFIVE
-	return (getRealTime() + RTC_TIME_BASE) * 10;
-	#else
 	return (getRealTime() + RTC_TIME_BASE);
+	#else
+	return (getRealTime() + RTC_TIME_BASE) * 10;
 	#endif
 }
 

@@ -60,8 +60,8 @@ static inline void hart_start_all() {
 	for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 		if (!hart_started[i]) {
 			SBI_HART_START(i, 0x80200000, 0);
-			// unsigned long mask = (1 << i);
-			// SBI_SEND_IPI(&mask, 0);
+			unsigned long mask = (1 << i);
+			SBI_SEND_IPI(&mask, 0);
 		}
 	}
 #endif
@@ -180,8 +180,10 @@ void main() {
 
 		// 启动其它核心
 		hart_set_clear();
-		hart_set_started();
 		hart_start_all(); // 单核时，这里会直接跳过
+
+		// 启动完所有核心后，才能标记主核已成功启动
+		hart_set_started();
 
 		// 加载初始化进程
 		kern_load_process();
