@@ -35,8 +35,8 @@ thread_t *td_alloc() {
 	}
 
 	thread_t *td = TAILQ_FIRST(&thread_freeq.tq_head);
-	TAILQ_REMOVE(&thread_freeq.tq_head, td, td_freeq);
 	mtx_lock(&td->td_lock);
+	TAILQ_REMOVE(&thread_freeq.tq_head, td, td_freeq);
 	tdq_critical_exit(&thread_freeq);
 	// 已从空闲线程队列中取出线程，需要初始化线程的各个字段
 
@@ -68,7 +68,7 @@ static void td_free(thread_t *td) {
 
 	// 将线程加入空闲线程队列
 	tdq_critical_enter(&thread_freeq);
-	TAILQ_INSERT_HEAD(&thread_freeq.tq_head, td, td_freeq);
+	TAILQ_INSERT_TAIL(&thread_freeq.tq_head, td, td_freeq);
 	tdq_critical_exit(&thread_freeq);
 }
 

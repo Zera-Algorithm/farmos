@@ -8,6 +8,8 @@
 
 itimer_list_t itimer_list;
 
+#define getTime time_rtc_clock
+
 void itimer_init() {
 	LIST_INIT(&itimer_list.itimer_head);
 	mtx_init(&itimer_list.itimer_lock, "itimer_list", false, MTX_SPIN | MTX_RECURSE);

@@ -12,7 +12,10 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 
-#define MAX_DIRENT 10460
+
+
+
+#define MAX_DIRENT 30000
 u64 used_dirents = 0;
 
 /**
@@ -25,6 +28,8 @@ extern mutex_t mtx_file;
 // 待分配的dirent
 static Dirent dirents[MAX_DIRENT];
 struct DirentList dirent_free_list = {NULL};
+
+#define PEEK sizeof(dirents)
 
 // 管理dirent分配和释放的互斥锁
 struct mutex mtx_dirent;
@@ -77,15 +82,14 @@ static char *skip_slash(char *p) {
  * @brief 将dirent的引用计数加一
  */
 void dget(Dirent *dirent) {
-	assert(dirent->holder_cnt < DIRENT_HOLDER_CNT);
 	int is_filled = 0;
 	for (int i = 0; i < dirent->holder_cnt + 1; i++) {
-		if (dirent->holders[i].holder == cpu_this()->cpu_running->td_name) {
+		if (dirent->holders[i].td_index == get_td_index(cpu_this()->cpu_running)) {
 			dirent->holders[i].cnt += 1;
 			is_filled = 1;
 			break;
-		} else if (dirent->holders[i].holder == NULL) {
-			dirent->holders[i].holder = cpu_this()->cpu_running->td_name;
+		} else if (dirent->holders[i].td_index == 0) {
+			dirent->holders[i].td_index = get_td_index(cpu_this()->cpu_running);
 			dirent->holders[i].cnt = 1;
 			dirent->holder_cnt += 1;
 			is_filled = 1;
@@ -106,13 +110,13 @@ void dget(Dirent *dirent) {
  * @brief 将dirent的引用数减一
  */
 void dput(Dirent *dirent) {
-	char *name = cpu_this()->cpu_running->td_name;
+	u16 index = get_td_index(cpu_this()->cpu_running);
 	for (int i = 0; i < dirent->holder_cnt; i++) {
-		if (dirent->holders[i].holder == name) {
+		if (dirent->holders[i].td_index == index) {
 			dirent->holders[i].cnt -= 1;
 			if (dirent->holders[i].cnt == 0) {
 				dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
-				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){NULL, 0};
+				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){0, 0};
 				dirent->holder_cnt -= 1;
 			}
 			break;
@@ -443,7 +447,7 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
  * @return 0成功，-1失败
  */
 int makeDirAt(Dirent *baseDir, char *path, int mode) {
-	Dirent *dir;
+	Dirent *dir = NULL;
 	int ret = createItemAt(baseDir, path, &dir, 1);
 	if (ret < 0) {
 		return ret;
@@ -462,7 +466,7 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 }
 
 int create_file_and_close(char *path) {
-	Dirent *file;
+	Dirent *file = NULL;
 	r = createFile(NULL, path, &file);
 	if (r < 0) {
 		warn("create file error!\n");

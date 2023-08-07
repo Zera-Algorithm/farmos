@@ -29,7 +29,7 @@ typedef u64 ptr_t;
 typedef u32 mode_t;
 typedef i64 fileid_t;
 typedef i64 clock_t;
-typedef u64 time_t;
+typedef i64 time_t;
 typedef u64 suseconds_t;
 typedef u32 pid_t;
 typedef u32 uid_t;

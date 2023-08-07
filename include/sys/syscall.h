@@ -36,6 +36,8 @@ pid_t sys_getsid(pid_t pid);
 pid_t sys_setsid();
 void sys_reboot();
 
+u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain);
+
 struct rusage;
 struct sysinfo;
 
@@ -89,7 +91,7 @@ int sys_fsync(int fd);
 void sys_sync();
 int sys_syncfs(int fd);
 int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
-
+int sys_socketpair(int domain, int type, int protocol, int *fds);
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);
 int sys_sigreturn();

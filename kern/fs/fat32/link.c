@@ -139,7 +139,7 @@ static int rmfile(struct Dirent *file) {
 		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
 		int hold_by_cur = 1;
 		for (int i = 0; i < file->holder_cnt; i++) {
-			if (file->holders[i].holder != cpu_this()->cpu_running->td_name) {
+			if (file->holders[i].td_index != get_td_index(cpu_this()->cpu_running)) {
 				hold_by_cur = 0;
 				break;
 			}
@@ -150,7 +150,7 @@ static int rmfile(struct Dirent *file) {
 
 #ifdef REFCNT_DEBUG
 			for (int i = 0; i < file->holder_cnt; i++) {
-				warn("holder: %s, cnt = %d\n", file->holders[i].holder, file->holders[i].cnt);
+				warn("holder: %d, cnt = %d\n", file->holders[i].td_index, file->holders[i].cnt);
 			}
 #endif
 
@@ -222,7 +222,7 @@ static int mvfile(Dirent *oldfile, Dirent *newDir, char *newPath) {
 
 #ifdef REFCNT_DEBUG
 		for (int i = 0; i < oldfile->holder_cnt; i++) {
-			warn("holder: %s, cnt: %d\n", oldfile->holders[i].holder, oldfile->holders[i].cnt);
+			warn("holder: %d, cnt: %d\n", oldfile->holders[i].td_index, oldfile->holders[i].cnt);
 		}
 #endif
 		return -EBUSY; // in use

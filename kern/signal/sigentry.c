@@ -100,10 +100,11 @@ void sig_check() {
 		if (sa->sa_handler == NULL) {
 			// 未注册的信号处理函数
 			// 检查默认处理函数
-			if (se->se_signo == SIGKILL) {
+			if (se->se_signo == SIGKILL || se->se_signo == SIGTERM) {
 				// 默认处理函数：终止进程
 				warn("%s handling SIGKILL signal\n", td->td_name);
 				td->td_killed = 1;
+				continue;
 			}
 			warn("%s's signal %d ignored\n", td->td_name, se->se_signo);
 			// 无默认处理函数，直接忽略
