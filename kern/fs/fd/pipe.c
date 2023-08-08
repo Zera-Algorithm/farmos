@@ -147,7 +147,7 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 }
 
 static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
-			mtx_unlock_sleep(&fd->lock);
+	mtx_unlock_sleep(&fd->lock);
 	int i = 0;
 	char ch;
 	struct Pipe *p = fd->pipe;

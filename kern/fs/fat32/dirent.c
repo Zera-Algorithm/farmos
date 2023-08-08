@@ -11,11 +11,9 @@
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <sys/errno.h>
+#include <fs/filepnt.h>
 
-
-
-
-#define MAX_DIRENT 30000
+#define MAX_DIRENT 160000
 u64 used_dirents = 0;
 
 /**
@@ -52,6 +50,7 @@ Dirent *dirent_alloc() {
 	Dirent *dirent = LIST_FIRST(&dirent_free_list);
 	// TODO: 需要初始化dirent的睡眠锁
 	LIST_REMOVE(dirent, dirent_link);
+	memset(dirent, 0, sizeof(Dirent));
 	used_dirents += 1;
 
 	mtx_unlock(&mtx_dirent);
@@ -405,28 +404,32 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 		return r;
 	}
 
-	// 3. 分配Dirent并填写信息
+	// 3. 分配Dirent
 	if ((r = dir_alloc_file(dir, &f, lastElem)) < 0) {
 		mtx_unlock_sleep(&mtx_file);
 		return r;
 	}
 
-	// 4. 无论如何，创建了的文件或目录至少应当分配一个块
-	f->first_clus = clusterAlloc(dir->file_system, 0); // 在Alloc时即将first_clus清空为全0
+	// 4. 填写Dirent的各项信息
 	f->parent_dirent = dir;				   // 设置父亲节点，以安排写回
 	f->file_system = dir->file_system;
 	extern struct FileDev file_dev_file;
 	f->dev = &file_dev_file; // 赋值设备指针
 	f->type = (isDir) ? DIRENT_DIR : DIRENT_FILE;
 
-	// 5. 目录应当以其分配了的大小为其文件大小
+	// 5. 目录应当以其分配了的大小为其文件大小（TODO：但写回时只写回0）
 	if (isDir) {
+		// 目录至少分配一个簇
 		int clusSize = CLUS_SIZE(dir->file_system);
+		f->first_clus = clusterAlloc(dir->file_system, 0); // 在Alloc时即将first_clus清空为全0
 		f->file_size = clusSize;
 		f->raw_dirent.DIR_Attr = ATTR_DIRECTORY;
 	} else {
+		// 空文件不分配簇
 		f->file_size = 0;
+		f->first_clus = 0;
 	}
+	filepnt_init(f);
 
 	// 4. 将dirent加入到上级目录的子Dirent列表
 	LIST_INSERT_HEAD(&(dir->child_list), f, dirent_link);

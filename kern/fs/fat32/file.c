@@ -6,6 +6,7 @@
 #include <fs/file_time.h>
 #include <fs/fs.h>
 #include <fs/vfs.h>
+#include <fs/filepnt.h>
 #include <fs/buf.h>
 #include <lib/error.h>
 #include <lib/log.h>
@@ -76,6 +77,8 @@ int get_file_raw(Dirent *baseDir, char *path, Dirent **pfile) {
 		mtx_unlock_sleep(&mtx_file);
 		return r;
 	} else {
+		// 首次打开，更新pointer
+		filepnt_init(file);
 		mtx_unlock_sleep(&mtx_file);
 		*pfile = file;
 		return 0;
@@ -131,17 +134,6 @@ void file_close(Dirent *file) {
 	mtx_unlock_sleep(&mtx_file);
 }
 
-/**
- * @brief 返回文件file第fileClusNo块簇的簇号
- */
-static u32 fileGetClusterNo(Dirent *file, int fileClusNo) {
-	int clus = file->first_clus;
-	for (int i = 0; i <= fileClusNo - 1; i++) {
-		clus = fatRead(file->file_system, clus);
-	}
-	return clus;
-}
-
 // 补充两个不获取锁的_file_read_nolock和_file_write_nolock，以供连续写入时使用
 
 /**
@@ -174,7 +166,7 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 
 	// 寻找第一个cluster
 	u32 clusIndex = start / clusSize;
-	u32 clus = fileGetClusterNo(file, clusIndex);
+	u32 clus = filepnt_getclusbyno(file, clusIndex);
 	u32 len = 0; // 累计读取的字节数
 
 	// 读取第一块
@@ -183,11 +175,10 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 
 	// 之后的块
 	clusIndex += 1;
-	clus = fatRead(file->file_system, clus);
 	for (; end >= clusIndex * clusSize; clusIndex++) {
+		clus = filepnt_getclusbyno(file, clusIndex);
 		clusterRead(file->file_system, clus, 0, (void *)(dst + len), MIN(clusSize, n - len),
 			    user);
-		clus = fatRead(file->file_system, clus);
 		len += MIN(clusSize, n - len);
 	}
 
@@ -198,24 +189,40 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 /**
  * @brief 扩充文件到新的大小
  */
-void fileExtend(struct Dirent *file, int newSize) {
+void file_extend(struct Dirent *file, int newSize) {
 	assert(file->file_size < newSize);
 
+	u32 oldSize = file->file_size;
 	file->file_size = newSize;
 	FileSystem *fs = file->file_system;
 
 	u32 clusSize = CLUS_SIZE(file->file_system);
 	u32 clusIndex = 0;
-	u32 clus = file->first_clus;
-	for (; FAT32_NOT_END_CLUSTER(fatRead(fs, clus)); clusIndex += 1) {
-		clus = fatRead(fs, clus);
+	u32 clus;
+
+	// 1. 处理空文件的情况
+	if (file->first_clus != 0) {
+		clus = file->first_clus;
+	} else {
+		file->first_clus = clus = clusterAlloc(file->file_system, 0);
+		filepnt_setval(&file->pointer, 0, clus);
+		oldSize = 1; // 扩充文件
 	}
 
-	for (; newSize > (clusIndex + 1) * clusSize; clusIndex += 1) {
+	// 2. 计算最后一个簇的簇号和index
+	u32 old_clusters = (oldSize + clusSize - 1) / clusSize;
+	clus = filepnt_getclusbyno(file, old_clusters-1); // 最后簇的簇号
+	clusIndex = old_clusters - 1;
+
+	// 3. 分配簇，并更新pointer簇号表
+	while (newSize > (clusIndex + 1) * clusSize) {
 		clus = clusterAlloc(fs, clus);
+		clusIndex += 1;
+		// 同时将增加的簇数加入到簇号指针表中
+		filepnt_setval(&file->pointer, clusIndex, clus);
 	}
 
-	// 写回目录项
+	// 4. 写回目录项
 	sync_dirent_rawdata_back(file);
 }
 
@@ -235,7 +242,7 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 	if (off + n > file->file_size) {
 		// 超出文件的最大范围
 		// Note: 扩充
-		fileExtend(file, off + n);
+		file_extend(file, off + n);
 	}
 
 	u64 start = off, end = off + n - 1;
@@ -244,7 +251,7 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 
 	// 寻找第一个cluster
 	u32 clusIndex = start / clusSize;
-	u32 clus = fileGetClusterNo(file, clusIndex);
+	u32 clus = filepnt_getclusbyno(file, clusIndex);
 	u32 len = 0; // 累计读取的字节数
 
 	// 读取第一块
@@ -253,11 +260,10 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 
 	// 之后的块
 	clusIndex += 1;
-	clus = fatRead(file->file_system, clus);
 	for (; end >= clusIndex * clusSize; clusIndex++) {
+		clus = filepnt_getclusbyno(file, clusIndex);
 		clusterWrite(file->file_system, clus, 0, (void *)(src + len),
 			     MIN(clusSize, n - len), user);
-		clus = fatRead(file->file_system, clus);
 		len += MIN(clusSize, n - len);
 	}
 
@@ -266,25 +272,49 @@ int file_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
 }
 
 /**
- * @brief 缩小文件到指定的大小，仅仅改变文件的大小字段，而不是真正地释放簇
- * 在ftruncate之前首先需要将文件的多余部分清零
+ * @brief 缩小文件到指定的大小，并释放之前的簇
+ * 在ftruncate之前首先需要将文件最后一个簇的多余部分清零
  */
-void fshrink(Dirent *file, u64 newsize) {
+void file_shrink(Dirent *file, u64 newsize) {
 	mtx_lock_sleep(&mtx_file);
 
 	assert(file != NULL);
 	assert(file->file_size >= newsize);
 
-	u64 oldsize = file->file_size;
-	// 1. 清空文件的剩余内容
+	u32 oldsize = file->file_size;
+	u32 clusSize = CLUS_SIZE(file->file_system);
+
+	// 1. 清空文件最后一个簇的剩余内容
 	char buf[1024];
 	memset(buf, 0, sizeof(buf));
-	for (int i = newsize; i < oldsize; i += sizeof(buf)) {
-		file_write(file, 0, (u64)buf, i, MIN(sizeof(buf), oldsize - i));
+	if (oldsize % PAGE_SIZE != 0) {
+		for (int i = newsize; i < PGROUNDUP(newsize); i += sizeof(buf)) {
+			file_write(file, 0, (u64)buf, i, MIN(sizeof(buf), PGROUNDUP(newsize) - i));
+		}
+	}
+
+	// 2. 释放后面的簇
+	u32 new_clusters = (newsize + clusSize - 1) / clusSize;
+	u32 old_clusters = (oldsize + clusSize - 1) / clusSize;
+	if (new_clusters < old_clusters) {
+		// 获取新文件大小之后的第一个簇
+		u32 last_clus = filepnt_getclusbyno(file, new_clusters);
+		if (new_clusters != 0) {
+			u32 prev_clus = filepnt_getclusbyno(file, new_clusters-1);
+			fatWrite(file->file_system, prev_clus, FAT32_EOF); // 标识最后一个簇
+		}
+		clus_sequence_free(file->file_system, last_clus);
+		for (int i = new_clusters; i < old_clusters; i++) {
+			// 清空簇号表的对应位置
+			filepnt_setval(&file->pointer, i, 0);
+		}
 	}
 
 	// 2. 缩小文件
-	file->file_size = oldsize;
+	file->file_size = newsize;
+	if (newsize == 0) {
+		file->first_clus = 0;
+	}
 
 	// 3. 写回
 	sync_dirent_rawdata_back(file);

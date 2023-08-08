@@ -19,10 +19,17 @@ LIST_HEAD(DirentList, Dirent);
 // 对应目录、文件、设备
 typedef enum dirent_type { DIRENT_DIR, DIRENT_FILE, DIRENT_CHARDEV, DIRENT_BLKDEV } dirent_type_t;
 
+// 一页能容纳的u32簇号个数
+#define PAGE_NCLUSNO (PAGE_SIZE / sizeof(u32))
+// #define NDIRENT_SECPOINTER 128
+#define NDIRENT_SECPOINTER 5
+
+// 二级指针
 struct TwicePointer {
-	u32 cluster[PAGE_SIZE / sizeof(u32)];
+	u32 cluster[PAGE_NCLUSNO];
 };
 
+// 三级指针
 struct ThirdPointer {
 	struct TwicePointer *ptr[PAGE_SIZE / sizeof(struct TwicePointer *)];
 };
@@ -30,9 +37,11 @@ struct ThirdPointer {
 // 指向簇列表的指针
 typedef struct DirentPointer {
 	// 一级指针
-	u32 first[10];
-	struct TwicePointer *second[10];
+	// u32 first[10];
+	// 简化：只使用二级指针和三级指针
+	struct TwicePointer *second[NDIRENT_SECPOINTER];
 	struct ThirdPointer *third;
+	u16 valid;
 } DirentPointer;
 
 // 用于调试Dirent引用计数次数的开关
@@ -52,7 +61,7 @@ struct Dirent {
 
 	// 文件系统相关属性
 	FileSystem *file_system; // 所在的文件系统
-	u32 first_clus;		 // 第一个簇的簇号
+	u32 first_clus;		 // 第一个簇的簇号（如果为0，表示文件尚未分配簇）
 	u32 file_size;		 // 文件大小
 
 	/* for OS */
@@ -60,7 +69,7 @@ struct Dirent {
 	// 仅用于是挂载点的目录，指向该挂载点所对应的文件系统。用于区分mount目录和非mount目录
 	FileSystem *head;
 
-	// DirentPointer pointer;
+	DirentPointer pointer;
 
 	// [暂不用] 标记此Dirent节点是否已扩展子节点，用于弹性伸缩Dirent缓存，不过一般设置此字段为1
 	// 我们会在初始化时扫描所有文件，并构建Dirent

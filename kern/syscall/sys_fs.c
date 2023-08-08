@@ -524,7 +524,7 @@ int sys_statfs(u64 ppath, struct statfs *buf) {
 		extern u64 alloced_clus;
 		// 使用中的dirent数
 		extern u64 used_dirents;
-		
+
 		assert(fs != NULL);
 		statfs.f_type = MSDOS_SUPER_MAGIC;
 		statfs.f_bsize = fs->superBlock.bytes_per_clus;
@@ -553,9 +553,9 @@ int sys_ftruncate(int fd, off_t length) {
 	mtx_lock_sleep(&mtx_file);
 
 	if (length <= file->file_size) {
-		fshrink(file, length);
+		file_shrink(file, length);
 	} else {
-		fileExtend(file, length);
+		file_extend(file, length);
 	}
 
 	mtx_unlock_sleep(&mtx_file);
