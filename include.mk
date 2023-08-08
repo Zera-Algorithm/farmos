@@ -45,6 +45,7 @@ CFLAGS += -DQEMU_SIFIVE
 else ifeq ($(MACHINE), virt)
 CFLAGS += -DVIRT
 else
+# board，即板子
 CFLAGS += -DSIFIVE
 endif
 

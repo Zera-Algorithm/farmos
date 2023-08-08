@@ -15,7 +15,7 @@
 
 // 中断时间间隔为0.05s(20Hz)
 // 这个时间间隔以us计算
-#ifdef QEMU_SIFIVE
+#if ((defined QEMU_SIFIVE) || (defined VIRT))
 #define INTERVAL 500000
 #else
 #define INTERVAL 50000

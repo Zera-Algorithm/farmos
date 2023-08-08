@@ -6,7 +6,7 @@
 #include <mm/memlayout.h>
 #include <types.h>
 
-#ifdef QEMU_SIFIVE
+#if ((defined QEMU_SIFIVE) || (defined VIRT))
 #define BUF_SUM_SIZE (32 * 1024 * 1024) // 32MB
 #else
 #define BUF_SUM_SIZE (64 * 1024 * 1024) // 64MB

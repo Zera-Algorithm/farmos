@@ -140,12 +140,15 @@ void main() {
 		// }
 
 		// 读取 dtb
-		#ifdef QEMU_SIFIVE
+		// #ifdef QEMU_SIFIVE
 		parseDtb();
-		#else
+		// #else
+		// extern struct MemInfo memInfo;
+		// memInfo.size = 16 * 1024ul * 1024ul * 1024ul;
+		// #endif
+
 		extern struct MemInfo memInfo;
-		memInfo.size = 16 * 1024ul * 1024ul * 1024ul;
-		#endif
+		printf("mem size: %d GB.\n", memInfo.size / 1024ul / 1024ul / 1024ul);
 
 		printf("dtb init success!\n");
 
