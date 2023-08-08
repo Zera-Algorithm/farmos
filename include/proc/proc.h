@@ -26,9 +26,8 @@ typedef struct proc {
 #define p_startzero p_times
 	err_t p_exitcode; // 进程退出码（进程锁保护）
 	times_t p_times;  // 线程运行时间（进程锁保护）
-#define p_endzero p_fs_struct
-
 	thread_fs_t p_fs_struct; // 文件系统相关字段（不保护）
+#define p_endzero p_parent
 
 	struct proc *p_parent;	      // 父线程（不保护，只会由父进程修改）
 	LIST_HEAD(, proc) p_children; // 子进程列表（由进程锁保护）

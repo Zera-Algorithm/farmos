@@ -31,7 +31,6 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 	mtx_lock_sleep(&mtx_file);
 
 	char direntBuf[DIRENT_SIZE];
-
 	assert(offset % DIR_SIZE == 0);
 
 	FileSystem *fs = dir->file_system;
@@ -57,9 +56,13 @@ int dirGetDentFrom(Dirent *dir, u64 offset, struct Dirent **file, int *next_offs
 		if (f->DIR_Name[0] == 0 || f->DIR_Name[0] == FAT32_INVALID_ENTRY)
 			continue;
 
-		// 是长文件名项（可能属于文件也可能属于目录）
-		if (f->DIR_Attr & ATTR_LONG_NAME_MASK) {
+		// 跳过"."和".." (因为我们在解析路径时使用字符串匹配，不使用FAT32内置的.和..机制)
+		if (strncmp((const char *)f->DIR_Name, ".          ", 11) == 0
+			|| strncmp((const char *)f->DIR_Name, "..         ", 11) == 0)
+			continue;
 
+		// 是长文件名项（可能属于文件也可能属于目录）
+		if (f->DIR_Attr == ATTR_LONG_NAME_MASK) {
 			longEnt = (FAT32LongDirectory *)f;
 			// 是第一项
 			if (longEnt->LDIR_Ord & LAST_LONG_ENTRY) {

@@ -13,6 +13,7 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 #include <fs/cluster.h>
+#include <fs/filepnt.h>
 
 extern mutex_t mtx_file;
 static int rmfile(struct Dirent *file);
@@ -57,7 +58,7 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 
 // /**
 //  * @brief 递归地从文件的尾部释放其cluster
-//  * @note TODO: 可能有栈溢出风险
+//  * @note 有栈溢出风险
 //  */
 // static void recur_free_clus(FileSystem *fs, int clus, int prev_clus) {
 // 	int next_clus = fatRead(fs, clus);
@@ -71,29 +72,13 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 // }
 
 /**
- * @brief 顺序释放文件的cluster
- * @param clus 第一个簇
- */
-static void sequence_free_clus(FileSystem *fs, int clus, int prev_clus) {
-	while (1) {
-		int nxt_clus = fatRead(fs, clus);
-		fatWrite(fs, clus, 0);
-		clus = nxt_clus;
-
-		if (!FAT32_NOT_END_CLUSTER(clus)) {
-			break;
-		}
-	}
-}
-
-/**
  * @brief 需要保证传入的file->refcnt == 0
  */
 int rm_unused_file(struct Dirent *file) {
 	assert(file->refcnt == 0);
 	char linked_file_path[MAX_NAME_LEN];
 	int cnt = get_entry_count_by_name(file->name);
-	char data = 0xE5;
+	char data = FAT32_INVALID_ENTRY;
 
 	// 1. 如果是链接文件，则减去其链接数
 	if (file->raw_dirent.DIR_Attr & ATTR_LINK) {
@@ -117,15 +102,14 @@ int rm_unused_file(struct Dirent *file) {
 	}
 	LIST_REMOVE(file, dirent_link); // 从父亲的子Dirent列表删除
 
-	// 3. 清空目录项
+	// 3. 释放其占用的Cluster
+	file_shrink(file, 0);
+
+	// 4. 清空目录项
 	for (int i = 0; i < cnt; i++) {
 		panic_on(file_write(file->parent_dirent, 0, (u64)&data,
 				    file->parent_dir_off - i * DIR_SIZE, 1) < 0);
 	}
-
-	// 4. 释放其占用的Cluster
-	int clus = file->first_clus;
-	sequence_free_clus(file->file_system, clus, 0);
 
 	dirent_dealloc(file); // 释放目录项
 	return 0;
@@ -139,7 +123,7 @@ static int rmfile(struct Dirent *file) {
 		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
 		int hold_by_cur = 1;
 		for (int i = 0; i < file->holder_cnt; i++) {
-			if (file->holders[i].holder != cpu_this()->cpu_running->td_name) {
+			if (file->holders[i].td_index != get_td_index(cpu_this()->cpu_running)) {
 				hold_by_cur = 0;
 				break;
 			}
@@ -150,7 +134,7 @@ static int rmfile(struct Dirent *file) {
 
 #ifdef REFCNT_DEBUG
 			for (int i = 0; i < file->holder_cnt; i++) {
-				warn("holder: %s, cnt = %d\n", file->holders[i].holder, file->holders[i].cnt);
+				warn("holder: %d, cnt = %d\n", file->holders[i].td_index, file->holders[i].cnt);
 			}
 #endif
 
@@ -222,7 +206,7 @@ static int mvfile(Dirent *oldfile, Dirent *newDir, char *newPath) {
 
 #ifdef REFCNT_DEBUG
 		for (int i = 0; i < oldfile->holder_cnt; i++) {
-			warn("holder: %s, cnt: %d\n", oldfile->holders[i].holder, oldfile->holders[i].cnt);
+			warn("holder: %d, cnt: %d\n", oldfile->holders[i].td_index, oldfile->holders[i].cnt);
 		}
 #endif
 		return -EBUSY; // in use

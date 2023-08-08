@@ -147,6 +147,7 @@ void free_ufd(int ufd) {
  * @brief 将内核fd引用计数减一，如果引用计数归零，则回收
  */
 void freeFd(uint i) {
+	assert(i >= 0 && i < FDNUM);
 	Fd *fd = &fds[i];
 
 	mtx_lock_sleep(&fd->lock);

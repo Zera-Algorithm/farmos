@@ -5,12 +5,12 @@
 #define NCPU 8 // maximum number of CPUs
 #endif	       // !NCPU
 
-#ifdef QEMU_SIFIVE
-#define NPROC 1024		  // maximum number of processes
-#define MAX_DIRENT 10460
+#if ((defined QEMU_SIFIVE) || (defined VIRT))
+#define NPROC 480		  // maximum number of processes
+#define MAX_DIRENT 160000
 #else
 #define NPROC 10240		  // maximum number of processes
-#define MAX_DIRENT 80460
+#define MAX_DIRENT 160000
 #endif
 
 #define NOFILE 16		  // open files per process

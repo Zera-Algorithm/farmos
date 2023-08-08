@@ -119,6 +119,7 @@ int socket(int domain, int type, int protocol) {
 	int sfd = fdAlloc();
 	if (sfd < 0) {
 		warn("All fd in kernel is used, please check\n");
+		mtx_unlock(&socket->lock);
 		socketFree(socketNum);
 		return -1;
 	}
@@ -451,13 +452,13 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	char write_buf[PAGE_SIZE];
 	// TCP
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
+	// 找到的对端targetSocket会默认持有锁
 	if (targetSocket == NULL) {
 		warn("socket write error: can\'t find target socket.\n");
 		// 原因可能是远端已关闭
 		return -EPIPE;
 	}
 
-	// mtx_lock(&targetSocket->lock);
 	copyIn(buf, write_buf, MIN(n, PAGE_SIZE));
 	while (i < n) {
 		mtx_lock(
@@ -881,14 +882,18 @@ int socket_write_check(struct Fd* fd) {
 
 		// TCP
 		Socket *targetSocket = remote_find_peer_socket(socket);
+
 		// 对方已关闭
 		if (targetSocket == NULL) {
 			ret = 1;
 			goto out;
 		}
+
 		mtx_lock(&socket->state.state_lock);
 		if (socket->state.is_close) {
 			ret = 1;
+			mtx_unlock(&socket->state.state_lock);
+			mtx_unlock(&targetSocket->lock);
 			goto out;
 		}
 		mtx_unlock(&socket->state.state_lock);

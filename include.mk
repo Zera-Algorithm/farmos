@@ -67,7 +67,7 @@ else
 endif
 
 # QEMU 启动参数
-QEMUOPTS = -machine $(MACHINE) -bios dynamic.bin -kernel $(KERNEL_ELF) -m 128M -smp $(NCPU) -nographic
+QEMUOPTS = -machine $(MACHINE) -bios default -kernel $(KERNEL_ELF) -m 1G -smp $(NCPU) -nographic
 
 ifeq ($(MACHINE),virt)
 	QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0

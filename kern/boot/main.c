@@ -105,7 +105,7 @@ static inline void kern_load_process() {
 	// PROC_CREATE(test_pthread, "test_pthread");
 	// PROC_CREATE(test_clone, "test_clone");
 	// PROC_CREATE(test_pipe, "test_pipe");
-	// PROC_CREATE(test_init, "test_init");
+	// PROC_CREATE(test_file, "test_file");
 	PROC_CREATE(test_busybox, "test_busybox");
 	// PROC_CREATE(test_setitimer, "test_setitimer");
 	// PROC_CREATE(test_while, "test_while");

@@ -2,6 +2,7 @@
 #include <dev/timer.h>
 #include <lib/printf.h>
 #include <lock/mutex.h>
+#include <lock/lock.h>
 #include <proc/cpu.h>
 #include <proc/proc.h>
 #include <proc/sched.h>
@@ -18,6 +19,9 @@ void schedule() {
 	assert(intr_get() == 0);
 	assert(mtx_hold(&cpu_this()->cpu_running->td_lock));
 	if (cpu_this()->cpu_lk_depth != 1) {
+#ifdef LOCK_DEPTH_DEBUG
+		print_lock_info();
+#endif
 		panic("schedule: cpu_lk_depth %d\n", cpu_this()->cpu_lk_depth);
 	}
 	if (cpu_this()->cpu_running->td_lock.mtx_depth != 1) {
@@ -52,10 +56,6 @@ static thread_t *sched_runnable(thread_t *old) {
 	tdq_critical_enter(&thread_runq);
 	// 将旧线程放回队列
 	if (old != NULL) {
-		// 更新旧线程运行时间（粗略）
-		ticks += 2;
-		// old->td_proc td_times.tms_utime += 1; // todo
-		// old->td_times.tms_stime += 1;
 		// 如果旧线程仍然可运行，放回队列
 		if (old->td_status == RUNNABLE) {
 			TAILQ_INSERT_TAIL(&thread_runq.tq_head, old, td_runq);
@@ -127,19 +127,9 @@ context_t *sched_switch(context_t *old_ctx, register_t param) {
 	cpu_t *cpu = cpu_this();
 	cpu->cpu_running = NULL;
 
-	u64 now = getUSecs();
-	if (old->td_proc) {
-		old->td_proc->p_times.tms_utime += (now - old->td_proc->p_times.tms_ustart);
-	}
-
 	// 选择新线程
 	thread_t *ret = sched_runnable(old);
-	if (ret->td_proc) {
-		ret->td_proc->p_times.tms_ustart = now;
-	}
-	// log(LEVEL_GLOBAL, "Hart Sched %s(%d) -> %s(%d)\n", old->td_name, old->td_tid,
-	// ret->td_name,
-	//     ret->td_tid);
+	log(0, "Hart Sched %s(%x) -> %s(%x)\n", old->td_name, old->td_tid,ret->td_name,    ret->td_tid);
 
 	cpu->cpu_running = ret;
 	ret->td_status = RUNNING;

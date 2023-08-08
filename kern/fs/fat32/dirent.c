@@ -11,6 +11,7 @@
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <sys/errno.h>
+#include <fs/filepnt.h>
 
 u64 used_dirents = 0;
 
@@ -24,6 +25,8 @@ extern mutex_t mtx_file;
 // 待分配的dirent
 Dirent *dirents;
 struct DirentList dirent_free_list = {NULL};
+
+#define PEEK sizeof(dirents)
 
 // 管理dirent分配和释放的互斥锁
 struct mutex mtx_dirent;
@@ -46,6 +49,7 @@ Dirent *dirent_alloc() {
 	Dirent *dirent = LIST_FIRST(&dirent_free_list);
 	// TODO: 需要初始化dirent的睡眠锁
 	LIST_REMOVE(dirent, dirent_link);
+	memset(dirent, 0, sizeof(Dirent));
 	used_dirents += 1;
 
 	mtx_unlock(&mtx_dirent);
@@ -76,15 +80,14 @@ static char *skip_slash(char *p) {
  * @brief 将dirent的引用计数加一
  */
 void dget(Dirent *dirent) {
-	assert(dirent->holder_cnt < DIRENT_HOLDER_CNT);
 	int is_filled = 0;
 	for (int i = 0; i < dirent->holder_cnt + 1; i++) {
-		if (dirent->holders[i].holder == cpu_this()->cpu_running->td_name) {
+		if (dirent->holders[i].td_index == get_td_index(cpu_this()->cpu_running)) {
 			dirent->holders[i].cnt += 1;
 			is_filled = 1;
 			break;
-		} else if (dirent->holders[i].holder == NULL) {
-			dirent->holders[i].holder = cpu_this()->cpu_running->td_name;
+		} else if (dirent->holders[i].td_index == 0) {
+			dirent->holders[i].td_index = get_td_index(cpu_this()->cpu_running);
 			dirent->holders[i].cnt = 1;
 			dirent->holder_cnt += 1;
 			is_filled = 1;
@@ -105,13 +108,13 @@ void dget(Dirent *dirent) {
  * @brief 将dirent的引用数减一
  */
 void dput(Dirent *dirent) {
-	char *name = cpu_this()->cpu_running->td_name;
+	u16 index = get_td_index(cpu_this()->cpu_running);
 	for (int i = 0; i < dirent->holder_cnt; i++) {
-		if (dirent->holders[i].holder == name) {
+		if (dirent->holders[i].td_index == index) {
 			dirent->holders[i].cnt -= 1;
 			if (dirent->holders[i].cnt == 0) {
 				dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
-				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){NULL, 0};
+				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){0, 0};
 				dirent->holder_cnt -= 1;
 			}
 			break;
@@ -400,28 +403,32 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 		return r;
 	}
 
-	// 3. 分配Dirent并填写信息
+	// 3. 分配Dirent
 	if ((r = dir_alloc_file(dir, &f, lastElem)) < 0) {
 		mtx_unlock_sleep(&mtx_file);
 		return r;
 	}
 
-	// 4. 无论如何，创建了的文件或目录至少应当分配一个块
-	f->first_clus = clusterAlloc(dir->file_system, 0); // 在Alloc时即将first_clus清空为全0
+	// 4. 填写Dirent的各项信息
 	f->parent_dirent = dir;				   // 设置父亲节点，以安排写回
 	f->file_system = dir->file_system;
 	extern struct FileDev file_dev_file;
 	f->dev = &file_dev_file; // 赋值设备指针
 	f->type = (isDir) ? DIRENT_DIR : DIRENT_FILE;
 
-	// 5. 目录应当以其分配了的大小为其文件大小
+	// 5. 目录应当以其分配了的大小为其文件大小（TODO：但写回时只写回0）
 	if (isDir) {
+		// 目录至少分配一个簇
 		int clusSize = CLUS_SIZE(dir->file_system);
+		f->first_clus = clusterAlloc(dir->file_system, 0); // 在Alloc时即将first_clus清空为全0
 		f->file_size = clusSize;
 		f->raw_dirent.DIR_Attr = ATTR_DIRECTORY;
 	} else {
+		// 空文件不分配簇
 		f->file_size = 0;
+		f->first_clus = 0;
 	}
+	filepnt_init(f);
 
 	// 4. 将dirent加入到上级目录的子Dirent列表
 	LIST_INSERT_HEAD(&(dir->child_list), f, dirent_link);
@@ -442,7 +449,7 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
  * @return 0成功，-1失败
  */
 int makeDirAt(Dirent *baseDir, char *path, int mode) {
-	Dirent *dir;
+	Dirent *dir = NULL;
 	int ret = createItemAt(baseDir, path, &dir, 1);
 	if (ret < 0) {
 		return ret;
@@ -461,7 +468,7 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file) {
 }
 
 int create_file_and_close(char *path) {
-	Dirent *file;
+	Dirent *file = NULL;
 	r = createFile(NULL, path, &file);
 	if (r < 0) {
 		warn("create file error!\n");

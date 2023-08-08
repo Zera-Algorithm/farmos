@@ -43,4 +43,11 @@ void printf(const char *fmt, ...);
 		}                                                                                  \
 	} while (0)
 
+#define assert(f)                                                                                  \
+	if (!(f)) {																				\
+		printf("panic at %s:%d: %d\n", __FILE__, __LINE__, f);                     \
+			while (1)                                                                  \
+				; 																					\
+	}
+
 #endif // __STDIO_H__

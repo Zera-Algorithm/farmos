@@ -12,6 +12,7 @@
 #include <lib/wchar.h>
 #include <lock/mutex.h>
 #include <fs/chardev.h>
+#include <fs/filepnt.h>
 #include <mm/kmalloc.h>
 
 FileSystem *fatFs;
@@ -26,6 +27,7 @@ static void build_dirent_tree(Dirent *parent) {
 	int off = 0; // 当前读到的偏移位置
 	int ret;
 
+	filepnt_init(parent);
 	while (1) {
 		ret = dirGetDentFrom(parent, off, &child, &off, NULL);
 		if (ret == 0) {

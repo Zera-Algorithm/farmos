@@ -97,6 +97,10 @@ void utrap_entry() {
 	// 保存 TRAPFRAME 至线程控制块
 	thread_t *td = cpu_this()->cpu_running;
 	td->td_trapframe = td->td_proc->p_trapframe[cpu_this_id()];
+
+	// 切换时间
+	utime_end(td);
+
 	// 获取中断或异常的原因并输出
 	register_t cause = utrap_info();
 	register_t exc_code = (cause & SCAUSE_EXC_MASK);
@@ -117,6 +121,7 @@ void utrap_entry() {
 		}
 	} else {
 		// 用户态异常
+		stime_start(td);
 		if (exc_code == EXCCODE_SYSCALL) {
 			// 系统调用，属于内核线程范畴，允许中断 todo
 			syscall_entry(&td->td_trapframe);
@@ -143,6 +148,7 @@ void utrap_entry() {
 			td->td_name, td->td_tid, td->td_proc->p_pid, r_stval(), ptLookup(td->td_proc->p_pt, r_stval()));
 			sys_exit(-1); // errcode todo
 		}
+		stime_end(td);
 	}
 
 	// 中断或异常处理完毕，从现场恢复用户态
@@ -160,9 +166,10 @@ void utrap_return() {
 
 	// 先检查信号
 	sig_check();
-
 	// 获取当前应该返回的用户线程
 	thread_t *td = cpu_this()->cpu_running;
+	// 切换时间
+	utime_start(td);
 
 	// ue5: 将内核页表地址存入 TRAPFRAME
 	td->td_trapframe.kernel_satp = r_satp();
