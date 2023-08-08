@@ -18,8 +18,9 @@ ifndef NCPU
 NCPU := 5
 endif
 
+# 配置默认MACHINE
 ifndef MACHINE
-MACHINE := board
+MACHINE := virt
 endif
 
 # 编译 C 语言时的参数

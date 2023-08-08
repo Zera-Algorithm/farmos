@@ -11,12 +11,18 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
-		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
-		/*
-		(char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
-
 		// time-test
 	    (char *const[]){"/time-test", NULL},
+
+	    // libc-test的static测试点和dynamic测试点
+	    (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
+	    (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
+
+		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+
+		(char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
+
+
 	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
 		// (char *const[]) {"./lmbench_all", "lat_ctx", "-P", "1", "-s", "32", "2", "4", "8", "16", "24", "32", "64", "96", NULL},
 		// libc-bench测试
@@ -25,10 +31,6 @@ int main() {
 
 		// busybox测试
 	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
-
-	    // libc-test的static测试点和dynamic测试点
-	    (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
-	    (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
 
 		// iozone
 
@@ -48,7 +50,7 @@ int main() {
 
 	    // lmbench测试
 	    (char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
-		*/
+
 	    NULL};
 
 	char *const envp[] = {"LD_LIBRARY_PATH=/", "UB_BINDIR=./", NULL};

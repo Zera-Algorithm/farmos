@@ -87,7 +87,7 @@ void stime_end(thread_t *td);
 #define TID_TO_INDEX(tid) (tid & 0xffff)
 
 static inline u16 get_td_index(thread_t *td) {
-	extern thread_t threads[NPROC];
+	extern thread_t *threads;
 	return (td - threads) + 1;
 }
 
