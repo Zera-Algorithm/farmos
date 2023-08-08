@@ -9,9 +9,14 @@ typedef struct lock_object {
 	void *lo_data;
 } lock_object_t;
 
+typedef struct mutex mutex_t;
+
 // 中断使能栈操作
-void lo_critical_enter();
-void lo_critical_leave();
+void lo_critical_enter(mutex_t *m);
+void lo_critical_leave(mutex_t *m);
+void print_lock_info();
+
+#define LOCK_DEPTH_DEBUG
 
 // 原子操作接口
 void lo_acquire(lock_object_t *lo);

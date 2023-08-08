@@ -284,6 +284,8 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 				u64 sigmask) {
 	int fd, r;
 	int func_ret = 0;
+	u64 timeout_us;
+
 	fd_set readfds, writefds, exceptfds;
 	fd_set readfds_cur, writefds_cur, exceptfds_cur;
 	memset(&readfds, 0, sizeof(readfds));
@@ -295,11 +297,15 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 	if (p_readfds) copyIn(p_readfds, &readfds, sizeof(readfds));
 	if (p_writefds) copyIn(p_writefds, &writefds, sizeof(writefds));
 	if (p_exceptfds) copyIn(p_exceptfds, &exceptfds, sizeof(exceptfds));
-	if (p_timeout) copyIn(p_timeout, &timeout, sizeof(timeout));
+	if (p_timeout) {
+		copyIn(p_timeout, &timeout, sizeof(timeout));
+		timeout_us = TS_USEC(timeout); // 等于0表示不等待
+	} else {
+		// 如果timeout为NULL，表示永久等待
+		timeout_us = 1000000ul * 9999999ul;
+	}
 
 	u64 start = time_rtc_us();
-	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
-
 	if (timeout_us != 0) {
 		warn("pselect6: timeout_us = %d\n", timeout_us);
 	}

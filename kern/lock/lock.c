@@ -2,22 +2,34 @@
 #include <lock/lock.h>
 #include <proc/cpu.h>
 #include <riscv.h>
+#include <lock/mutex.h>
 
 #define atomic_lock(ptr) __sync_lock_test_and_set(ptr, 1)
 #define atomic_unlock(ptr) __sync_lock_release(ptr)
 #define atomic_barrier() __sync_synchronize()
 
 // 中断使能栈操作
-inline void lo_critical_enter() {
+inline void lo_critical_enter(mutex_t *m) {
 	register_t before = intr_disable();
 	cpu_t *cpu = cpu_this();
 	if (cpu->cpu_lk_depth == 0) {
 		cpu->cpu_lk_saved_sstatus = before;
 	}
+#ifdef LOCK_DEPTH_DEBUG
+	// 记录加的锁的指针
+	cpu_this()->cpu_lks[cpu->cpu_lk_depth] = m;
+#endif
 	cpu->cpu_lk_depth++;
 }
 
-inline void lo_critical_leave() {
+inline void print_lock_info() {
+	cpu_t *cpu = cpu_this();
+	for (int i = 0; i < cpu->cpu_lk_depth; i++) {
+		log(999, "lock %d/%d:(0x%08lx) %s\n", i, cpu->cpu_lk_depth, cpu->cpu_lks[i], cpu->cpu_lks[i]->mtx_lock_object.lo_name);
+	}
+}
+
+inline void lo_critical_leave(mutex_t *m) {
 	if (intr_get() != 0) {
 		error("mtx_leave: interrupts enabled");
 	}
@@ -25,6 +37,23 @@ inline void lo_critical_leave() {
 	if (cpu->cpu_lk_depth == 0) {
 		error("mtx_leave: mutex not held");
 	}
+#ifdef LOCK_DEPTH_DEBUG
+	// 记录解的锁的指针
+	if (cpu->cpu_lks[cpu->cpu_lk_depth - 1] == m) {
+		cpu->cpu_lks[cpu->cpu_lk_depth - 1] = NULL;
+	} else {
+		int isfind = 0;
+		for (int i = 0; i < cpu->cpu_lk_depth; i++) {
+			if (cpu->cpu_lks[i] == m) {
+				cpu->cpu_lks[i] = cpu->cpu_lks[cpu->cpu_lk_depth - 1];
+				cpu->cpu_lks[cpu->cpu_lk_depth - 1] = NULL;
+				isfind = 1;
+				break;
+			}
+		}
+		assert(isfind);
+	}
+#endif
 	cpu->cpu_lk_depth--;
 	if (cpu->cpu_lk_depth == 0) {
 		intr_restore(cpu->cpu_lk_saved_sstatus);
