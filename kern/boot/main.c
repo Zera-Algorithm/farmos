@@ -187,15 +187,15 @@ void main() {
 		itimer_init();
 		printf("FarmOS kernel boot end, start all harts.\n");
 
+		// 加载初始化进程
+		kern_load_process();
+
 		// 启动其它核心
 		hart_set_clear();
 		hart_start_all(); // 单核时，这里会直接跳过
 
 		// 启动完所有核心后，才能标记主核已成功启动
 		hart_set_started();
-
-		// 加载初始化进程
-		kern_load_process();
 
 		// 解除对其它核心的阻塞，等待其它核心完成初始化
 		kern_init_done();

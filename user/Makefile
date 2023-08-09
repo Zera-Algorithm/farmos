@@ -7,7 +7,7 @@ USER_TARGET		:= test_while.x test_clone.x test_init.x \
 					test_busybox.x test_file.x \
 					test_futex.x test_setitimer.x
 
-.PHONY: build clean
+.PHONY: clean
 
 build: $(BINTOC) $(USER_LIB) $(USER_TARGET)
 
