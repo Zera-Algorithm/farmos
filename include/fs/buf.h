@@ -5,7 +5,7 @@
 #include <lock/sleeplock.h>
 #include <mm/memlayout.h>
 #include <types.h>
-#include <feature.h>
+#include <param.h>
 
 #ifdef FEATURE_LESS_MEMORY
 #define BUF_SUM_SIZE (32 * 1024 * 1024) // 32MB

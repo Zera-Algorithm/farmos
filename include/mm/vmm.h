@@ -3,7 +3,7 @@
 
 #include <mm/memlayout.h>
 #include <types.h>
-#include <feature.h>
+#include <param.h>
 
 // 页表项硬件标志
 #define PTE_V (1 << 0) // 有效位（Valid）

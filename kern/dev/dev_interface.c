@@ -6,7 +6,7 @@
 #include <fs/buf.h>
 #include <lib/printf.h>
 #include <lib/log.h>
-#include <feature.h>
+#include <param.h>
 
 void dev_test() {
 #ifdef FEATURE_DISK_SD
