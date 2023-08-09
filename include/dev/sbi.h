@@ -108,7 +108,7 @@ struct sbiret {
 
 // 获取hartid的状态，错误存储在error, 返回值存储在value
 #define SBI_HART_GET_STATUS(hartid)                                                                \
-	SBI_ECALL(SBI_HSM_EID, SBI_HART_GET_STATUS_FID, hartid, 0, 0, 0, 0)
+	SBI_ECALL(SBI_HSM_EID, SBI_HSM_HART_GET_STATUS_FID, hartid, 0, 0, 0, 0)
 
 #define SBI_HART_SUSPEND(suspend_type, resume_addr, opaque)                                        \
 	SBI_ECALL(SBI_HSM_EID, SBI_HSM_HART_SUSPEND_FID, suspend_type, resume_addr, opaque, 0, 0)

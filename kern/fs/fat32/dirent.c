@@ -13,7 +13,6 @@
 #include <sys/errno.h>
 #include <fs/filepnt.h>
 
-#define MAX_DIRENT 160000
 u64 used_dirents = 0;
 
 /**
@@ -24,7 +23,7 @@ extern FileSystem *fatFs;
 extern mutex_t mtx_file;
 
 // 待分配的dirent
-static Dirent dirents[MAX_DIRENT];
+Dirent *dirents;
 struct DirentList dirent_free_list = {NULL};
 
 #define PEEK sizeof(dirents)

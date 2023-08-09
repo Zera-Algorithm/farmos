@@ -108,24 +108,24 @@ void init_root_fs() {
 }
 
 static void init_dev_fs() {
-	panic_on(makeDirAt(fatFs->root, "/dev", 0));
+	makeDirAt(fatFs->root, "/dev", 0);
 
 	// 这两个暂时用空文件代替
-	panic_on(create_file_and_close("/dev/random"));
-	panic_on(create_file_and_close("/dev/rtc"));
-	panic_on(create_file_and_close("/dev/rtc0"));
-	panic_on(makeDirAt(fatFs->root, "/dev/misc", 0));
-	panic_on(create_file_and_close("/dev/misc/rtc"));
-	panic_on(makeDirAt(fatFs->root, "/dev/shm", 0));
+	create_file_and_close("/dev/random");
+	create_file_and_close("/dev/rtc");
+	create_file_and_close("/dev/rtc0");
+	makeDirAt(fatFs->root, "/dev/misc", 0);
+	create_file_and_close("/dev/misc/rtc");
+	makeDirAt(fatFs->root, "/dev/shm", 0);
 
 	extern struct FileDev file_dev_null;
 	extern struct FileDev file_dev_zero;
 	extern struct FileDev file_dev_urandom;
 
 	Dirent *file1, *file2, *file3;
-	panic_on(createFile(fatFs->root, "/dev/null", &file1));
-	panic_on(createFile(fatFs->root, "/dev/zero", &file2));
-	panic_on(createFile(fatFs->root, "/dev/urandom", &file3));
+	createFile(fatFs->root, "/dev/null", &file1);
+	createFile(fatFs->root, "/dev/zero", &file2);
+	createFile(fatFs->root, "/dev/urandom", &file3);
 
 	file1->dev = &file_dev_null;
 	file2->dev = &file_dev_zero;
@@ -141,7 +141,7 @@ static void init_dev_fs() {
 }
 
 static void init_proc_fs() {
-	panic_on(makeDirAt(fatFs->root, "/proc", 0));
+	makeDirAt(fatFs->root, "/proc", 0);
 
 	extern initcall_t __initcall_fs_start[], __initcall_fs_end[];
 	initcall_t *fn;
@@ -155,35 +155,40 @@ static void init_proc_fs() {
 	}
 
 	// 设置系统发行版本，越大越好，过小会FATAL
-	panic_on(makeDirAt(fatFs->root, "/proc/sys", 0));
-	panic_on(makeDirAt(fatFs->root, "/proc/sys/kernel", 0));
+	makeDirAt(fatFs->root, "/proc/sys", 0);
+	makeDirAt(fatFs->root, "/proc/sys/kernel", 0);
 	create_chardev_file("/proc/sys/kernel/osrelease", "10.2.0", NULL, NULL);
 }
 
 static void create_file_and_write(const char *path, void *content, int size) {
 	Dirent *file1;
-	createFile(fatFs->root, (char *)path, &file1);
+	if (getFile(fatFs->root, (char *)path, &file1) < 0) {
+		createFile(fatFs->root, (char *)path, &file1);
+	}
+	if (file1 == NULL) {
+		warn("file %s get and create err!\n", path);
+	}
 	file_write(file1, 0, (u64)content, 0, size);
 	file_close(file1);
 }
 
 static void init_fs_other() {
-	panic_on(create_file_and_close("/bin/ls"));
+	create_file_and_close("/bin/ls");
 
-	panic_on(makeDirAt(fatFs->root, "/etc", 0));
-	panic_on(makeDirAt(fatFs->root, "/tmp", 0));
+	makeDirAt(fatFs->root, "/etc", 0);
+	makeDirAt(fatFs->root, "/tmp", 0);
 
 	// 将默认的动态链接库链接到/lib目录
-	panic_on(makeDirAt(fatFs->root, "/lib", 0));
-	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
-	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
-	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/bin/busybox"));
-	panic_on(linkat(fatFs->root, "/iozone", fatFs->root, "/bin/iozone"));
+	makeDirAt(fatFs->root, "/lib", 0);
+	linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1");
+	linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so");
+	linkat(fatFs->root, "/busybox", fatFs->root, "/bin/busybox");
+	linkat(fatFs->root, "/iozone", fatFs->root, "/bin/iozone");
 
 
-	panic_on(makeDirAt(fatFs->root, "/sbin", 0));
-	panic_on(linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all"));
-	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/sbin/busybox"));
+	makeDirAt(fatFs->root, "/sbin", 0);
+	linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all");
+	linkat(fatFs->root, "/busybox", fatFs->root, "/sbin/busybox");
 
 	// 两个部分的sh脚本
 	extern const unsigned char bin2c_iperf_testcode_sh[637];

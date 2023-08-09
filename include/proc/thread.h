@@ -63,7 +63,7 @@ typedef struct threadq {
 extern threadq_t thread_runq;
 extern threadq_t thread_freeq;
 extern threadq_t thread_sleepq;
-extern thread_t *threads;
+extern thread_t* threads;
 
 thread_t *td_alloc();
 

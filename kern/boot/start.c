@@ -26,7 +26,8 @@ void start(long hartid, uint64 _dtb_entry) {
 	w_satp(0);
 
 	// enable some supervisor interrupt
-	w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+	// w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+	w_sie(r_sie() | SIE_SEIE | SIE_STIE); // 不启用核间中断
 
 	// 在每个CPU的tp寄存器中保存hartid
 	w_tp(hartid);

@@ -54,6 +54,7 @@ void uart_putchar(char ch)
     writel(ch, uartRegTXFIFO);
 }
 
+
 void uart_test() {
 	uart_putchar('\n');
 	uart_putchar('u');

@@ -5,10 +5,17 @@
 #include <lock/sleeplock.h>
 #include <mm/memlayout.h>
 #include <types.h>
+#include <param.h>
 
+#ifdef FEATURE_LESS_MEMORY
 #define BUF_SUM_SIZE (32 * 1024 * 1024) // 32MB
+#else
+#define BUF_SUM_SIZE (64 * 1024 * 1024) // 64MB
+#endif
+
+
 #define BUF_SIZE (512)			// 512B
-#define BGROUP_NUM (1 << 10)		// 1024
+#define BGROUP_NUM (1 << 13)		// 1024 * 8
 
 #define BGROUP_MASK (BGROUP_NUM - 1)			      // 0x3ff
 #define BGROUP_BUF_NUM (BUF_SUM_SIZE / BGROUP_NUM / BUF_SIZE) // 64

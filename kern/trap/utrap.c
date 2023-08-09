@@ -14,6 +14,8 @@
 #include <sys/syscall.h>
 #include <trap/trap.h>
 #include <fs/buf.h>
+#include <lib/transfer.h>
+#include <mm/kmalloc.h>
 
 extern void kernelvec();
 
@@ -62,6 +64,29 @@ static register_t utrap_info() {
 	return scause;
 }
 
+static void print_stack(struct trapframe *tf) {
+	u64 ustack = tf->sp;
+	char *buf = kmalloc(32 * PAGE_SIZE);
+	buf[0] = 0;
+	char *pbuf = buf;
+	if (TD_USTACK_BOTTOM <= ustack && ustack <= USTACKTOP) {
+		printf("User Stack Used: 0x%lx\n", USTACKTOP - ustack);
+		sprintf(pbuf, "Memory(Start From 0x%016lx): [", ustack);
+		pbuf += 40;
+		for (u64 sp = ustack; sp < USTACKTOP; sp++) {
+			char ch;
+			copyIn(sp, &ch, 1);
+			sprintf(pbuf, "0x%02x, ", ch);
+			pbuf += 6;
+		}
+		sprintf(pbuf, "] # len = %d", pbuf-buf);
+		printf("%s\n", buf);
+	} else {
+		printf("[ERROR] sp is out of ustack range[0x%016lx, 0x%016lx]. Maybe program has crashed!\n", TD_USTACK_BOTTOM, USTACKTOP);
+	}
+	kfree(buf);
+}
+
 /**
  * @brief 在用户态下，触发中断或异常时的 C 函数入口。
  * @note 仅被 tranpoline.S 中的 userVec 调用
@@ -107,6 +132,7 @@ void utrap_entry() {
 			// 其他情况
 			printf("uncaught exception.\n");
 			printReg(&td->td_trapframe);
+			print_stack(&td->td_trapframe);
 			printf("Curenv: pid = 0x%08lx, name = %s\n", td->td_tid, td->td_name);
 			// 不是很清楚为什么传入td->td_pid和td->td_name两个参数之后，
 			// cpu的输出变为乱码，访问excCause数组出现load page fault
