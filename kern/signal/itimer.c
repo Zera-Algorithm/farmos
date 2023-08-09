@@ -8,8 +8,6 @@
 
 itimer_list_t itimer_list;
 
-#define getTime time_rtc_clock
-
 void itimer_init() {
 	LIST_INIT(&itimer_list.itimer_head);
 	mtx_init(&itimer_list.itimer_lock, "itimer_list", false, MTX_SPIN | MTX_RECURSE);
@@ -34,7 +32,7 @@ void itimer_get(thread_t *td, struct itimerval *itv) {
 	LIST_FOREACH(itimer, &itimer_list.itimer_head, link) {
 		if (itimer->td == td) {
 			cycle_to_timeval(itimer->interval, &itv->it_interval);
-			cycle_to_timeval(itimer->start + itimer->last_time - getTime(), &itv->it_value);
+			cycle_to_timeval(itimer->start + itimer->last_time - time_rtc_clock(), &itv->it_value);
 			mtx_unlock(&itimer_list.itimer_lock);
 			return;
 		}
@@ -62,7 +60,7 @@ static inline itimer_info_t * itimer_alloc() {
  */
 void itimer_update(thread_t *td, struct itimerval *itv) {
 	mtx_lock(&itimer_list.itimer_lock);
-	u64 start = getTime();
+	u64 start = time_rtc_clock();
 	u64 last_time = timeval_to_cycle(&itv->it_value);
 	u64 interval = timeval_to_cycle(&itv->it_interval);
 
@@ -108,7 +106,7 @@ void itimer_cancel(thread_t *td) {
  */
 void itimer_check() {
 	mtx_lock(&itimer_list.itimer_lock);
-	u64 now = getTime();
+	u64 now = time_rtc_clock();
 
 	itimer_info_t *itimer, *tmp;
 	LIST_FOREACH_PARTIAL_DEL(itimer, &itimer_list.itimer_head) {

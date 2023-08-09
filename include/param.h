@@ -1,11 +1,12 @@
 #ifndef _PARAM_H
 #define _PARAM_H
+#include <feature.h>
 
 #ifndef NCPU
 #define NCPU 8 // maximum number of CPUs
 #endif	       // !NCPU
 
-#if ((defined QEMU_SIFIVE) || (defined VIRT))
+#ifdef FEATURE_LESS_MEMORY
 #define NPROC 480		  // maximum number of processes
 #define MAX_DIRENT 160000
 #else

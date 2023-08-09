@@ -15,14 +15,10 @@
 // 只有sifive能进入这个文件执行
 // 但是qemu模拟的sifive与板子实际的sifive还是有不同
 
-#ifdef QEMU_SIFIVE
+#ifdef QEMU
 #define SD_FAT_FS_OFFSET 0
 #else
 #define SD_FAT_FS_OFFSET 286720
-#endif
-
-#ifdef QEMU_SIFIVE
-#define QEMU_SD
 #endif
 
 #define F_CLK TL_CLK
@@ -124,7 +120,7 @@ static int sd_acmd41(void) {
 }
 
 static int sd_cmd58(void) {
-#ifdef QEMU_SD
+#ifdef QEMU
 	return 0;
 #else
 	int rc;
@@ -165,7 +161,7 @@ start:
 	int rc = 0;
 	int timeout;
 	u8 x;
-#ifdef QEMU_SD
+#ifdef QEMU
 	if (sd_cmd(0x52, startSector * 512, 0xE1) != 0x00)
 #else
 	if (sd_cmd(0x52, startSector, 0xE1) != 0x00)
@@ -237,7 +233,7 @@ int sdWrite(u8 *buf, u64 startSector, u32 sectorNumber) {
 		writeTimes = 0;
 	start:
 		p = st;
-#ifdef QEMU_SD
+#ifdef QEMU
 		if (sd_cmd(24 | 0x40, now * 512, 0) != 0)
 #else
 		if (sd_cmd(24 | 0x40, now, 0) != 0)

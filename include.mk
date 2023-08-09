@@ -18,9 +18,14 @@ ifndef NCPU
 NCPU := 5
 endif
 
-# 配置默认MACHINE
+# 配置默认MACHINE(virt/sifive_u)
 ifndef MACHINE
 MACHINE := virt
+endif
+
+# 配置默认模式(qemu/board)
+ifndef MODE
+MODE := qemu
 endif
 
 # 编译 C 语言时的参数
@@ -31,7 +36,6 @@ CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS += -DNCPU=$(NCPU)
-# CFLAGS += -DQEMU
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie
 endif
@@ -39,15 +43,15 @@ ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
 
+ifneq ($(MODE), board)
+CFLAGS += -DQEMU
+endif
+
 # 机器类型：
 ifeq ($(MACHINE), sifive_u)
 CFLAGS += -DSIFIVE
-CFLAGS += -DQEMU_SIFIVE
-else ifeq ($(MACHINE), virt)
-CFLAGS += -DVIRT
 else
-# board，即板子
-CFLAGS += -DSIFIVE
+CFLAGS += -DVIRT
 endif
 
 

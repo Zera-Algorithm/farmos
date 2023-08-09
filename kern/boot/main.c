@@ -145,16 +145,8 @@ void main() {
 		logo();
 		printf("FarmOS kernel is booting (on hart %d) total: %d\n", cpu_this_id(), NCPU);
 
-		#ifdef VIRT
-		printf("FarmOS is run on virt machine!\n");
-		#elif QEMU_SIFIVE
-		printf("FarmOS is run on qemu sifive_u!\n");
-		#else
-		printf("FarmOS is run on real hifive unmatched board!\n");
-		#endif
-
 		// 读取 dtb
-		#if ((defined QEMU_SIFIVE) || (defined VIRT))
+		#ifdef QEMU
 		parseDtb();
 		#else
 		extern struct MemInfo memInfo;

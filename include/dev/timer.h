@@ -3,23 +3,20 @@
 
 #include <types.h>
 #include <sys/time.h>
+#include <feature.h>
 
 #define USEC_PER_SEC 1000000ul
 #define NSEC_PER_SEC 1000000000ul
 
 // 每us的时钟数
-#define CLOCK_PER_SEC 10000000ul
+#define CLOCK_PER_SEC FEATURE_TIMER_FREQ
 #define CLOCK_PER_USEC (CLOCK_PER_SEC / USEC_PER_SEC)
 #define CLOCK_TO_USEC(clk) ((clk) / CLOCK_PER_USEC)
-#define NSEC_PER_CLOCK 100
+#define NSEC_PER_CLOCK (NSEC_PER_SEC / CLOCK_PER_SEC)
 
-// 中断时间间隔为0.05s(20Hz)
-// 这个时间间隔以us计算
-#if ((defined QEMU_SIFIVE) || (defined VIRT))
-#define INTERVAL 500000
-#else
-#define INTERVAL 50000
-#endif
+// 中断时间间隔为0.05s(20Hz, 20times/s)
+// 这个时间间隔以周期数计算
+#define INTERVAL (FEATURE_TIMER_FREQ / 20)
 
 #define RTC_OFF (10000000000000ul)
 

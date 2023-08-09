@@ -5,8 +5,9 @@
 #include <lock/sleeplock.h>
 #include <mm/memlayout.h>
 #include <types.h>
+#include <feature.h>
 
-#if ((defined QEMU_SIFIVE) || (defined VIRT))
+#ifdef FEATURE_LESS_MEMORY
 #define BUF_SUM_SIZE (32 * 1024 * 1024) // 32MB
 #else
 #define BUF_SUM_SIZE (64 * 1024 * 1024) // 64MB
