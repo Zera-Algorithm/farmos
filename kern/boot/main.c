@@ -212,6 +212,7 @@ void main() {
 		kern_init_done();
 		hart_wait_all(); // 单核时，这里会直接跳过
 	} else {
+		printf("Hart %d in main func!\n", cpu_this_id());
 		wait_for_kern_init();
 		// 初始化核心（开启分页、设置内核异常向量、初始化 timer/plic）
 		hart_init();
