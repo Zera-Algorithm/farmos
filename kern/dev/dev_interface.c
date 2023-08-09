@@ -10,7 +10,8 @@
 
 void dev_test() {
 #ifdef FEATURE_DISK_SD
-	sdTest();
+	// sdTest();
+	sdTestSpeed();
 #endif
 }
 

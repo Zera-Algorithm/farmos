@@ -15,7 +15,7 @@ OBJDUMP = $(TOOLPREFIX)objdump
 
 # 系统编译时参数
 ifndef NCPU
-NCPU := 5
+NCPU := 4
 endif
 
 # 配置默认MACHINE(virt/sifive_u)

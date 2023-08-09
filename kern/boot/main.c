@@ -210,6 +210,7 @@ void main() {
 
 		// 其它初始化
 		dev_init();
+		dev_test();
 		plicInit();	// 设置中断控制器
 		fd_init();	// include kload lock init
 		kmalloc_init();

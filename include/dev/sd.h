@@ -73,6 +73,7 @@
 static volatile u32 * const uart = (void *) (UART_CTRL_ADDR);
 
 int sdTest();
+int sdTestSpeed();
 int sdInit();
 
 typedef struct Buffer Buffer;

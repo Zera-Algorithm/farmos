@@ -3,6 +3,7 @@
 
 void cons_init();
 void dev_init();
+void dev_test();
 
 void cons_putc(int c);
 int cons_getc();

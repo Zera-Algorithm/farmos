@@ -3,6 +3,7 @@
 #include <lib/printf.h>
 #include <lib/transfer.h>
 #include <types.h>
+#include <dev/timer.h>
 
 #define MAX_CORES 8
 #define MAX_TIMES 50000
@@ -149,6 +150,8 @@ static int sd_cmd16(void) {
 #define SPIN_UPDATE(i) (!((i) & ((1 << SPIN_SHIFT) - 1)))
 #define SPIN_INDEX(i) (((i) >> SPIN_SHIFT) & 0x3)
 
+u64 time_wait = 0;
+u64 time_transfer = 0;
 int sdRead(u8 *buf, u64 startSector, u32 sectorNumber) {
 	startSector = startSector + SD_FAT_FS_OFFSET;
 	// printf("[SD Read]Read: %x\n", startSector);
@@ -172,6 +175,7 @@ start:
 		return 1;
 	}
 	do {
+		u64 wait_begin = time_rtc_us();
 		long n;
 
 		n = 512;
@@ -181,11 +185,13 @@ start:
 			if (x == 0xFE)
 				break;
 		}
+		time_wait += (time_rtc_us() - wait_begin);
 
 		if (!timeout) {
 			goto retry;
 		}
 
+		u64 transfer_begin = time_rtc_us();
 		do {
 			u8 x = sd_dummy();
 			*p++ = x;
@@ -193,6 +199,7 @@ start:
 
 		sd_dummy();
 		sd_dummy();
+		time_transfer += (time_rtc_us() - transfer_begin);
 	} while (--tot > 0);
 	// sd_cmd_end();
 
@@ -356,7 +363,7 @@ int sdInit() {
 	return 0;
 }
 
-u8 binary[1024];
+u8 binary[512 * 10];
 int sdTest() {
 	// sdInit();
 	for (int i = 0; i < 1024; i++) {
@@ -374,6 +381,22 @@ int sdTest() {
 		}
 	}
 	printf("sd test past!\n");
+	return 0;
+}
+
+int sdTestSpeed() {
+	printf("sd test speed begin!\n");
+	int offset = 1000;
+	int stride = 1;
+	u64 begin = time_rtc_us();
+	for (int i = 0; i < offset; i += stride) {
+		sdRead(binary, i, stride);
+	}
+	u64 end = time_rtc_us();
+	printf("sd test speed finish!\n"
+			"Total: %d us\n"
+			"Wait: %d us\n"
+			"Transfer: %d us\n", end - begin, time_wait, time_transfer);
 	return 0;
 }
 
