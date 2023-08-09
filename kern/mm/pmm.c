@@ -10,6 +10,8 @@
 #include <lib/string.h>
 #include <mm/pmm.h>
 #include <param.h>
+#include <signal/signal.h>
+#include <proc/thread.h>
 
 struct Page {
 	u32 ref;
@@ -38,7 +40,19 @@ void pmmInit() {
 	log(MM_GLOBAL, "Physical Memory Init Start: End = 0x%0lx\n", end);
 	u64 freemem = PGROUNDUP((u64)end); // 空闲内存页的起始地址
 	npage = memInfo.size / PAGE_SIZE;  // 内存页数
+
+	// 内存管理模块的数组
 	pages = pmInitPush(freemem, npage * sizeof(Page), &freemem); // 初始化内存页数组
+
+	// 进程管理模块的数组
+	extern proc_t *procs;
+	procs = pmInitPush(freemem, NPROC * sizeof(proc_t), &freemem);
+	extern thread_t *threads;
+	threads = pmInitPush(freemem, NTHREAD * sizeof(thread_t), &freemem);
+	extern void *sigactions;
+	sigactions = pmInitPush(freemem, NPROCSIGNALS * NPROC * sizeof(sigaction_t), &freemem);
+	extern void *sigevents;
+	sigevents = pmInitPush(freemem, NSIGEVENTS * sizeof(sigevent_t), &freemem);
 
 	// 为 VirtIO 驱动分配连续的两页
 	extern void *virtioDriverBuffer;

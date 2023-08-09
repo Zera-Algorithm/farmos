@@ -40,7 +40,7 @@ typedef struct proclist {
 	LIST_HEAD(, proc) pl_list; // 进程队列
 } proclist_t;
 
-extern proc_t procs[NPROC];
+extern proc_t *procs;
 extern proclist_t proc_freelist;
 
 void proc_init();
