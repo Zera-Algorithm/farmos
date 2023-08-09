@@ -154,12 +154,12 @@ void main() {
 		#endif
 
 		// 读取 dtb
-		// #ifdef QEMU_SIFIVE
+		#if ((defined QEMU_SIFIVE) || (defined VIRT))
 		parseDtb();
-		// #else
-		// extern struct MemInfo memInfo;
-		// memInfo.size = 16 * 1024ul * 1024ul * 1024ul;
-		// #endif
+		#else
+		extern struct MemInfo memInfo;
+		memInfo.size = 16 * 1024ul * 1024ul * 1024ul;
+		#endif
 
 		extern struct MemInfo memInfo;
 		printf("mem size: %d GB.\n", memInfo.size / 1024ul / 1024ul / 1024ul);

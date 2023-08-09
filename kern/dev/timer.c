@@ -47,14 +47,14 @@ u64 getRealUSecs() {
  * @brief 打开全局中断，设置核内时钟下一Tick的时间，以初始化时钟
  */
 void timerInit() {
-	SBI_SET_TIMER(time_mono_clock() + INTERVAL);
+	SBI_SET_TIMER(getRealTime() + INTERVAL);
 }
 
 /**
  * @brief 用于在发生时钟中断时设置下一个Tick的时间
  */
 static void timer_set_next_tick() {
-	SBI_SET_TIMER(time_mono_clock() + INTERVAL);
+	SBI_SET_TIMER(getRealTime() + INTERVAL);
 }
 
 /**
@@ -72,7 +72,11 @@ void handler_timer_int() {
 time_t time_mono_clock() {
 	uint64 n;
 	asm volatile("rdtime %0" : "=r"(n));
+	#if ((defined QEMU_SIFIVE) || (defined VIRT))
 	return n;
+	#else
+	return n*10;
+	#endif
 }
 
 time_t time_rtc_clock() {
