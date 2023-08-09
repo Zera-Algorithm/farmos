@@ -67,21 +67,44 @@ static inline void hart_start_all() {
 #ifndef SINGLE
 	for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 		if (!hart_started[i]) {
-			SBI_HART_START(i, 0x80200000, 0);
-			unsigned long mask = (1 << i);
-			SBI_SEND_IPI(&mask, 0);
-			printf("Hart %d try to start hart %d\n", cpu_this_id(), i);
+			struct sbiret ret = SBI_HART_START(i, 0x80200000, 0);
+			if (ret.error) {
+				printf("Hart %d start hart %d error: %d\n", cpu_this_id(), i, ret.error);
+				hart_started[i] = 2; // 跳过启动失败的核
+				__sync_synchronize();
+			} else {
+				printf("Hart %d start hart %d success\n", cpu_this_id(), i);
+			}
+
+			// unsigned long mask = (1 << i);
+			// SBI_SEND_IPI(&mask, 0);
 		}
 	}
 #endif
 }
 
 static inline void hart_wait_all() {
+	u64 count = 0;
 #ifndef SINGLE
 	printf("Hart %d is waiting\n", cpu_this_id());
 	while (1) {
 		__sync_synchronize();
 		int all_started = 1;
+
+		if (++count == (100000000 * cpu_this_id())) {
+			printf("\n");
+			for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
+				struct sbiret ret = SBI_HART_GET_STATUS(i);
+				if (ret.error) {
+					printf("Hart %d get hart %d status error: %d\n", cpu_this_id(), i, ret.error);
+				} else {
+					printf("Hart %d get hart %d status: %d\n", cpu_this_id(), i, ret.value);
+				}
+			}
+			printf("\n");
+			count = 0;
+		}
+
 		for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 			if (!hart_started[i]) {
 				all_started = 0;
