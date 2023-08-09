@@ -7,7 +7,7 @@ void sig_timedwait(thread_t *td, sigset_t *set, siginfo_t *info, u64 timeout) {
     // todo check set
 
     if (timeout != 0) {
-        tsleep(td, &td->td_lock, "#sigwait", timeout + getUSecs());
+        tsleep(td, &td->td_lock, "#sigwait", timeout + time_mono_us());
     }
     
     sigevent_t *se = sig_getse(td);

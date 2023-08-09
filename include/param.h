@@ -5,7 +5,7 @@
 #define NCPU 8 // maximum number of CPUs
 #endif	       // !NCPU
 
-#define NPROC 1024		  // maximum number of processes
+#define NPROC 480		  // maximum number of processes
 #define NOFILE 16		  // open files per process
 #define NFILE 100		  // open files per system
 #define NINODE 50		  // maximum number of active i-nodes
@@ -19,7 +19,5 @@
 #define FSSIZE 2000		  // size of file system in blocks
 #define MAXPATH 128		  // maximum file path name
 #define MAX_PROC_NAME_LEN (MAXPATH + 1)
-
-#define QEMU
 
 #endif

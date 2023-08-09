@@ -19,6 +19,7 @@
 #include <sys/syscall_fs.h>
 #include <sys/time.h>
 #include <dev/timer.h>
+#include <fs/pipe.h>
 #include <proc/tsleep.h>
 
 int sys_write(int fd, u64 buf, size_t count) {
@@ -35,6 +36,12 @@ int sys_openat(int fd, u64 filename, int flags, mode_t mode) {
 
 int sys_close(int fd) {
 	return closeFd(fd);
+}
+
+// 关闭一个socket fd
+// TODO: 未来可能要根据
+int sys_shutdown(int fd) {
+	// return closeFd(fd);
 }
 
 int sys_dup(int fd) {
@@ -241,6 +248,8 @@ static inline int check_pselect_r(int fd) {
 	// 目前只处理socket和其他
 	if (kfd->type == dev_socket) {
 		ret = socket_read_check(kfd);
+	} else if (kfd->type == dev_pipe) {
+		ret = pipe_check_read(kfd->pipe);
 	} else {
 		ret = 1;
 	}
@@ -260,9 +269,11 @@ static inline int check_pselect_w(int fd) {
 	}
 	mtx_lock_sleep(&kfd->lock);
 
-	// 目前只处理socket和其他
+	// 目前只处理socket,pipe,其他
 	if (kfd->type == dev_socket) {
 		ret = socket_write_check(kfd);
+	} else if (kfd->type == dev_pipe) {
+		ret = pipe_check_write(kfd->pipe);
 	} else {
 		ret = 1;
 	}
@@ -279,6 +290,8 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 				u64 sigmask) {
 	int fd, r;
 	int func_ret = 0;
+	u64 timeout_us;
+
 	fd_set readfds, writefds, exceptfds;
 	fd_set readfds_cur, writefds_cur, exceptfds_cur;
 	memset(&readfds, 0, sizeof(readfds));
@@ -290,24 +303,38 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 	if (p_readfds) copyIn(p_readfds, &readfds, sizeof(readfds));
 	if (p_writefds) copyIn(p_writefds, &writefds, sizeof(writefds));
 	if (p_exceptfds) copyIn(p_exceptfds, &exceptfds, sizeof(exceptfds));
-	if (p_timeout) copyIn(p_timeout, &timeout, sizeof(timeout));
+	if (p_timeout) {
+		copyIn(p_timeout, &timeout, sizeof(timeout));
+		timeout_us = TS_USEC(timeout); // 等于0表示不等待
+	} else {
+		// 如果timeout为NULL，表示永久等待
+		timeout_us = 1000000ul * 9999999ul;
+	}
 
-	u64 start = getUSecs();
-	u64 timeout_us = TS_USEC(timeout); // 等于0表示不等待
+	u64 start = time_rtc_us();
+	if (timeout_us != 0) {
+		warn("pselect6: timeout_us = %d\n", timeout_us);
+	}
 
 	// debug
-	log(FS_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
-	log(FS_GLOBAL, "readfds: \n");
+	log(LEVEL_GLOBAL, "pselect6: timeout_us = %d\n", timeout_us);
+	log(LEVEL_GLOBAL, "readfds: \n");
 	FD_SET_FOREACH(fd, &readfds) {
-		log(FS_GLOBAL, "%d\n", fd);
+		log(LEVEL_GLOBAL, "%d\n", fd);
 	}
-	log(FS_GLOBAL, "\n");
+	log(LEVEL_GLOBAL, "\n");
 
-	log(FS_GLOBAL, "writefds: \n");
+	log(LEVEL_GLOBAL, "writefds: \n");
 	FD_SET_FOREACH(fd, &writefds) {
-		log(FS_GLOBAL, "%d\n", fd);
+		log(LEVEL_GLOBAL, "%d\n", fd);
 	}
-	log(FS_GLOBAL, "\n");
+	log(LEVEL_GLOBAL, "\n");
+
+	log(LEVEL_GLOBAL, "exceptfds: \n");
+	FD_SET_FOREACH(fd, &exceptfds) {
+		log(LEVEL_GLOBAL, "%d\n", fd);
+	}
+	log(LEVEL_GLOBAL, "\n");
 	// debug end
 
 	while (1) {
@@ -360,17 +387,23 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 			func_ret = tot;
 			break;
 		} else {
-			// 小睡10ms
-			tsleep(&timeout, NULL, "pselect", 10000);
+			if (timeout_us >= 10000) {
+				// 小睡10ms
+				tsleep(&timeout, NULL, "pselect", 10000);
+			}
+			// 否则，循环消耗时间即可
 		}
 
 		// 超时退出
-		u64 now = getUSecs();
+		u64 now = time_rtc_us();
 		if (timeout_us == 0 || now - start >= timeout_us) {
 			func_ret = 0;
 			break;
 		}
 	}
+
+	// 不要返回任何异常情况
+	memset(&exceptfds_cur, 0, sizeof(exceptfds_cur));
 
 	// 将轮询状况返回
 	if (p_readfds) copyOut(p_readfds, &readfds_cur, sizeof(readfds_cur));
@@ -499,14 +532,19 @@ int sys_statfs(u64 ppath, struct statfs *buf) {
 	} else {
 		FileSystem *fs = file->file_system;
 
+		// 分配出的扇区数
+		extern u64 alloced_clus;
+		// 使用中的dirent数
+		extern u64 used_dirents;
+
 		assert(fs != NULL);
 		statfs.f_type = MSDOS_SUPER_MAGIC;
 		statfs.f_bsize = fs->superBlock.bytes_per_clus;
 		statfs.f_blocks = fs->superBlock.bpb.tot_sec / fs->superBlock.bpb.sec_per_clus;
-		statfs.f_bfree = statfs.f_blocks / 2;		 // 虚构的空闲块数
-		statfs.f_bavail = statfs.f_blocks / 2;		 // 虚构的空闲块数
-		statfs.f_files = 100000;			 // 虚构的文件数
-		statfs.f_ffree = 10000;				 // 虚构的空闲file node数
+		statfs.f_bfree = MAX(statfs.f_blocks / 2 - alloced_clus, 0);		 // TODO: 空闲块数（有意偏少）
+		statfs.f_bavail = statfs.f_bfree;		 // 空闲块数
+		statfs.f_files = 10000;			 // 虚构的文件数
+		statfs.f_ffree = MAX(2000 - used_dirents, 0);				 // 虚构的空闲file node数（有意偏少）
 		statfs.f_fsid.val[0] = statfs.f_fsid.val[1] = 0; // fsid，一般不用
 		statfs.f_namelen = MAX_NAME_LEN;
 		statfs.f_frsize = 0; // unknown
@@ -527,11 +565,24 @@ int sys_ftruncate(int fd, off_t length) {
 	mtx_lock_sleep(&mtx_file);
 
 	if (length <= file->file_size) {
-		fshrink(file, length);
+		file_shrink(file, length);
 	} else {
-		fileExtend(file, length);
+		file_extend(file, length);
 	}
 
 	mtx_unlock_sleep(&mtx_file);
 	return 0;
+}
+
+void sys_sync() {
+}
+
+int sys_syncfs(int fd) {
+	return 0;
+}
+
+
+int sys_socketpair(int domain, int type, int protocol, int *fds) {
+	warn("socketpair not implemented\n");
+	return sys_pipe2((u64)fds);
 }

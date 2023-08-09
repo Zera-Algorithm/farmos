@@ -19,7 +19,7 @@ include include.mk
 OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x $(KERN)/*/*/*.o
 modules := $(KERN) $(LIB) $(USER)
 
-.PHONY: all clean $(modules)
+.PHONY: all clean $(modules) fs.img sdcard.img
 
 all: $(KERNEL_ELF)
 
@@ -38,6 +38,10 @@ fs.img:
 	# dd if=/dev/zero of=fs.img bs=16k count=1024
 	# mkfs.vfat -F 12 fs.img
 
+sdcard.img:
+	cp sdcard.img fs.img
+	qemu-img resize fs.img 64M
+
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
 # QEMU's gdb stub command line changed in 0.11
@@ -47,39 +51,18 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 
 # 可以暂时不需要镜像文件
 # qemu: $(KERNEL_ELF)
-qemu: $(KERNEL_ELF) backup_fs.img
-	cp backup_fs.img fs.img
+fsrun: $(KERNEL_ELF) fs.img
 	$(QEMU) $(QEMUOPTS)
 
 # 以sd卡运行
-sdrun: $(KERNEL_ELF)
-	cp sdcard.img fs.img
+sdrun: $(KERNEL_ELF) sdcard.img
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-# 可以暂时不需要镜像文件
-# qemu-gdb: $(KERNEL_ELF) .gdbinit
-qemu-gdb: $(KERNEL_ELF) .gdbinit
-	cp sdcard.img fs.img
-	@echo "*** Now run 'gdb' in another window." 1>&2
-	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
-
-comp: all fs.img
-	qemu-system-riscv64 -machine virt -kernel $(KERNEL_ELF) -m 128M -nographic -smp $(NCPU) -bios default -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -no-reboot > $(OS_OUTPUT)
-
-comp-2:
-	cp sdcard.img fs.img
-	qemu-system-riscv64 -machine virt -kernel kernel-qemu -m 128M -nographic -smp 2 -bios default -drive file=fs.img,if=none,format=raw,id=x0  -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0 -device virtio-net-device
-
-board:
-	qemu-system-riscv64 -machine sifive_u -kernel kernel-qemu -m 128M -nographic -smp 5 -bios default 
-#-drive file=fs.img,if=sd,format=raw
-
-
-judge: $(OS_OUTPUT)
-	$(PYTHON) $(TEST_RUNNER) $(OS_OUTPUT) > $(OUTPUT_JSON)
+qemu-gdb: $(KERNEL_ELF) sdcard.img
+	$(QEMU) $(QEMUOPTS) -S -s
 
 clean:
 	for d in $(modules); \
@@ -96,4 +79,3 @@ check-style: clean
 fix-style: clean
 	@bash scripts/check-style.sh -f
 
-real-test: clean all comp judge

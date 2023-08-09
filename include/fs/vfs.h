@@ -15,14 +15,15 @@ int createFile(struct Dirent *baseDir, char *path, Dirent **file);
 int create_file_and_close(char *path);
 int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n);
 int file_write(struct Dirent *file, int user, u64 src, uint off, uint n);
-void fshrink(Dirent *file, u64 newsize);
-void fileExtend(struct Dirent *file, int newSize);
+void file_shrink(Dirent *file, u64 newsize);
+void file_extend(struct Dirent *file, int newSize);
 void file_close(Dirent *file);
 void dget(Dirent *dirent);
 void dput(Dirent *dirent);
 
 int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *newPath);
 int unlinkat(struct Dirent *dir, char *path);
+int rm_unused_file(struct Dirent *file);
 int renameat2(Dirent *oldDir, char *oldPath, Dirent *newDir, char *newPath, u32 flags);
 
 int makeDirAt(Dirent *baseDir, char *path, int mode);

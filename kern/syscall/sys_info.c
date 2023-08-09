@@ -26,10 +26,8 @@ void sys_uname(u64 upuname) {
  * @brief 获取当前时间，当uptv和uptz不为0时，将时间和时区写入用户态
  */
 void sys_gettimeofday(u64 uptv, u64 uptz) {
-	timeval_t tv;
+	timeval_t tv = time_rtc_tv();
 	timezone_t tz;
-	tv.tv_sec = getUSecs() / 1000000ul;
-	tv.tv_usec = getUSecs() % 1000000ul;
 	tz.tz_minuteswest = 0; // todo
 	tz.tz_dsttime = 0;     // todo
 
@@ -43,11 +41,19 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 // 此处不校验clockid,直接返回cpu时间
 u64 sys_clock_gettime(u64 clockid, u64 tp) {
 	timespec_t ts;
-	ts.tv_sec = getUSecs() / 1000000ul;
-	ts.tv_nsec = (getTime() * NSEC_PER_CLOCK) % 1000000000ul;
+	if (clockid == CLOCK_REALTIME) {
+		ts = time_rtc_ts();
+	} else if (clockid == CLOCK_MONOTONIC) {
+		ts = time_mono_ts();
+	} else {
+		// 其他情况
+		warn("clock_gettime: clockid %d not implemented, use boot time instead\n", clockid);
+		ts = time_mono_ts();
+	}
 
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, tp, &ts, sizeof(ts));
+	log(0,"clock_gettime: %lds %ldns(%x)\n", ts.tv_sec, ts.tv_nsec, clockid);
 	return 0;
 }
 
@@ -77,12 +83,18 @@ u64 sys_setpgid(u64 pid, u64 pgid) {
 }
 
 int sys_getrusage(int who, struct rusage *p_usage) {
+	proc_t *p = cpu_this()->cpu_running->td_proc;
+	proc_lock(p);
+	times_t times = cpu_this()->cpu_running->td_proc->p_times;
+	proc_unlock(p);
 	struct rusage usage;
 	memset(&usage, 0, sizeof(usage));
-	usage.ru_utime.tv_sec = getUSecs() / 1000000ul;
-	usage.ru_utime.tv_usec = getUSecs() % 1000000ul;
-	usage.ru_stime.tv_sec = 0;
-	usage.ru_stime.tv_usec = 0;
+	usage.ru_utime.tv_sec = CLOCK_TO_USEC(times.tms_utime + times.tms_stime / 2) / 1000000ul;
+	usage.ru_utime.tv_usec = CLOCK_TO_USEC(times.tms_utime + times.tms_stime / 2) % 1000000ul;
+	usage.ru_stime.tv_sec = CLOCK_TO_USEC(times.tms_stime / 2) / 1000000ul;
+	usage.ru_stime.tv_usec = CLOCK_TO_USEC(times.tms_stime / 2) % 1000000ul;
+	u64 sum = CLOCK_TO_USEC(times.tms_utime + times.tms_stime);
+	log(0, "getrusage: U: %lds %ldus / S: %lds %ldus / sum : %lds %ldus\n", usage.ru_utime.tv_sec, usage.ru_utime.tv_usec, usage.ru_stime.tv_sec, usage.ru_stime.tv_usec, sum / 1000000ul, sum % 1000000ul);
 	copyOut((u64)p_usage, &usage, sizeof(usage));
 	return 0;
 }
@@ -101,7 +113,7 @@ int sys_sysinfo(struct sysinfo *info) {
 
 	struct sysinfo si;
 	memset(&si, 0, sizeof(si));
-	si.uptime = getUSecs() / 1000000ul;
+	si.uptime = time_mono_us() / USEC_PER_SEC;
 	si.totalram = memInfo.size;
 	si.freeram = pageleft * PAGE_SIZE;
 	si.sharedram = 0;

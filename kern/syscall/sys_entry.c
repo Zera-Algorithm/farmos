@@ -1,3 +1,5 @@
+#include <dev/sbi.h>
+#include <dev/timer.h>
 #include <lib/log.h>
 #include <lib/printf.h>
 #include <proc/cpu.h>
@@ -52,6 +54,9 @@ static syscall_function_t sys_table[] = {
     [SYS_ppoll] = {sys_ppoll, "ppoll"},
     [SYS_fcntl] = {sys_fcntl, "fcntl"},
     [SYS_lseek] = {sys_lseek, "lseek"},
+	[SYS_sync] = {sys_sync, "sync"},
+	[SYS_syncfs] = {sys_syncfs, "syncfs"},
+	[SYS_fsync] = {sys_fsync, "fsync"},
     [SYS_sched_yield] = {sys_sched_yield, "sched_yield"},
     [SYS_gettid] = {sys_gettid, "gettid"},
     [SYS_getpid] = {sys_getpid, "getpid"},
@@ -104,6 +109,11 @@ static syscall_function_t sys_table[] = {
 	[SYS_getrusage] = {sys_getrusage, "getrusage"},
 	[SYS_sysinfo] = {sys_sysinfo, "sysinfo"},
 	[SYS_syslog] = {sys_syslog, "syslog"},
+	[SYS_shmget] = {sys_shmget, "shmget"},
+	[SYS_shmat] = {sys_shmat, "shmat"},
+	[SYS_shmctl] = {sys_shmctl, "shmctl"},
+    [SYS_clock_nanosleep] = {sys_clock_nanosleep, "clock_nanosleep"},
+    [SYS_socketpair] = {sys_socketpair, "socketpair"},
 };
 
 /**
@@ -118,16 +128,14 @@ void syscall_entry(trapframe_t *tf) {
     thread_t *td = cpu_this()->cpu_running;
 
 	if (sys_func != NULL && sys_func->name != NULL) {
-		if (sysno != SYS_brk)
+		if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
 			log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
 		    	td->td_name, sys_func->name, tf->epc);
-        if (sysno != SYS_brk)
+        if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
         	log(LEVEL_GLOBAL, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
 	}
 
 
-	// S态时间审计
-	// u64 startTime = getTime();
 	// 系统调用最多6个参数
 	u64 (*func)(u64, u64, u64, u64, u64, u64);
 
@@ -151,10 +159,7 @@ void syscall_entry(trapframe_t *tf) {
 	if ((i64)tf->a0 < 0) {
 		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
-    if (sysno != SYS_brk)
-    	log(LEVEL_GLOBAL, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
+    if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
+    	log(0, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
 
-	// // S态时间审计
-	// u64 endTime = getTime();
-	// myProc()->procTime.totalStime += (endTime - startTime);
 }

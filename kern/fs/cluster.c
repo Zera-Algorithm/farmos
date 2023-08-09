@@ -7,6 +7,8 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+u64 alloced_clus = 0;
+
 /**
  * @brief 簇层初始化，填写文件系统结构体里面的超级块
  */
@@ -146,7 +148,7 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 	}
 }
 
-static void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
+void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 	panic_on(cluster < 2 || cluster > fs->superBlock.data_clus_cnt + 1);
 
 	// fatno从0开始
@@ -214,9 +216,11 @@ u64 clusterAlloc(FileSystem *fs, u64 prev) {
 			}
 			fatWrite(fs, cluster, FAT32_EOF);
 			clusterZero(fs, cluster);
+			alloced_clus += 1;
 			return cluster;
 		}
 	}
+	panic("disk volumn out!\n");
 	return 0;
 }
 

@@ -3,6 +3,7 @@
 #include <lib/log.h>
 #include <lib/string.h>
 #include <lib/transfer.h>
+#include <lib/elf.h>
 #include <mm/kmalloc.h>
 #include <mm/vmtools.h>
 #include <proc/cpu.h>
@@ -120,15 +121,27 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	char pathbuf[MAX_PROC_NAME_LEN];
 	copy_in_str(p->p_pt, path, pathbuf, MAX_PROC_NAME_LEN);
 	safestrcpy(td->td_name, pathbuf, MAX_PROC_NAME_LEN);
+	void *bin;
+	size_t size;
+	fileid_t file_id = file_load(pathbuf, &bin, &size);
+	if (file_id < 0) {
+		return file_id;
+	}
 
-	// TODO: 区分ELF和脚本
+	// Note: 区分ELF和脚本
 	int len = strlen(pathbuf);
 	if (len > 3 && pathbuf[len - 3] == '.' && pathbuf[len - 2] == 's' &&
 	    pathbuf[len - 1] == 'h') {
+		file_unload(file_id); // 先释放不使用的文件
+
 		// 执行脚本，指定解释器为busybox
 		strncpy(pathbuf, "/busybox", MAX_PROC_NAME_LEN);
 		// 加载参数
 		stack_arg = copy_arg(p, td, argv, envp, exec_sh_callback);
+
+		// 重新加载文件
+		file_id = file_load(pathbuf, &bin, &size);
+		assert(file_id >= 0);
 	} else { // 判定为ELF文件
 		// 加载参数
 		stack_arg = copy_arg(p, td, argv, envp, exec_elf_callback);
@@ -145,9 +158,11 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 
 	// 加载程序的各个段
 	log(DEBUG, "START LOAD CODE SEGMENT\n");
-	proc_initucode_by_file(p, td, pathbuf, &stack_arg);
+	int ret = proc_initucode_by_binary(p, td, bin, size, &stack_arg);
 	log(DEBUG, "END LOAD CODE SEGMENT\n");
-	return 0;
+
+	file_unload(file_id);
+	return ret;
 }
 
 /**
@@ -179,22 +194,28 @@ u64 sys_wait4(u64 pid, u64 status, u64 options) {
  * @param pTimeSpec 包含秒和微秒两个字段，指明进程要睡眠的时间数
  */
 u64 sys_nanosleep(u64 pTimeSpec) {
-	timeval_t timeVal;
+	timespec_t timeVal;
 	copyIn(pTimeSpec, &timeVal, sizeof(timeVal));
-	tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal) + getUSecs());
+	tsleep(&timeVal, NULL, "nanosleep", TS_USEC(timeVal) + time_mono_us());
 	return 0;
 }
 
 # define TIMER_ABSTIME			1
 // request是nanosleep类型的指针
 u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain) {
-	timeval_t timeVal;
+	timespec_t timeVal;
 	copyIn(request, &timeVal, sizeof(timeVal));
 	if (flags & TIMER_ABSTIME) {
 		// 以绝对时间睡眠
-		tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal));
+		if (clock_id == CLOCK_REALTIME) {
+			tsleep(&timeVal, NULL, "clock_nanosleep1", TS_USEC(timeVal) - RTC_OFF);
+		} else {
+			log(0, "clock_nanosleep: clock_id = %d, %d, %d\n", clock_id, timeVal.tv_sec, timeVal.tv_nsec);
+			tsleep(&timeVal, NULL, "clock_nanosleep2", TS_USEC(timeVal));
+		}
+		
 	} else {
-		tsleep(&timeVal, NULL, "nanosleep", TV_USEC(timeVal) + getUSecs());
+		tsleep(&timeVal, NULL, "clock_nanosleep3", TS_USEC(timeVal) + time_mono_us());
 	}
 	return 0;
 }
@@ -227,9 +248,12 @@ u64 sys_getppid() {
 }
 
 clock_t sys_times(u64 utms) {
-	thread_t *td = cpu_this()->cpu_running;
-	copy_out(td->td_pt, utms, &td->td_times, sizeof(td->td_times));
-	return ticks;
+	proc_t *p = cpu_this()->cpu_running->td_proc;
+	proc_lock(p);
+	times_t times = cpu_this()->cpu_running->td_proc->p_times;
+	proc_unlock(p);
+	copy_out(p->p_pt, utms, &times, sizeof(times));
+	return time_mono_clock();
 }
 
 /**

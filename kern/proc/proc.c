@@ -110,31 +110,31 @@ static void proc_recycle(proc_t *p) {
 	// 回收进程的fs资源
 	// 需要保证thread里面的fs结构在进程结束时不会被访问，以保证原子性（现状是，只有本进程不处于结束状态时才会通过自己的系统调用访问自己的fs资源）
 	// 放在td_recycle前面是因为要避免因为睡眠唤醒，把进程的td_status改为RUNNABLE，而不是维持ZOMBIE
-	recycle_thread_fs(&p->p_fs_struct);
 	proc_recycleupt(p);
 	sigaction_free(p);
-	p->p_status = ZOMBIE;
 }
 
 void proc_destroy(proc_t *p, err_t exitcode) {
+	assert(mtx_hold(&wait_lock));
+	// 原子操作: 线程队列清空、状态变为僵尸
 	p->p_exitcode = exitcode;
+	p->p_status = ZOMBIE;
 
-	// 拿等待锁，防止其它线程在此期间调用 wait
 	proc_unlock(p);
 
 	// 此时进程内只有一个线程，不需要对回收进程资源加锁
 	proc_recycle(p);
-
-	mtx_lock(&wait_lock);
-
 	// 处理子进程资源
 	proc_t *child;
 	// 此时进程内只有一个线程，不需要对进程资源加锁
+	proc_lock(p);
 	LIST_UNTIL_EMPTY(child, &p->p_children) {
 		proc_lock(child);
 		LIST_REMOVE(child, p_sibling);
 		// 根据子进程状态处理
 		if (child->p_status == ZOMBIE) {
+			p->p_times.tms_cstime += child->p_times.tms_stime;
+			p->p_times.tms_cutime += child->p_times.tms_utime;
 			proc_free(child);
 		} else {
 			warn("haven't implement init, child %d is still alive\n", child->p_pid);
@@ -144,6 +144,7 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 		}
 		proc_unlock(child);
 	}
+	proc_unlock(p);
 
 	// 通知父进程（父进程 wait 时等待的是父线程(self)的指针）
 	if (p->p_pid != PID_INIT) {
@@ -157,5 +158,4 @@ void proc_destroy(proc_t *p, err_t exitcode) {
 	}
 
 	proc_lock(p);
-	mtx_unlock(&wait_lock);
 }

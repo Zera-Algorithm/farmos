@@ -33,3 +33,7 @@ sdcard
 busybox
 os_busybox.txt
 os_lmbench.txt
+lmbench_all
+output0.txt
+lmbench_testcode.sh
+linux-test

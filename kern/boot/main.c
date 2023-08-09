@@ -21,16 +21,17 @@
 #include <proc/sched.h>
 #include <proc/thread.h>
 #include <proc/tsleep.h>
+#include <ipc/shm.h>
 #include <riscv.h>
 #include <signal/itimer.h>
 #include <signal/signal.h>
 #include <trap/trap.h>
 #include <types.h>
 
-#ifdef QEMU
-#define IGNORE_HART0 0
-#else
+#ifdef SIFIVE
 #define IGNORE_HART0 1
+#else
+#define IGNORE_HART0 0
 #endif
 
 // #define SINGLE
@@ -51,13 +52,14 @@ static inline void hart_set_clear() {
 	for (int i = 0; i < NCPU; i++) {
 		hart_started[i] = 0;
 	}
+	__sync_synchronize();
 }
 
 static inline void hart_start_all() {
 #ifndef SINGLE
 	for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 		if (!hart_started[i]) {
-			hart_started[i] = 1;
+			SBI_HART_START(i, 0x80200000, 0);
 		}
 	}
 #endif
@@ -67,6 +69,7 @@ static inline void hart_wait_all() {
 #ifndef SINGLE
 	printf("Hart %d is waiting\n", cpu_this_id());
 	while (1) {
+		__sync_synchronize();
 		int all_started = 1;
 		for (int i = IGNORE_HART0 ? 1 : 0; i < NCPU; i++) {
 			if (!hart_started[i]) {
@@ -100,7 +103,7 @@ static inline void kern_load_process() {
 	// PROC_CREATE(test_pthread, "test_pthread");
 	// PROC_CREATE(test_clone, "test_clone");
 	// PROC_CREATE(test_pipe, "test_pipe");
-	// PROC_CREATE(test_init, "test_init");
+	// PROC_CREATE(test_file, "test_file");
 	PROC_CREATE(test_busybox, "test_busybox");
 	// PROC_CREATE(test_setitimer, "test_setitimer");
 	// PROC_CREATE(test_while, "test_while");
@@ -123,7 +126,7 @@ void main() {
 
 		// 初始化串口
 		cons_init();
-		printf("FarmOS kernel is booting (on hart %d)\n", cpu_this_id());
+		printf("FarmOS kernel is booting (on hart %d) total: %d\n", cpu_this_id(), NCPU);
 
 		// 读取 dtb
 		parseDtb();
@@ -148,6 +151,7 @@ void main() {
 		plicInit();	// 设置中断控制器
 		fd_init();	// include kload lock init
 		kmalloc_init();
+		shm_init();
 		log(LEVEL_GLOBAL, "kmalloc_init done\n");
 		socket_init();
 		log(LEVEL_GLOBAL, "socket_init done\n");

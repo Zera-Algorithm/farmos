@@ -12,6 +12,8 @@
 #include <lib/wchar.h>
 #include <lock/mutex.h>
 #include <fs/chardev.h>
+#include <fs/filepnt.h>
+#include <mm/kmalloc.h>
 
 FileSystem *fatFs;
 extern mutex_t mtx_file;
@@ -25,6 +27,7 @@ static void build_dirent_tree(Dirent *parent) {
 	int off = 0; // 当前读到的偏移位置
 	int ret;
 
+	filepnt_init(parent);
 	while (1) {
 		ret = dirGetDentFrom(parent, off, &child, &off, NULL);
 		if (ret == 0) {
@@ -105,15 +108,15 @@ void init_root_fs() {
 }
 
 static void init_dev_fs() {
-	makeDirAt(fatFs->root, "/dev", 0);
+	panic_on(makeDirAt(fatFs->root, "/dev", 0));
 
 	// 这两个暂时用空文件代替
 	panic_on(create_file_and_close("/dev/random"));
 	panic_on(create_file_and_close("/dev/rtc"));
 	panic_on(create_file_and_close("/dev/rtc0"));
-	makeDirAt(fatFs->root, "/dev/misc", 0);
+	panic_on(makeDirAt(fatFs->root, "/dev/misc", 0));
 	panic_on(create_file_and_close("/dev/misc/rtc"));
-	makeDirAt(fatFs->root, "/dev/shm", 0);
+	panic_on(makeDirAt(fatFs->root, "/dev/shm", 0));
 
 	extern struct FileDev file_dev_null;
 	extern struct FileDev file_dev_zero;
@@ -138,7 +141,7 @@ static void init_dev_fs() {
 }
 
 static void init_proc_fs() {
-	makeDirAt(fatFs->root, "/proc", 0);
+	panic_on(makeDirAt(fatFs->root, "/proc", 0));
 
 	extern initcall_t __initcall_fs_start[], __initcall_fs_end[];
 	initcall_t *fn;
@@ -152,32 +155,52 @@ static void init_proc_fs() {
 	}
 
 	// 设置系统发行版本，越大越好，过小会FATAL
-	makeDirAt(fatFs->root, "/proc/sys", 0);
-	makeDirAt(fatFs->root, "/proc/sys/kernel", 0);
+	panic_on(makeDirAt(fatFs->root, "/proc/sys", 0));
+	panic_on(makeDirAt(fatFs->root, "/proc/sys/kernel", 0));
 	create_chardev_file("/proc/sys/kernel/osrelease", "10.2.0", NULL, NULL);
 }
 
+static void create_file_and_write(const char *path, void *content, int size) {
+	Dirent *file1;
+	createFile(fatFs->root, (char *)path, &file1);
+	file_write(file1, 0, (u64)content, 0, size);
+	file_close(file1);
+}
+
 static void init_fs_other() {
-	makeDirAt(fatFs->root, "/bin", 0);
 	panic_on(create_file_and_close("/bin/ls"));
 
-	makeDirAt(fatFs->root, "/etc", 0);
-	makeDirAt(fatFs->root, "/tmp", 0);
+	panic_on(makeDirAt(fatFs->root, "/etc", 0));
+	panic_on(makeDirAt(fatFs->root, "/tmp", 0));
 
 	// 将默认的动态链接库链接到/lib目录
-	makeDirAt(fatFs->root, "/lib", 0);
+	panic_on(makeDirAt(fatFs->root, "/lib", 0));
 	panic_on(linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1"));
 	panic_on(linkat(fatFs->root, "/tls_get_new-dtv_dso.so", fatFs->root, "/lib/tls_get_new-dtv_dso.so"));
+	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/bin/busybox"));
+	panic_on(linkat(fatFs->root, "/iozone", fatFs->root, "/bin/iozone"));
 
-	makeDirAt(fatFs->root, "/sbin", 0);
+
+	panic_on(makeDirAt(fatFs->root, "/sbin", 0));
 	panic_on(linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all"));
 	panic_on(linkat(fatFs->root, "/busybox", fatFs->root, "/sbin/busybox"));
 
 	// 两个部分的sh脚本
 	extern const unsigned char bin2c_iperf_testcode_sh[637];
 	extern const unsigned char bin2c_unixbench_testcode_sh[4556];
+	extern const unsigned char bin2c_sort_src[8546];
+	extern const unsigned char bin2c_lmbench_testcode_sh[1170];
 	create_chardev_file("/iperf_testcode_part.sh", (char *)bin2c_iperf_testcode_sh, NULL, NULL);
 	create_chardev_file("/unixbench_testcode_part.sh", (char *)bin2c_unixbench_testcode_sh, NULL, NULL);
+
+	// 写入一个空格文件
+	char *cont = kmalloc(PAGE_SIZE);
+	memset(cont, ' ', PAGE_SIZE);
+	create_file_and_write("/lat_sig", cont, PAGE_SIZE);
+	kfree(cont);
+
+	create_file_and_write("sort.src", (void *)bin2c_sort_src, sizeof(bin2c_sort_src));
+	create_file_and_write("/lmbench_testcode_part.sh", (void *)bin2c_lmbench_testcode_sh, sizeof(bin2c_lmbench_testcode_sh));
 }
 
 void init_files() {

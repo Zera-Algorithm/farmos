@@ -113,6 +113,8 @@ userVec:
 	csrw satp, t1
 	sfence.vma zero, zero
 
+	fence.i
+
 	jr t0
 
 
@@ -208,6 +210,8 @@ userRet:
 	*/
 
 	csrrw a0, sscratch, a0
+
+	fence.i
 
 	// ue0: 硬件从 sepc 恢复，开启中断（恢复 SPIE 位），进入用户态
 	sret

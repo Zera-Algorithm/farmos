@@ -4,6 +4,7 @@
 #include <proc/cpu.h>
 #include <proc/sleep.h>
 #include <proc/thread.h>
+#include <sys/errno.h>
 
 #define WAIT_FAIL -1
 #define WAIT_NOHANG_EXIT 0
@@ -45,9 +46,8 @@ static u64 wait_exit(thread_t *curtd, proc_t *childp, u64 pstatus) {
 	curtd->td_proc->p_times.tms_cutime += childp->p_times.tms_utime;
 	curtd->td_proc->p_times.tms_cstime += childp->p_times.tms_stime;
 
-	proc_free(childp);
 	LIST_REMOVE(childp, p_sibling); // p_children 中删除，已持有父进程的锁
-
+	proc_free(childp);
 	proc_unlock(childp);
 	proc_unlock(curtd->td_proc);
 	mtx_unlock(&wait_lock);
@@ -74,6 +74,7 @@ static u64 wait_til_exit(thread_t *curtd, proc_t *childp, u64 pstatus, int optio
 }
 
 u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
+	log(LEVEL_GLOBAL, "wait: pid = %lx, pstatus = %lx, options = %x\n", pid, pstatus, options);
 	// 获取等待锁，且不应该有其他锁
 	assert(cpu_this()->cpu_lk_depth == 0);
 	mtx_lock(&wait_lock);
@@ -81,7 +82,8 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 	// 检查是否有能够等待的子进程
 	if (LIST_EMPTY(&curtd->td_proc->p_children)) {
 		mtx_unlock(&wait_lock);
-		return -1;
+		warn("no child process\n");
+		return -ECHILD;
 	}
 
 	// 有子进程，需要等待并释放一个子进程再返回
@@ -107,10 +109,12 @@ u64 wait(thread_t *curtd, i64 pid, u64 pstatus, int options) {
 		if (pid != -1) {
 			// 此时如果没有找到目标进程，说明目标进程不在子进程列表中，返回
 			mtx_unlock(&wait_lock);
-			return -1;
+			warn("no such child process: pid = %lx\n", pid);
+			return -ECHILD;
 		} else if (options & WNOHANG) {
 			// 未指定目标进程，且设置了 WNOHANG，直接返回
 			mtx_unlock(&wait_lock);
+			warn("WNOHANG: pid = %lx, exit wait\n", pid);
 			return WAIT_NOHANG_EXIT;
 		} else {
 			// 未指定目标进程，且未设置 WNOHANG，等待子进程退出

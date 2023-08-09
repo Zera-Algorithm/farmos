@@ -33,6 +33,8 @@ static malloc_config_t malloc_config[] = {
     {.size = -1},
 };
 
+u64 kmalloc_alloced_size = 0;
+
 void kmalloc_test();
 
 static inline void kpage_alloc(u64 va) {
@@ -158,6 +160,8 @@ void *kmalloc(size_t size) {
 	memset(addr, 0, header->size);
 
 	mtx_unlock(&mtx_kmalloc);
+	kmalloc_alloced_size += malloc_config[i].size;
+	log(LEVEL_MODULE, "kmalloc: size = %d, cur_alloc = %d, cur_acutal = %lx, addr = %p\n", malloc_config[i].size, kmalloc_alloced_size, heap_top - KERNEL_MALLOC, addr);
 	return addr;
 }
 
@@ -166,7 +170,8 @@ void kfree(void *ptr) {
 
 	malloc_header_t *header = (malloc_header_t *)(ptr - sizeof(malloc_header_t));
 	list_insert_head(header->phead, header);
-
+	kmalloc_alloced_size -= container_of(header->phead, malloc_config_t, head)->size;
+	log(LEVEL_MODULE, "kfree  : size = %d, cur_alloc = %d, cur_acutal = %lx, addr = %p\n", container_of(header->phead, malloc_config_t, head)->size, kmalloc_alloced_size, heap_top - KERNEL_MALLOC, ptr);
 	mtx_unlock(&mtx_kmalloc);
 }
 

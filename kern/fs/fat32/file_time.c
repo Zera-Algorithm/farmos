@@ -30,8 +30,9 @@ void file_get_timestamp(Dirent *file, struct kstat *kstat) {
  * @brief 更新文件的时间戳为当前时间，type表示要更新的类型
  */
 void file_update_timestamp(Dirent *file, int type) {
-	u64 tv_sec = getUSecs() / 1000000ul;
-	u64 tv_nsec = getTime() * NSEC_PER_CLOCK;
+	timespec_t ts = time_rtc_ts();
+	u64 tv_sec = ts.tv_sec;
+	u64 tv_nsec = ts.tv_nsec;
 
 	mtx_lock_sleep(&mtx_file);
 

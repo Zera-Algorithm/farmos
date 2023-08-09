@@ -9,7 +9,6 @@
 #include <signal/itimer.h>
 
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size) {
-	warn("sys_sigaction: signum=%d, act=%lp, oldact=%lp, sigset_size=%d\n", signum, act, oldact, sigset_size);
 	if (signum < 0 || signum >= SIGNAL_MAX) {
 		return -1;
 	} else {
@@ -109,6 +108,10 @@ int sys_kill(int pid, int sig) {
 		}
 
 		return -ESRCH;
+	}
+
+	if (sig == 0) {
+		return 0; // 不处理0信号
 	}
 
 	sig_send_proc(p, sig);

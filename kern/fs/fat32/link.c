@@ -12,8 +12,11 @@
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <sys/errno.h>
+#include <fs/cluster.h>
+#include <fs/filepnt.h>
 
 extern mutex_t mtx_file;
+static int rmfile(struct Dirent *file);
 
 /**
  * @brief 创建链接
@@ -53,63 +56,29 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 	}
 }
 
-/**
- * @brief 递归地从文件的尾部释放其cluster
- * @note TODO: 可能有栈溢出风险
- */
-static void recur_free_clus(FileSystem *fs, int clus, int prev_clus) {
-	int next_clus = fatRead(fs, clus);
-	if (!FAT32_NOT_END_CLUSTER(next_clus)) {
-		// clus is end cluster
-		clusterFree(fs, clus, prev_clus);
-	} else {
-		recur_free_clus(fs, next_clus, clus);
-		clusterFree(fs, clus, prev_clus);
-	}
-}
+// /**
+//  * @brief 递归地从文件的尾部释放其cluster
+//  * @note 有栈溢出风险
+//  */
+// static void recur_free_clus(FileSystem *fs, int clus, int prev_clus) {
+// 	int next_clus = fatRead(fs, clus);
+// 	if (!FAT32_NOT_END_CLUSTER(next_clus)) {
+// 		// clus is end cluster
+// 		clusterFree(fs, clus, prev_clus);
+// 	} else {
+// 		recur_free_clus(fs, next_clus, clus);
+// 		clusterFree(fs, clus, prev_clus);
+// 	}
+// }
 
 /**
- * @brief 删除文件。支持递归删除文件夹
+ * @brief 需要保证传入的file->refcnt == 0
  */
-static int rmfile(struct Dirent *file) {
+int rm_unused_file(struct Dirent *file) {
+	assert(file->refcnt == 0);
 	char linked_file_path[MAX_NAME_LEN];
-
 	int cnt = get_entry_count_by_name(file->name);
-	char data = 0xE5;
-
-	if (file->refcnt > 1) {
-		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
-		int hold_by_cur = 1;
-		for (int i = 0; i < file->holder_cnt; i++) {
-			if (file->holders[i] != cpu_this()->cpu_running->td_name) {
-				hold_by_cur = 0;
-				break;
-			}
-		}
-
-		if (!hold_by_cur) {
-			warn("other process uses file %s! refcnt = %d\n", file->name, file->refcnt);
-
-#ifdef REFCNT_DEBUG
-			for (int i = 0; i < file->holder_cnt; i++) {
-				warn("holder: %s\n", file->holders[i]);
-			}
-#endif
-
-			return -EBUSY; // in use
-		} else {
-			warn("file %s is hold by current process(refcnt = %d), can't remove, "
-			     "continue!\n",
-			     file->name, file->refcnt);
-			return 0;
-			/**
-			 * 此实现是为了应对ftello_unflushed_append的unlink失败问题
-			 * TODO: 后续实现建议：
-			 * 在Dirent上置一个位is_rm，表示在refcnt归0时是否可以删除。如果可以删除，那么在
-			 * file_close()之后检测到 (refcnt == 0 && is_rm) 就将其删除
-			 */
-		}
-	}
+	char data = FAT32_INVALID_ENTRY;
 
 	// 1. 如果是链接文件，则减去其链接数
 	if (file->raw_dirent.DIR_Attr & ATTR_LINK) {
@@ -133,18 +102,62 @@ static int rmfile(struct Dirent *file) {
 	}
 	LIST_REMOVE(file, dirent_link); // 从父亲的子Dirent列表删除
 
-	// 3. 清空目录项
+	// 3. 释放其占用的Cluster
+	file_shrink(file, 0);
+
+	// 4. 清空目录项
 	for (int i = 0; i < cnt; i++) {
 		panic_on(file_write(file->parent_dirent, 0, (u64)&data,
 				    file->parent_dir_off - i * DIR_SIZE, 1) < 0);
 	}
 
-	// 4. 释放其占用的Cluster
-	int clus = file->first_clus;
-	recur_free_clus(file->file_system, clus, 0);
-
 	dirent_dealloc(file); // 释放目录项
 	return 0;
+}
+
+/**
+ * @brief 删除文件。支持递归删除文件夹
+ */
+static int rmfile(struct Dirent *file) {
+	if (file->refcnt > 1) {
+		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
+		int hold_by_cur = 1;
+		for (int i = 0; i < file->holder_cnt; i++) {
+			if (file->holders[i].td_index != get_td_index(cpu_this()->cpu_running)) {
+				hold_by_cur = 0;
+				break;
+			}
+		}
+
+		if (!hold_by_cur) {
+			warn("other process uses file %s! refcnt = %d\n", file->name, file->refcnt);
+
+#ifdef REFCNT_DEBUG
+			for (int i = 0; i < file->holder_cnt; i++) {
+				warn("holder: %d, cnt = %d\n", file->holders[i].td_index, file->holders[i].cnt);
+			}
+#endif
+
+			return -EBUSY; // in use
+		} else {
+			// 自己持有的
+			warn("file %s is hold by current process(refcnt = %d), can't remove, will remove on close, "
+			     "continue!\n",
+			     file->name, file->refcnt);
+			dput(file);
+			file->is_rm = 1;
+			return 0;
+			/**
+			 * 此实现是为了应对ftello_unflushed_append的unlink失败问题
+			 * TODO: 后续实现建议：
+			 * 在Dirent上置一个位is_rm，表示在refcnt归0时是否可以删除。如果可以删除，那么在
+			 * file_close()之后检测到 (refcnt == 0 && is_rm) 就将其删除
+			 */
+		}
+	}
+
+	dput(file);
+	return rm_unused_file(file);
 }
 
 /**
@@ -193,7 +206,7 @@ static int mvfile(Dirent *oldfile, Dirent *newDir, char *newPath) {
 
 #ifdef REFCNT_DEBUG
 		for (int i = 0; i < oldfile->holder_cnt; i++) {
-			warn("holder: %s\n", oldfile->holders[i]);
+			warn("holder: %d, cnt: %d\n", oldfile->holders[i].td_index, oldfile->holders[i].cnt);
 		}
 #endif
 		return -EBUSY; // in use

@@ -102,7 +102,7 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [RISCV64寄存器](./docs/RISCV64%E5%AF%84%E5%AD%98%E5%99%A8.md)
 * [SBI中文介绍(译)](./docs/SBI%EF%BC%9ASupervisor%20Software%20Binary%20Interface%20%E8%BD%AF%E4%BB%B6%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%8E%A5%E5%8F%A3%EF%BC%88%E8%AF%91%EF%BC%89.md)
 
-### 各模块文档
+### 区域赛文档
 
 * [引导](./docs/FarmOS%20-%20boot.md)
 * [Trap和中断](./docs/FarmOS%20-%20Trap%E4%B8%8E%E6%97%B6%E9%92%9F%E4%B8%AD%E6%96%AD.md)
@@ -111,6 +111,17 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [系统调用的处理](./docs/FarmOS%20-%20%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E7%9A%84%E5%AE%9E%E7%8E%B0.md)
 * [VFS](./docs/FarmOS%20-%20VFS.md)
 
+
+### 第一阶段文档
+
+说明：我们国赛的第一阶段qemu赛道的提交放置在本仓库的archive/final1-qemu分支；hifive unmatched开发板赛道的提交放置在本仓库的archive/final2-unmatced分支。
+
+* [文件系统](./docs/第一阶段-文件系统.md)
+* [sd卡驱动](./docs/FarmOS%20-%20SD%20卡驱动.md)
+* [Socket](./docs/FarmOS%20-%20Socket.md)
+* [内存管理](./docs/FarmOS%20-%20内存管理.md)
+* [进程与线程](./docs/FarmOS%20-%20进程与线程.md)
+* [多核同步互斥机制设计](./docs/FarmOS%20-%20多核同步互斥机制.md)
 
 ## 一些说明
 1. Qemu默认加载的OpenSBI位于
@@ -144,3 +155,7 @@ riscv64-unknown-elf-gdb kernel-qemu
 [ ] 解决make不能多线程编译的问题
 
 [ ] Syscall的Profiling
+
+[ ] 发送SIGKILL信号后，将阻塞在IO上的syscall唤醒，继续完成接下来的事务，待syscall结束时才会最终kill。
+syscall要保证自己只会进入一个阻塞IO，即被唤醒后就能立刻返回用户空间。现在一般的睡眠过程是睡眠等待某个条件成立，
+比如管道读取是等待管道不为空或者管道关闭这二者之一成立。那么由SIGKILL完成的唤醒肯定不会满足这个条件，需要加一个额外的条件(td->td_killed)，帮助其顺利完成**拖尾**的syscall返回用户空间。TODO：之后需要检查每一个IO等待的睡眠是否存在这个问题。

@@ -33,6 +33,10 @@ static inline void sigset_clear(sigset_t *set, int signo) {
 
 static inline bool sigset_isset(sigset_t *set, int signo) {
 	signo -= 1;
+	if (!(0 <= signo && signo < SIGNAL_MAX)) {
+		panic("signo = %d", signo);
+		asm volatile("ebreak");
+	}
 	assert(0 <= signo && signo < SIGNAL_MAX);
 	return set->ss_byte[signo / 8] & (1 << (signo % 8));
 }

@@ -39,7 +39,7 @@
 #endif // !MINUVA
 
 // FarmOS 虚拟内存布局
-#define TRAMPOLINE (MAXVA - PAGE_SIZE) 
+#define TRAMPOLINE (MAXVA - PAGE_SIZE)
 #define SIGNAL_TRAMPOLINE (TRAMPOLINE - PAGE_SIZE)
 #define TRAPFRAME (SIGNAL_TRAMPOLINE - PAGE_SIZE)
 #define STACKTOP (TRAPFRAME - PAGE_SIZE)
@@ -98,12 +98,12 @@
 // PHYSTOP -- end RAM used by the kernel
 
 // qemu puts UART registers here in physical memory.
-#ifdef QEMU
-#define UART0 0x10000000ul
-#else // SiFive
+#ifdef SIFIVE
 #define UART0 0x10010000ul
 #define HIFIVE_UART UART0
-#endif // QEMU
+#else
+#define UART0 0x10000000ul
+#endif // SiFive
 #define UART0_IRQ 10
 
 // virtio mmio interface
@@ -133,5 +133,6 @@
 #define KERNEL_TEMP 0x600000000ul
 // 用于MALLOC
 #define KERNEL_MALLOC 0x700000000ul
+#define KERNEL_SHM 0x900000000ul
 
 #endif // !_MEMLAYOUT_H

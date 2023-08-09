@@ -20,7 +20,7 @@ err_t cow_handler(pte_t *pd, pte_t pte, u64 badva) {
 err_t passive_handler(pte_t *pd, pte_t pte, u64 badva) {
 	assert((pte & PTE_PPNMASK) == 0);
 	u64 newpa = vmAlloc();
-	u64 perm = pte ^ PTE_PASSIVE;
+	u64 perm = pte;
 	warn("passive page fault: badva=%lx, pte=%lx, perm=%lx\n", badva, pte, perm);
 	return ptMap(pd, badva, newpa, perm);
 }
@@ -32,7 +32,7 @@ err_t page_fault_handler(pte_t *pd, u64 violate, u64 badva) {
 	if ((violate & PTE_W) && (pte != 0) && (pte & PTE_U) && !(pte & PTE_W) && (pte & PTE_COW)) {
 		// 写时复制：写错误且用户位、只读位、写时复制位
 		return cow_handler(pd, pte, badva);
-	} else if (pte & PTE_PASSIVE) {
+	} else if (!(pte & PTE_V) && (pte & PTE_U)) {
 		// 被动调页：不管违反了哪种权限，如果那一页是被动映射的，就先映射上
 		return passive_handler(pd, pte, badva);
 	} else {
@@ -72,11 +72,11 @@ void trap_pgfault(thread_t *td, u64 exc_code) {
 		if (pte & PTE_COW)
 			prot[4] = 'C';
 
-		printf(FARM_ERROR"[Page Fault] "SGR_RED
-			"%s(t:%08x|p:%08x) violate %x, badva=%lx, pte=%lx (prot = %s)"SGR_RESET"\n",
-			td->td_name, td->td_tid, td->td_proc->p_pid, violation, badva, pte, prot);
-		warn("page fault caused 'SIGSEGV' on thread %d[%s]\n", td->td_tid, td->td_name);
+		// printf(FARM_ERROR"[Page Fault] "SGR_RED
+		// 	"%s(t:%08x|p:%08x) violate %x, badva=%lx, pte=%lx (prot = %s)"SGR_RESET"\n",
+		// 	td->td_name, td->td_tid, td->td_proc->p_pid, violation, badva, pte, prot);
+		warn("page fault caused 'SIGSEGV' on thread %d[%s] prot = %s\n", td->td_tid, td->td_name, prot);
 		sig_send_proc(td->td_proc, SIGSEGV);
-		sys_exit(-1);
+		// sys_exit(-1);
 	}
 }

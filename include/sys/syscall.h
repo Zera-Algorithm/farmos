@@ -36,6 +36,8 @@ pid_t sys_getsid(pid_t pid);
 pid_t sys_setsid();
 void sys_reboot();
 
+u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain);
+
 struct rusage;
 struct sysinfo;
 
@@ -85,8 +87,11 @@ off_t sys_lseek(int fd, off_t offset, int whence);
 int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned int flags);
 int sys_statfs(u64 ppath, struct statfs *buf);
 int sys_ftruncate(int fd, off_t length);
+int sys_fsync(int fd);
+void sys_sync();
+int sys_syncfs(int fd);
 int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
-
+int sys_socketpair(int domain, int type, int protocol, int *fds);
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);
 int sys_sigreturn();
@@ -123,6 +128,11 @@ u64 sys_sched_setaffinity();
 u64 sys_sched_getscheduler();
 u64 sys_sched_setscheduler();
 u64 sys_sched_getparam();
+
+// ipc
+int sys_shmget(u64 key, u64 size, int shmflg);
+void *sys_shmat(int shmid, u64 shmaddr, int shmflg);
+int sys_shmctl(int shmid, int cmd, u64 arg_buf);
 
 // Futex(sys_futex)
 int sys_futex(u64 uaddr, u64 futex_op, u64 val, u64 val2, u64 uaddr2, u64 val3);

@@ -3,6 +3,7 @@
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <signal/signal.h>
+#include <proc/sleep.h>
 
 bool sig_td_canhandle(thread_t *td, int signo) {
 	assert(td != NULL);
@@ -22,6 +23,13 @@ void sig_send_td(thread_t *td, int signo) {
 	sigevent_t *se = sigevent_alloc(signo);
 	sigeventq_insert(td, se);
 	mtx_unlock(&td->td_lock);
+
+	if (signo == SIGKILL) {
+		mtx_lock(&td->td_lock);
+		td->td_killed = 1;
+		mtx_unlock(&td->td_lock);
+		wakeup_td(td);
+	}
 }
 
 void sig_send_proc(proc_t *p, int signo) {

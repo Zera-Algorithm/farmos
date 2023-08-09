@@ -104,7 +104,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	}
 
 	if (flags & O_TRUNC) {
-		fshrink(fileDirent, 0);
+		file_shrink(fileDirent, 0);
 	}
 
 	fds[kernFd].dirent = fileDirent;
