@@ -1,5 +1,6 @@
 #ifndef _FEATURE_H
 #define _FEATURE_H
+
 /**
  * 本文件定义不同的架构下的特性
  */
@@ -20,4 +21,5 @@
 #define MMU_AD_ENABLE
 #define FEATURE_TIMER_FREQ 1000000ul
 #endif
+
 #endif
