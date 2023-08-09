@@ -43,12 +43,20 @@ volatile static int hart_first = 1;
 // 用于阻塞其他核，直到第一个核完成初始化
 volatile static int kern_inited = 0;
 
+/**
+ * @brief 注意：
+ * 对hart_started[]数组和kern_inited的访问（尤其是写入）绝对不能重排序
+ * 最好的方式是加锁，其次是在访问的前后都加fence指令，保证该条指令不会提前或者延后
+ */
+
 static inline void hart_set_started() {
+	__sync_synchronize();
 	hart_started[cpu_this_id()] = 1;
 	__sync_synchronize();
 }
 
 static inline void hart_set_clear() {
+	__sync_synchronize();
 	for (int i = 0; i < NCPU; i++) {
 		hart_started[i] = 0;
 	}
@@ -62,6 +70,7 @@ static inline void hart_start_all() {
 			SBI_HART_START(i, 0x80200000, 0);
 			unsigned long mask = (1 << i);
 			SBI_SEND_IPI(&mask, 0);
+			printf("Hart %d try to start hart %d\n", cpu_this_id(), i);
 		}
 	}
 #endif
@@ -94,6 +103,7 @@ static inline void wait_for_kern_init() {
 }
 
 static inline void kern_init_done() {
+	__sync_synchronize();
 	kern_inited = 1;
 	__sync_synchronize();
 }
@@ -192,10 +202,11 @@ void main() {
 
 		// 启动其它核心
 		hart_set_clear();
+		hart_set_started();
 		hart_start_all(); // 单核时，这里会直接跳过
 
-		// 启动完所有核心后，才能标记主核已成功启动
-		hart_set_started();
+		// 避免重排序，hart_start_all一定要在init_done之前
+		__sync_synchronize();
 
 		// 解除对其它核心的阻塞，等待其它核心完成初始化
 		kern_init_done();
