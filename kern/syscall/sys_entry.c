@@ -89,6 +89,7 @@ static syscall_function_t sys_table[] = {
 	[SYS_getitimer] = {sys_getitimer, "getitimer"},
     [SYS_prlimit64] = {sys_prlimit64, "prlimit64"},
     [SYS_kill] = {sys_kill, "kill"},
+	[SYS_rt_sigsuspend] = {sys_sigsuspend, "sigsuspend"},
     [SYS_futex] = {sys_futex, "futex"},
     [SYS_statfs] = {sys_statfs, "statfs"},
     [SYS_rt_sigtimedwait] = {sys_sigtimedwait, "sigtimedwait"},
@@ -148,7 +149,7 @@ void syscall_entry(trapframe_t *tf) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
         if (sysno != SYS_exit_group) {
-		    // printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
+		    printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
         }
         return;
 		// sys_exit(SYSCALL_ERROR);

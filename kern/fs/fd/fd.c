@@ -156,12 +156,6 @@ void freeFd(uint i) {
 		// Note 如果是file,不需要回收Dirent
 		// Note 如果是pipe对应的fd关闭，则需要回收struct pipe对应的内存
 
-		mtx_lock(&mtx_fd);
-		int index = i >> 5;
-		int inner = i & 31;
-		fdBitMap[index] &= ~(1 << inner);
-		mtx_unlock(&mtx_fd);
-
 		// 关闭fd对应的设备
 		if (fd->fd_dev != NULL) { // 可能是新创建的kernFd，因为找不到文件而失败，被迫释放
 			fd->fd_dev->dev_close(fd);
@@ -176,7 +170,13 @@ void freeFd(uint i) {
 		fds[i].flags = 0;
 
 		mtx_unlock_sleep(&fd->lock); // 此时fd已不可能被查询到，故可以安心放锁
-		memset(&fds[i].stat, 0, sizeof(struct kstat));
+		memset(&fds[i], 0, sizeof(Fd));
+
+		mtx_lock(&mtx_fd);
+		int index = i >> 5;
+		int inner = i & 31;
+		fdBitMap[index] &= ~(1 << inner);
+		mtx_unlock(&mtx_fd);
 	} else {
 		mtx_unlock_sleep(&fd->lock);
 	}

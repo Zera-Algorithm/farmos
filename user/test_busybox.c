@@ -32,7 +32,7 @@ int main() {
 	    (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
 
 		// unixbench测试
-		(char *const[]) {"/busybox", "ash", "unixbench_testcode_part.sh", NULL},
+		(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},
 
 		// iperf
 		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},

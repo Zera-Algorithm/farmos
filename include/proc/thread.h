@@ -11,7 +11,7 @@
 
 typedef struct proc proc_t;
 
-// #define SLEEP_DEBUG
+#define SLEEP_DEBUG
 
 typedef struct thread {
 	mutex_t td_lock; // 线程锁（已被全局初始化）
