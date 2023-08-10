@@ -1,5 +1,6 @@
 #include <lib/log.h>
 #include <lib/transfer.h>
+#include <proc/sched.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
 #include <signal/signal.h>
@@ -145,6 +146,36 @@ int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout) {
 
 	return info.si_signo;
 }
+
+int sys_sigsuspend(u64 usigset) {
+	thread_t *td = cpu_this()->cpu_running;
+
+	sigset_t sigset = {0};
+	if (usigset) {
+		copy_in(td->td_proc->p_pt, usigset, &sigset, sizeof(sigset_t));
+	}
+
+	mtx_lock(&td->td_lock);
+	// 临时替换掉 td_sigmask
+	sigset_t oldmask = td->td_sigmask;
+	td->td_sigmask = sigset;
+	// 阻塞直到有信号到来
+	sigevent_t *se = NULL;
+	while ((se = sig_getse(td)) == NULL) {
+		mtx_unlock(&td->td_lock);
+		yield();
+		mtx_lock(&td->td_lock);
+	}
+	// 有信号到来，恢复原来的 td_sigmask，在返回时处理
+	// 到来的信号应该不被原来的 td_sigmask 阻塞
+	assert(!sigset_isset(&td->td_sigmask, se->se_signo));
+	td->td_sigmask = oldmask;
+
+	mtx_unlock(&td->td_lock);
+	return 0;
+}
+
+
 
 // int setitimer(int which, const struct itimerval *new_value);
 // 目前不关心which的数值，统一以ITIMER_REAL处理
