@@ -12,10 +12,9 @@
  * @brief 通知所有核心刷新TLB
  * @return 此函数只能成功不能失败
  */
-void tlbFlush() {
+void tlbFlush(u64 va) {
 	// 调用SBI，命令所有核都执行tlb刷新命令
-	// todo 带参数优化
-	struct sbiret ret = SBI_RFENCE_SFENCE_VMA((1 << NCPU) - 1, 0, 0, MAXLONG);
+	struct sbiret ret = SBI_RFENCE_SFENCE_VMA((1 << NCPU) - 1, 0, va, PAGE_SIZE);
 	if (ret.error) {
 		panic("tlbFlush: SBI_RFENCE_SFENCE_VMA failed: %d, value = %d\n", ret.error, ret.value);
 	}
