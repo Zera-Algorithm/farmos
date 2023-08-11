@@ -2,6 +2,7 @@
 #include <lib/printf.h>
 #include <lib/log.h>
 #include <mm/mmu.h>
+#include <mm/memlayout.h>
 #include <param.h>
 #include <riscv.h>
 
