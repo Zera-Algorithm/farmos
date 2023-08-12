@@ -1,8 +1,50 @@
-#include "types.h"
+#include <types.h>
+#include <builtin.h>
 
 int strlen(const char *s);
 
 void *memset(void *dst, int c, uint n) {
+	u8 ch = c;
+	int i;
+	u64 data;
+	u64 *p;
+
+	if (likely(c == 0)) {
+		data = 0;
+	} else {
+		data = ((u64)ch << 56) | ((u64)ch << 48) | ((u64)ch << 40) | ((u64)ch << 32)
+				| ((u64)ch << 24) | ((u64)ch << 16) | ((u64)ch << 8) | (u64)ch;
+	}
+
+	char *cdst = (char *)dst;
+
+	// 开始的部分不是8对齐的
+	if (unlikely(((u64)cdst) % 8 != 0)) {
+		int sum = 8 - (((u64)cdst) & (8-1));
+		for (i = 0; i < sum; i++) {
+			cdst[i] = ch;
+		}
+		cdst = (char *)ROUNDUP((u64)cdst, 8);
+		n -= sum;
+	}
+	p = (u64 *)cdst;
+
+	// 以8字节为单位拷贝
+	for (i = 0; i <= n - 8; i += 8) {
+		*p++ = data;
+	}
+
+	// 剩下的部分不是8对齐的
+	if (unlikely(i != n)) {
+		for (; i < n; i++) {
+			cdst[i] = ch;
+		}
+	}
+
+	return dst;
+}
+
+void *slow_memset(void *dst, int c, uint n) {
 	char *cdst = (char *)dst;
 	int i;
 	for (i = 0; i < n; i++) {

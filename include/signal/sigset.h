@@ -5,7 +5,7 @@
 #include <types.h>
 
 // 信号处理状态
-#define SIGNAL_MAX 128
+#define SIGNAL_MAX NPROCSIGNALS
 
 typedef struct sigset {
 	u8 ss_byte[(SIGNAL_MAX + 7) / 8];

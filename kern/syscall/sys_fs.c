@@ -5,6 +5,7 @@
 #include <fs/pipe.h>
 #include <fs/thread_fs.h>
 #include <fs/vfs.h>
+#include <fs/buf.h>
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
@@ -79,14 +80,13 @@ int sys_chdir(u64 path) {
 		// 绝对路径
 		strncpy(new_cwd, kbuf, MAX_NAME_LEN);
 		assert(strlen(new_cwd) + 3 < MAX_NAME_LEN);
-		strcat(new_cwd, "/"); // 保证cwd是一个目录
 	} else {
 		// 相对路径
 		// 保证操作之前cwd以"/"结尾
 		strncpy(new_cwd, thread_fs->cwd, MAX_NAME_LEN);
+		strcat(new_cwd, "/");
 		assert(strlen(new_cwd) + strlen(kbuf) + 3 < MAX_NAME_LEN);
 		strcat(new_cwd, kbuf);
-		strcat(new_cwd, "/");
 	}
 
 	// 检查new_cwd是否指向有效的目录
@@ -575,7 +575,33 @@ int sys_ftruncate(int fd, off_t length) {
 	return 0;
 }
 
+int sys_readlinkat(int dirfd, u64 pathname, u64 buf, size_t bufsiz) {
+	Dirent *dir, *file;
+	char path[MAX_NAME_LEN];
+	int ret;
+
+	unwrap(getDirentByFd(dirfd, &dir, NULL));
+	copyInStr(pathname, path, MAX_NAME_LEN);
+	unwrap(getFile(dir, path, &file));
+
+	log(999, "readlinkat: %s\n", path);
+
+	// 不是链接文件
+	if (!IS_LINK(&file->raw_dirent)) {
+		file_close(file);
+		warn("readlinkat: %s is not a link\n", path);
+		return -EINVAL;
+	}
+
+	size_t len = MIN(file->file_size, bufsiz - 1);
+	ret = file_read(file, 1, buf, 0, len);
+	((char *)buf)[len] = '\0';
+	file_close(file);
+	return ret;
+}
+
 void sys_sync() {
+	bufSync();
 }
 
 int sys_syncfs(int fd) {

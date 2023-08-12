@@ -15,11 +15,17 @@ OBJDUMP = $(TOOLPREFIX)objdump
 
 # 系统编译时参数
 ifndef NCPU
-NCPU := 2
+NCPU := 5
 endif
 
+# 配置默认MACHINE(virt/sifive_u)
 ifndef MACHINE
 MACHINE := virt
+endif
+
+# 配置默认模式(qemu/board)
+ifndef MODE
+MODE := qemu
 endif
 
 # 编译 C 语言时的参数
@@ -30,13 +36,18 @@ CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I.
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS += -DNCPU=$(NCPU)
-CFLAGS += -DQEMU
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie
 endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
+
+ifneq ($(MODE), board)
+CFLAGS += -DQEMU
+endif
+
+# 机器类型：
 ifeq ($(MACHINE), sifive_u)
 CFLAGS += -DSIFIVE
 else
@@ -51,6 +62,7 @@ RELEASE_CFLAGS   := $(CFLAGS) -O3
 RELEASE_LDFLAGS  := $(LDFLAGS) -O --gc-sections
 DEBUG_CFLAGS     := $(CFLAGS) -O0 -g -ggdb
 
+# 优化模式：
 # 设为release模式，会使用O2优化
 # 设为debug模式，开O1
 ifeq ($(FARMOS_PROFILE),debug)

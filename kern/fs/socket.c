@@ -127,6 +127,7 @@ int socket(int domain, int type, int protocol) {
 	int sfd = fdAlloc();
 	if (sfd < 0) {
 		warn("All fd in kernel is used, please check\n");
+		mtx_unlock(&socket->lock);
 		socketFree(socketNum);
 		return -1;
 	}
@@ -474,7 +475,6 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		return -EPIPE;
 	}
 
-	// mtx_lock(&targetSocket->lock);
 	copyIn(buf, write_buf, MIN(n, PAGE_SIZE));
 	while (i < n) {
 		mtx_lock(
@@ -605,6 +605,7 @@ static Message * message_alloc() {
 	mtx_lock(&mtx_messages);
 	if (TAILQ_EMPTY(&message_free_list)) {
 		warn("no free message struct\n");
+		mtx_unlock(&mtx_messages);
 		return NULL;
 	}
 	message = TAILQ_FIRST(&message_free_list);
@@ -918,14 +919,18 @@ int socket_write_check(struct Fd* fd) {
 
 		// TCP
 		Socket *targetSocket = remote_find_peer_socket(socket);
+
 		// 对方已关闭
 		if (targetSocket == NULL) {
 			ret = 1;
 			goto out;
 		}
+
 		mtx_lock(&socket->state.state_lock);
 		if (socket->state.is_close) {
 			ret = 1;
+			mtx_unlock(&socket->state.state_lock);
+			mtx_unlock(&targetSocket->lock);
 			goto out;
 		}
 		mtx_unlock(&socket->state.state_lock);

@@ -43,7 +43,7 @@ void mtx_set(mutex_t *m, const char *td_name, bool debug) {
  * @brief 判断当前线程是否持有互斥量
  */
 bool mtx_hold(mutex_t *m) {
-	lo_critical_enter();
+	lo_critical_enter(m);
 	bool ret;
 	if (m->mtx_type & MTX_SPIN) {
 		ret = lo_acquired(&m->mtx_lock_object);
@@ -52,7 +52,7 @@ bool mtx_hold(mutex_t *m) {
 	} else {
 		error("mtx_hold: invalid mtx_type %d\n", m->mtx_type);
 	}
-	lo_critical_leave();
+	lo_critical_leave(m);
 	return ret;
 }
 
@@ -60,7 +60,7 @@ bool mtx_hold(mutex_t *m) {
 static void __mtx_lo_lock(mutex_t *m, bool need_critical) {
 	// 进入或重入临界区，中断关闭
 	if (need_critical) {
-		lo_critical_enter();
+		lo_critical_enter(m);
 	}
 	if (lo_acquired(&m->mtx_lock_object)) {
 		asm volatile("ebreak");
@@ -72,7 +72,7 @@ static void __mtx_lo_lock(mutex_t *m, bool need_critical) {
 static bool __mtx_lo_try_lock(mutex_t *m, bool need_critical) {
 	// 进入或重入临界区，中断关闭
 	if (need_critical) {
-		lo_critical_enter();
+		lo_critical_enter(m);
 	}
 	assert(!lo_acquired(&m->mtx_lock_object));
 	if (lo_try_acquire(&m->mtx_lock_object)) {
@@ -82,7 +82,7 @@ static bool __mtx_lo_try_lock(mutex_t *m, bool need_critical) {
 	} else {
 		// 获取锁失败，离开临界区
 		if (need_critical) {
-			lo_critical_leave();
+			lo_critical_leave(m);
 		}
 		return false;
 	}
@@ -95,19 +95,17 @@ static void __mtx_lo_unlock(mutex_t *m, bool need_critical) {
 	assert(lo_acquired(&m->mtx_lock_object));
 	lo_release(&m->mtx_lock_object);
 	if (need_critical) {
-		lo_critical_leave();
+		lo_critical_leave(m);
 	}
 }
 
 // 自旋互斥量接口（不检查自旋锁类型，因为睡眠锁基于自旋锁）
 void mtx_lock(mutex_t *m) {
-	if ((u64)m < 0x1000) {
-		panic("");
-	}
+	assert ((u64)m >= 0x80000000);
 
 	if (m->mtx_type & MTX_SPIN) {
 		// 自旋互斥量，判断是否重入
-		lo_critical_enter();
+		lo_critical_enter(m);
 		if (lo_acquired(&m->mtx_lock_object)) {
 			if (m->mtx_type & MTX_RECURSE) {
 				// 重入，增加重入深度
@@ -115,10 +113,10 @@ void mtx_lock(mutex_t *m) {
 				mtx_spin_debug("lock[%s] re-entered! (depth:%d)\n",
 					       m->mtx_lock_object.lo_name, m->mtx_depth);
 				// 离开临界区（自旋互斥量重入不用再套一层临界区）
-				lo_critical_leave();
+				lo_critical_leave(m);
 			} else {
 				// 不能重入，离开临界区
-				lo_critical_leave();
+				lo_critical_leave(m);
 				error("mtx_lock: mtx %s(%d) is not re-entrant\n",
 				      m->mtx_lock_object.lo_name, m->mtx_type);
 			}

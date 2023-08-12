@@ -100,8 +100,8 @@ void siginfo_return(thread_t *td, sigevent_t *se);
 void sig_timedwait(thread_t *td, sigset_t *set, siginfo_t *info, u64 timeout);
 
 // 三种信号函数的类型
-#define SIG_DFL ((void (*)(int))0) /* default signal handling */
-#define SIG_IGN ((void (*)(int))1) /* ignore signal */
-#define SIG_ERR ((void (*)(int))-1)    /* error return from signal */
+#define SIG_DFL	((void (*)(int))0)	/* default signal handling */
+#define SIG_IGN	((void (*)(int))1)	/* ignore signal */
+#define SIG_ERR	((void (*)(int))-1)	/* error return from signal */
 
 #endif // _SIGNAL_H

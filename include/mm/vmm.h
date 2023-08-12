@@ -3,6 +3,7 @@
 
 #include <mm/memlayout.h>
 #include <types.h>
+#include <param.h>
 
 // 页表项硬件标志
 #define PTE_V (1 << 0) // 有效位（Valid）
@@ -14,7 +15,7 @@
 #define PTE_A (1 << 6) // 访问位（Accessed）
 #define PTE_D (1 << 7) // 脏位（Dirty）
 
-#ifdef SIFIVE
+#ifdef MMU_AD_ENABLE
 #define PTE_MACHINE (PTE_A | PTE_D)
 #else // Sifive
 #define PTE_MACHINE 0

@@ -11,6 +11,7 @@
 #include <mm/vmm.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
+#include <proc/proc.h>
 #include <sys/errno.h>
 #include <fs/cluster.h>
 #include <fs/filepnt.h>
@@ -123,7 +124,7 @@ static int rmfile(struct Dirent *file) {
 		// 检查是否都是当前进程(TODO: 目前为线程)持有此文件，如果是，可以直接删除
 		int hold_by_cur = 1;
 		for (int i = 0; i < file->holder_cnt; i++) {
-			if (file->holders[i].td_index != get_td_index(cpu_this()->cpu_running)) {
+			if (file->holders[i].proc_index != get_proc_index(cpu_this()->cpu_running->td_proc)) {
 				hold_by_cur = 0;
 				break;
 			}
@@ -134,7 +135,7 @@ static int rmfile(struct Dirent *file) {
 
 #ifdef REFCNT_DEBUG
 			for (int i = 0; i < file->holder_cnt; i++) {
-				warn("holder: %d, cnt = %d\n", file->holders[i].td_index, file->holders[i].cnt);
+				warn("holder: %d, cnt = %d\n", file->holders[i].proc_index, file->holders[i].cnt);
 			}
 #endif
 
@@ -144,7 +145,8 @@ static int rmfile(struct Dirent *file) {
 			warn("file %s is hold by current process(refcnt = %d), can't remove, will remove on close, "
 			     "continue!\n",
 			     file->name, file->refcnt);
-			dput(file);
+			// 因为在rm之前也获取过一次文件的引用
+			file_close(file);
 			file->is_rm = 1;
 			return 0;
 			/**
@@ -156,7 +158,8 @@ static int rmfile(struct Dirent *file) {
 		}
 	}
 
-	dput(file);
+	// 因为在rm之前也获取过一次文件的引用，所以需要放掉再做下一步操作
+	file_close(file);
 	return rm_unused_file(file);
 }
 
@@ -206,7 +209,7 @@ static int mvfile(Dirent *oldfile, Dirent *newDir, char *newPath) {
 
 #ifdef REFCNT_DEBUG
 		for (int i = 0; i < oldfile->holder_cnt; i++) {
-			warn("holder: %d, cnt: %d\n", oldfile->holders[i].td_index, oldfile->holders[i].cnt);
+			warn("holder: %d, cnt: %d\n", oldfile->holders[i].proc_index, oldfile->holders[i].cnt);
 		}
 #endif
 		return -EBUSY; // in use

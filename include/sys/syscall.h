@@ -48,6 +48,7 @@ u64 sys_clock_gettime(u64 clockid, u64 tp);
 u64 sys_geteuid();
 u64 sys_getegid();
 u64 sys_getgid();
+u64 sys_getpgid();
 u64 sys_setpgid(u64 pid, u64 pgid);
 int sys_getrusage(int who, struct rusage *p_usage);
 int sys_syslog(int priority, const char *format, ...);
@@ -92,6 +93,8 @@ void sys_sync();
 int sys_syncfs(int fd);
 int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
 int sys_socketpair(int domain, int type, int protocol, int *fds);
+int sys_readlinkat(int dirfd, u64 pathname, u64 buf, size_t bufsiz);
+
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);
 int sys_sigreturn();
@@ -101,6 +104,7 @@ int sys_kill(int pid, int sig);
 int sys_sigtimedwait(u64 usigset, u64 uinfo, u64 utimeout);
 int sys_setitimer(int which, u64 new_value, u64 old_value);
 int sys_getitimer(int which, u64 curr_value);
+int sys_sigsuspend(u64 usigset);
 
 // MMAP(sys_mmap)
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off);

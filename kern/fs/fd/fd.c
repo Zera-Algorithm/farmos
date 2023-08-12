@@ -157,7 +157,6 @@ void freeFd(uint i) {
 		// Note 如果是file,不需要回收Dirent
 		// Note 如果是pipe对应的fd关闭，则需要回收struct pipe对应的内存
 
-
 		// 关闭fd对应的设备
 		if (fd->fd_dev != NULL) { // 可能是新创建的kernFd，因为找不到文件而失败，被迫释放
 			fd->fd_dev->dev_close(fd);

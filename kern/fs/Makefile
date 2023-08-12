@@ -1,7 +1,7 @@
 INCLUDES := -I../../include
 
 # modules := $(shell ls -d */)
-modules := fat32 fd proc static_files
+modules := fat32 fd proc static_files devfs
 
 .PHONY: build clean $(modules)
 

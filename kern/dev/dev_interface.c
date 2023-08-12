@@ -6,20 +6,28 @@
 #include <fs/buf.h>
 #include <lib/printf.h>
 #include <lib/log.h>
+#include <param.h>
 
 void dev_test() {
-#ifdef SIFIVE
+#ifdef FEATURE_DISK_SD
 	sdTest();
 #endif
 }
 
 void cons_init() {
+	SBI_PUTCHAR('s');
+	SBI_PUTCHAR('b');
+	SBI_PUTCHAR('i');
+	SBI_PUTCHAR(' ');
+	SBI_PUTCHAR('o');
+	SBI_PUTCHAR('k');
+	SBI_PUTCHAR('\n');
 	printInit();
 	uart_init();
 }
 
 void dev_init() {
-#ifdef SIFIVE
+#ifdef FEATURE_DISK_SD
 	sdInit();
 #else
 	virtio_disk_init();
@@ -32,12 +40,15 @@ void cons_putc(int c) {
 }
 
 int cons_getc() {
-	// return SBI_GETCHAR();
+#ifdef VIRT
+	return SBI_GETCHAR();
+#else
 	return uart_getchar();
+#endif
 }
 
 void disk_rw(Buffer *buf, int write) {
-#ifdef SIFIVE
+#ifdef FEATURE_DISK_SD
 	sd_rw(buf, write);
 #else
 	virtio_disk_rw(buf, write);
@@ -45,7 +56,7 @@ void disk_rw(Buffer *buf, int write) {
 }
 
 void disk_intr() {
-#ifdef SIFIVE
+#ifdef FEATURE_DISK_SD
     panic("sd card not support disk_intr");
 #else
 	virtio_disk_intr();

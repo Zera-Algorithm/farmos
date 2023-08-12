@@ -8,6 +8,7 @@
 #include <lock/mutex.h>
 #include <lib/error.h>
 #include <dev/uart.h>
+#include <lib/printf.h>
 
 
 static inline u32 __raw_readl(const volatile void *addr)
@@ -53,6 +54,7 @@ void uart_putchar(char ch)
 	while (readl(uartRegTXFIFO) & UART_TXFIFO_FULL);
     writel(ch, uartRegTXFIFO);
 }
+
 
 void uart_test() {
 	uart_putchar('\n');

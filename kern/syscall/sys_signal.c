@@ -4,6 +4,7 @@
 #include <proc/thread.h>
 #include <signal/signal.h>
 #include <sys/errno.h>
+#include <proc/sched.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <signal/itimer.h>
@@ -33,6 +34,7 @@ int sys_sigreturn() {
 #define SIG_SETMASK 2
 
 int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize) {
+	asm volatile("nop");
 	if (sigsetsize >= sizeof(sigset_t)) {
 		return -1;
 	}
@@ -66,6 +68,38 @@ int sys_sigprocmask(int how, u64 set, u64 oldset, size_t sigsetsize) {
 	mtx_unlock(&td->td_lock);
 	return 0;
 }
+
+int sys_sigsuspend(u64 usigset) {
+	thread_t *td = cpu_this()->cpu_running;
+
+	sigset_t sigset = {0};
+	if (usigset) {
+		copy_in(td->td_proc->p_pt, usigset, &sigset, sizeof(sigset_t));
+	}
+
+	mtx_lock(&td->td_lock);
+	// 临时替换掉 td_sigmask
+	// sigset_t oldmask = td->td_sigmask;
+	td->td_sigmask = sigset;
+	// 阻塞直到有信号到来
+	sigevent_t *se = NULL;
+	while ((se = sig_getse(td)) == NULL) {
+		mtx_unlock(&td->td_lock);
+		yield();
+		mtx_lock(&td->td_lock);
+	}
+	// 有信号到来，恢复原来的 td_sigmask，在返回时处理
+	// 到来的信号应该不被原来的 td_sigmask 阻塞
+	// assert(!sigset_isset(&td->td_sigmask, se->se_signo));
+
+	// td->td_sigmask = oldmask;
+	// todo：应该先执行信号处理程序，再恢复oldmask。因为旧的oldmask可能会屏蔽等待的信号，导致其得不到处理
+	assert(sig_td_canhandle(td, se->se_signo));
+
+	mtx_unlock(&td->td_lock);
+	return 0;
+}
+
 
 int sys_tkill(int tid, int sig) {
 	if (sig < 0 || sig >= SIGNAL_MAX) {

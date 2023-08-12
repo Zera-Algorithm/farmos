@@ -33,7 +33,8 @@ int main() {
 	    // (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
 	    // (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
 
-		// iozone
+		// libc-bench测试
+		(char *const[]){"/libc-bench", NULL},
 
 		// lua测试：pass
 	    //(char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
@@ -82,6 +83,8 @@ int main() {
 			}
 		}
 	}
+	printf("!TEST FINISH!\n");
+	sync();
 	reboot();
 	return 0;
 }

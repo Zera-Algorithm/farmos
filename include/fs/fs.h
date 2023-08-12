@@ -8,7 +8,7 @@
 #include <types.h>
 
 #define MAX_NAME_LEN 64
-#define DIRENT_HOLDER_CNT 128
+#define DIRENT_HOLDER_CNT 256
 
 typedef struct FileSystem FileSystem;
 typedef struct Dirent Dirent;
@@ -50,8 +50,11 @@ typedef struct DirentPointer {
 struct file_time;
 
 struct holder_info {
-	u16 td_index;
+	u16 proc_index;
 	u16 cnt;
+	#ifdef REFCNT_DEBUG
+	char *proc_name;
+	#endif
 };
 
 // FarmOS Dirent

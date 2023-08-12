@@ -8,6 +8,8 @@
 #include <sys/syscall_ids.h>
 #include <types.h>
 #include <lib/terminal.h>
+#include <lib/profiling.h>
+#include <lib/string.h>
 
 typedef struct syscall_function {
 	void *func;
@@ -89,6 +91,7 @@ static syscall_function_t sys_table[] = {
 	[SYS_getitimer] = {sys_getitimer, "getitimer"},
     [SYS_prlimit64] = {sys_prlimit64, "prlimit64"},
     [SYS_kill] = {sys_kill, "kill"},
+	[SYS_rt_sigsuspend] = {sys_sigsuspend, "sigsuspend"},
     [SYS_futex] = {sys_futex, "futex"},
     [SYS_statfs] = {sys_statfs, "statfs"},
     [SYS_rt_sigtimedwait] = {sys_sigtimedwait, "sigtimedwait"},
@@ -97,6 +100,7 @@ static syscall_function_t sys_table[] = {
 	[SYS_pselect6] = {sys_pselect6, "pselect6"},
     [SYS_geteuid] = {sys_geteuid, "geteuid"},
     [SYS_getegid] = {sys_getegid, "getegid"},
+	[SYS_getpgid] = {sys_getpgid, "getpgid"},
     [SYS_getgid] = {sys_getgid, "getgid"},
     [SYS_setpgid] = {sys_setpgid, "setpgid"},
     [SYS_sched_getaffinity] = {sys_sched_getaffinity, "sched_getaffinity"},
@@ -115,6 +119,7 @@ static syscall_function_t sys_table[] = {
     [SYS_clock_nanosleep] = {sys_clock_nanosleep, "clock_nanosleep"},
     [SYS_socketpair] = {sys_socketpair, "socketpair"},
     [SYS_shutdown] = {sys_shutdown, "shutdown"},
+	[SYS_readlinkat] = {sys_readlinkat, "readlinkat"},
 };
 
 /**
@@ -148,19 +153,25 @@ void syscall_entry(trapframe_t *tf) {
 	if (func == NULL) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
-        if (sysno != SYS_exit_group) {
+        if (sysno != SYS_exit_group && sysno != SYS_umask) {
 		    printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
         }
         return;
 		// sys_exit(SYSCALL_ERROR);
 	}
 
+	char syscall_name[64] = "sys_";
+	strcat(syscall_name, sys_names[sysno]);
+
+	PROFILING_START
 	// 将系统调用返回值放入a0寄存器
 	tf->a0 = func(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4, tf->a5);
+	PROFILING_END_WITH_NAME(syscall_name)
+
 	if ((i64)tf->a0 < 0) {
 		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
     if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
-    	log(0, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
+    	log(LEVEL_GLOBAL, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
 
 }

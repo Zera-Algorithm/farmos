@@ -95,7 +95,7 @@ void _error(const char *file, int line, const char *func, const char *fmt, ...) 
 
 	mtx_lock(&pr_lock);
 	// 输出日志头
-	printfNoLock("%s %2d %12s:%-4d %12s()" SGR_RESET ": ",
+	printfNoLock("%s %2d %12s:%-4d %12s()  !TEST FINISH! " SGR_RESET ": ",
 		     FARM_ERROR "[ERROR]" SGR_RESET SGR_RED, cpu_this_id(), file, line, func);
 	// 输出实际内容
 	vprintfmt(output, NULL, fmt, ap);

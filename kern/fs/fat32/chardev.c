@@ -108,7 +108,9 @@ void create_chardev_file(char *path, char *str, chardev_read_fn_t read, chardev_
 	extern FileSystem *fatFs;
 
 	Dirent *file;
-	panic_on(createFile(fatFs->root, path, &file));
+	if (getFile(fatFs->root, path, &file) < 0) {
+		createFile(fatFs->root, path, &file);
+	}
 	if (file == NULL) {
 		return;
 	}

@@ -101,7 +101,7 @@ int pipe(int fd[2]) {
  * @param offset 无用参数
  */
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
-		mtx_unlock_sleep(&fd->lock);
+	mtx_unlock_sleep(&fd->lock);
 
 	int i;
 	char ch;
@@ -124,14 +124,21 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 		sleep(&p->pipeReadPos, &p->lock, "wait for pipe writer to write");
 	}
-
+	char read_buf[PAGE_SIZE];
+	assert(PAGE_SIZE > PIPE_BUF_SIZE);
 	for (i = 0; i < n; i++) {
 		if (p->pipeReadPos == p->pipeWritePos) {
 			break;
 		}
 		ch = p->pipeBuf[p->pipeReadPos % PIPE_BUF_SIZE];
-		copyOut((buf + i), &ch, 1);
+		read_buf[i] = ch;
 		p->pipeReadPos++;
+	}
+
+	if (i != 0) {
+		copyOut(buf, read_buf, i);
+	} else {
+		warn("read fd %d empty: maybe target pipe closed.\n", fd - fds);
 	}
 
 	fd->offset += i;
@@ -139,10 +146,7 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	// 唤醒可能在等待的写者
 	wakeup(&p->pipeWritePos);
 	mtx_unlock(&p->lock);
-	if (i == 0) {
-		warn("read fd %d empty: maybe target pipe closed.\n", fd - fds);
-	}
-		mtx_lock_sleep(&fd->lock);
+	mtx_lock_sleep(&fd->lock);
 	return i;
 }
 
@@ -156,6 +160,7 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	thread_t *td = cpu_this()->cpu_running;
 	mtx_lock(&p->lock);
 	warn("Thread %s: fd_pipe_write pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
+	char write_buf[PAGE_SIZE];
 	while (i < n) {
 		if (pipeIsClose(p) || td->td_killed) {
 			mtx_unlock(&p->lock);
@@ -171,7 +176,10 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			// 唤醒之后进入下一个while轮次，继续判断管道是否关闭和进程是否结束
 			// 我们采取的唤醒策略是：尽可能地接受唤醒信号，但唤醒信号不一定对本睡眠进程有效，唤醒后还需要做额外检查，若不满足条件(管道非空)应当继续睡眠
 		} else {
-			copyIn((buf + i), &ch, 1);
+			if (i % PAGE_SIZE == 0) {
+				copyIn(buf + i, write_buf, MIN(PAGE_SIZE, n - i));
+			}
+			ch = write_buf[i % PAGE_SIZE];
 			p->pipeBuf[p->pipeWritePos % PIPE_BUF_SIZE] = ch;
 			p->pipeWritePos++;
 			i++;
@@ -196,12 +204,14 @@ static int fd_pipe_close(struct Fd *fd) {
 	wakeup(&p->pipeReadPos);
 	wakeup(&p->pipeWritePos);
 	if (p && p->count == 0) {
-		// 这里每个pipe占据一个页的空间？
+		mtx_unlock(&p->lock);
+		// 这里每个pipe占据一个页的空间
 		kvmFree((u64)p); // 释放pipe结构体所在的物理内存
+		return 0;
+	} else {
+		mtx_unlock(&p->lock);
+		return 0;
 	}
-	mtx_unlock(&p->lock);
-
-	return 0;
 }
 
 // TODO: 待实现

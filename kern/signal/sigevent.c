@@ -6,22 +6,22 @@
 #include <proc/thread.h>
 #include <signal/signal.h>
 
-#define NSIG 512
+typedef sigaction_t sigprocactions_t[SIGNAL_MAX];
+sigprocactions_t *sigactions;
 
-sigaction_t sigactions[NPROC][SIGNAL_MAX];
+sigevent_t *sigevents;
 
-sigevent_t sigevents[NSIG];
 sigeventq_t sigevent_freeq;
 mutex_t sigevent_lock;
 
 void sig_init() {
 	// 初始化信号事件
 	mtx_init(&sigevent_lock, "sigevent lock", false, MTX_SPIN | MTX_RECURSE);
-	for (int i = NSIG - 1; i >= 0; i--) {
+	for (int i = NSIGEVENTS - 1; i >= 0; i--) {
 		TAILQ_INSERT_HEAD(&sigevent_freeq, &sigevents[i], se_link);
 	}
 	// 初始化信号动作
-	memset(sigactions, 0, sizeof(sigactions));
+	memset(sigactions, 0, sizeof(sigaction_t) * SIGNAL_MAX * NPROC);
 }
 
 // 信号事件分配

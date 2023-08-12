@@ -63,7 +63,7 @@ typedef struct threadq {
 extern threadq_t thread_runq;
 extern threadq_t thread_freeq;
 extern threadq_t thread_sleepq;
-extern thread_t threads[NPROC];
+extern thread_t* threads;
 
 thread_t *td_alloc();
 
@@ -86,9 +86,5 @@ void stime_end(thread_t *td);
 #define TID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000 + 0x1000) << 16))
 #define TID_TO_INDEX(tid) (tid & 0xffff)
 
-static inline u16 get_td_index(thread_t *td) {
-	extern thread_t threads[NPROC];
-	return (td - threads) + 1;
-}
 
 #endif // _THREAD_H_
