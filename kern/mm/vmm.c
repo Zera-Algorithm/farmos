@@ -34,10 +34,10 @@ static inline void pp_inc_on_valid(pte_t pte) {
 }
 
 static inline void flush_tlb_if_need(pte_t *pd, u64 va) {
-	// 如果修改的是当前的TLB，就刷新TLB
-	if (ptFetch() == pd) {
-		tlbFlush(va);
-	}
+	// // 如果修改的是当前的TLB，就刷新TLB
+	// if (ptFetch() == pd) {
+	tlbFlush(va); // 无条件刷新 va 的 TLB 项
+	// }
 }
 
 // 内部功能接口函数

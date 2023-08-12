@@ -11,7 +11,7 @@ void vmEnable();
 /**
  * @brief 清空 TLB
  */
-void tlbFlush();
+void tlbFlush(u64 va);
 
 /**
  * 获取当前 SATP 寄存器中的页表基址
