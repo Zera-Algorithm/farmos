@@ -95,6 +95,9 @@ inline void lo_release(lock_object_t *lo) {
 }
 
 inline bool lo_acquired(lock_object_t *lo) {
+	if ((u64)lo <= 0x80000000ul) {
+		asm volatile("nop");
+	}
 	assert(intr_get() == 0);
 	return lo->lo_locked && lo->lo_data == cpu_this();
 }

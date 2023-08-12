@@ -935,7 +935,9 @@ int socket_write_check(struct Fd* fd) {
 		if (socket->state.is_close) {
 			ret = 1;
 			mtx_unlock(&socket->state.state_lock);
-			mtx_unlock(&targetSocket->lock);
+			if (targetSocket != NULL) {
+				mtx_unlock(&targetSocket->lock);
+			}
 			goto out;
 		}
 		mtx_unlock(&socket->state.state_lock);
