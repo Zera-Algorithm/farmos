@@ -109,13 +109,13 @@ int sys_syslog(int priority, const char *format, ...) {
 
 int sys_sysinfo(struct sysinfo *info) {
 	extern struct MemInfo memInfo;
-	extern u64 pageleft;
+	extern u64 pm_freemem();
 
 	struct sysinfo si;
 	memset(&si, 0, sizeof(si));
 	si.uptime = time_mono_us() / USEC_PER_SEC;
 	si.totalram = memInfo.size;
-	si.freeram = pageleft * PAGE_SIZE;
+	si.freeram = pm_freemem();
 	si.sharedram = 0;
 	si.bufferram = 0;
 	si.totalswap = 0;

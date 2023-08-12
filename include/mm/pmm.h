@@ -17,6 +17,7 @@ typedef LIST_HEAD(PageList, Page) PageList;
 void pmmInit();
 
 Page *pmAlloc() __attribute__((warn_unused_result));
+Page *pm_push(u64 size) __attribute__((warn_unused_result));
 void pmPageIncRef(Page *pp);
 void pmPageDecRef(Page *pp);
 
