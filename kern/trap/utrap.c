@@ -179,7 +179,7 @@ void utrap_return() {
 
 	// ue3: 将内核线程入口、内核栈地址、内核号存入 TRAPFRAME
 	td->td_trapframe.trap_handler = (u64)utrap_entry;
-	td->td_trapframe.kernel_sp = td->td_kstack + TD_KSTACK_SIZE;
+	td->td_trapframe.kernel_sp = TD_KSTACK(get_td_index(td)) + TD_KSTACK_SIZE;
 	// ue3+: 拷贝 TRAPFRAME 至用户空间
 	trapframe_t *harttf = &td->td_proc->p_trapframe[cpu_this_id()];
 	*harttf = td->td_trapframe;

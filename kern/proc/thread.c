@@ -48,7 +48,7 @@ thread_t *td_alloc() {
 
 	// 初始化线程内核现场
 	td->td_context.ctx_ra = (ptr_t)utrap_firstsched;
-	td->td_context.ctx_sp = td->td_kstack + TD_KSTACK_SIZE;
+	td->td_context.ctx_sp = TD_KSTACK(get_td_index(td)) + TD_KSTACK_SIZE;
 
 	return td;
 }
