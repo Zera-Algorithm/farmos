@@ -64,8 +64,10 @@ int errorConsoleAlloc() {
 	return errorconsole;
 }
 
-// 从控制台读取字符，最多阻塞一次
-static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+/**
+ * @brief 读取console,buf是用户地址，n是字节数
+ */
+int console_read(u64 buf, u64 n) {
 	char ch;
 	int is_blocked = 0;
 	int i;
@@ -81,14 +83,18 @@ static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		}
 		copyOut((buf + i), &ch, 1);
 	}
+	return i;
+}
+
+// 从控制台读取字符，最多阻塞一次
+static int fd_console_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	int i = console_read(buf, n);
 	fd->offset += i;
 	return i;
 }
 
 #define WRITE_MAX_PER_TIME 1024
-
-// 目前支持无限长度的输出
-static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+int console_write(u64 buf, u64 n) {
 	char s[WRITE_MAX_PER_TIME + 1];
 
 	for (int i = 0; i <= n; i += WRITE_MAX_PER_TIME) {
@@ -100,6 +106,12 @@ static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		printf("%s", s);
 	}
 
+	return n;
+}
+
+// 目前支持无限长度的输出
+static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
+	n = console_write(buf, n);
 	fd->offset += n;
 	return n;
 }

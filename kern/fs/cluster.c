@@ -4,6 +4,7 @@
 #include <lib/error.h>
 #include <lib/log.h>
 #include <lib/string.h>
+#include <lib/profiling.h>
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -93,6 +94,7 @@ static u64 clusterFatSecIndex(FileSystem *fs, u64 cluster) {
 }
 
 void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n, bool isUser) {
+	PROFILING_START
 	// 读的偏移不能超出该扇区
 	panic_on(offset + n > fs->superBlock.bytes_per_clus);
 
@@ -118,6 +120,7 @@ void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n,
 		bufRelease(buf);
 		i += len;
 	}
+	PROFILING_END
 }
 
 void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n, bool isUser) {
@@ -208,6 +211,7 @@ static void clusterZero(FileSystem *fs, u64 cluster) {
  * @brief 分配一个扇区，并将其内容清空
  */
 u64 clusterAlloc(FileSystem *fs, u64 prev) {
+	PROFILING_START
 	for (u64 cluster = prev == 0 ? 2 : prev + 1; cluster < fs->superBlock.data_clus_cnt + 2;
 	     cluster++) {
 		if (fatRead(fs, cluster) == 0) {
@@ -217,6 +221,7 @@ u64 clusterAlloc(FileSystem *fs, u64 prev) {
 			fatWrite(fs, cluster, FAT32_EOF);
 			clusterZero(fs, cluster);
 			alloced_clus += 1;
+			PROFILING_END
 			return cluster;
 		}
 	}

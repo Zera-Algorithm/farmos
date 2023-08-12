@@ -13,6 +13,7 @@
 #include <lib/string.h>
 #include <lock/mutex.h>
 #include <sys/errno.h>
+#include <lib/profiling.h>
 
 /**
  * @brief mtx_file是负责维护磁盘file访问互斥性的锁。
@@ -102,6 +103,7 @@ static void file_readlink(Dirent *file, char *buf, int size) {
  *  -ENOTDIR 路径中的某一级不是目录；
  */
 int getFile(Dirent *baseDir, char *path, Dirent **pfile) {
+	PROFILING_START
 	Dirent *file;
 	int ret = get_file_raw(baseDir, path, &file);
 	if (ret < 0) {
@@ -114,9 +116,11 @@ int getFile(Dirent *baseDir, char *path, Dirent **pfile) {
 		file_close(file);
 		log(LEVEL_GLOBAL, "follow link: %s -> %s\n", path, buf);
 		assert(buf[0] == '/');		  // 链接文件的路径必须是绝对路径
+		PROFILING_END
 		return getFile(NULL, buf, pfile); // 递归调用
 	} else {
 		*pfile = file;
+		PROFILING_END
 		return 0;
 	}
 }
@@ -143,6 +147,7 @@ void file_close(Dirent *file) {
  * @return 返回读取文件的字节数
  */
 int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
+	PROFILING_START
 	mtx_lock_sleep(&mtx_file);
 
 	log(LEVEL_MODULE, "read from file %s: off = %d, n = %d\n", file->name, off, n);
@@ -183,6 +188,7 @@ int file_read(struct Dirent *file, int user, u64 dst, uint off, uint n) {
 	}
 
 	mtx_unlock_sleep(&mtx_file);
+	PROFILING_END
 	return n;
 }
 
@@ -354,7 +360,6 @@ static mode_t get_file_mode(struct Dirent *file) {
 	return mode;
 }
 
-#define ROUNDUP(a, x) (((a) + (x)-1) & ~((x)-1))
 /**
  * @brief 获取文件状态信息
  * @param kstat 内核态指针，指向文件信息结构体

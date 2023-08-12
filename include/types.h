@@ -87,4 +87,6 @@ typedef unsigned long uint64;
 		__a >= __b ? __a : __b;                                                            \
 	})
 
+#define ROUNDUP(a, x) (((a) + (x)-1) & ~((x)-1))
+
 #endif

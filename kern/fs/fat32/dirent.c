@@ -7,6 +7,7 @@
 #include <lib/log.h>
 #include <lib/queue.h>
 #include <lib/string.h>
+#include <lib/printf.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
 #include <proc/thread.h>
@@ -81,24 +82,47 @@ static char *skip_slash(char *p) {
  */
 void dget(Dirent *dirent) {
 	int is_filled = 0;
-	for (int i = 0; i < dirent->holder_cnt + 1; i++) {
-		if (dirent->holders[i].td_index == get_td_index(cpu_this()->cpu_running)) {
+	int i;
+	int cur_proc_index = get_proc_index(cpu_this()->cpu_running->td_proc);
+	for (i = 0; i < dirent->holder_cnt + 1; i++) {
+		if (dirent->holders[i].proc_index == cur_proc_index) {
 			dirent->holders[i].cnt += 1;
 			is_filled = 1;
 			break;
-		} else if (dirent->holders[i].td_index == 0) {
-			dirent->holders[i].td_index = get_td_index(cpu_this()->cpu_running);
+		} else if (dirent->holders[i].proc_index == 0) {
+			dirent->holders[i].proc_index = cur_proc_index;
 			dirent->holders[i].cnt = 1;
+
+			#ifdef REFCNT_DEBUG
+			// strncpy(dirent->holders[i].proc_name, cpu_this()->cpu_running->td_name, MAX_NAME_LEN);
+			dirent->holders[i].proc_name = cpu_this()->cpu_running->td_name;
+			#endif
+
 			dirent->holder_cnt += 1;
 			is_filled = 1;
 			break;
 		}
 	}
-	assert(is_filled);
+	if (!is_filled) {
+		for (int i = 0; i < dirent->holder_cnt; i++) {
+			#ifdef REFCNT_DEBUG
+			printf("dget: %s, process: %s, holder: %s, hold_cnts\n", dirent->name,
+				cpu_this()->cpu_running->td_name,
+				dirent->holders[i].proc_name,
+				dirent->holders[i].cnt);
+			#else
+			printf("dget: %s, process: %s, holder: %d, hold_cnts\n", dirent->name,
+				cpu_this()->cpu_running->td_name,
+				dirent->holders[i].proc_index,
+				dirent->holders[i].cnt);
+			#endif
+		}
+		panic("dget: file %s holder_cnt is full!\n", dirent->name);
+	}
 
 #ifdef REFCNT_DEBUG
 	mtx_lock_sleep(&mtx_file);
-	warn("dget: %s, process: %s\n", dirent->name, cpu_this()->cpu_running->td_name);
+	warn("dget: %s, process: %s, cur_hold_cnt: %d\n", dirent->name, cpu_this()->cpu_running->td_name, dirent->holders[i].cnt);
 	mtx_unlock_sleep(&mtx_file);
 #endif
 	dirent->refcnt += 1;
@@ -108,14 +132,17 @@ void dget(Dirent *dirent) {
  * @brief 将dirent的引用数减一
  */
 void dput(Dirent *dirent) {
-	u16 index = get_td_index(cpu_this()->cpu_running);
-	for (int i = 0; i < dirent->holder_cnt; i++) {
-		if (dirent->holders[i].td_index == index) {
+	u16 index = get_proc_index(cpu_this()->cpu_running->td_proc);
+	u16 rmed = 0;
+	int i;
+	for (i = 0; i < dirent->holder_cnt; i++) {
+		if (dirent->holders[i].proc_index == index) {
 			dirent->holders[i].cnt -= 1;
 			if (dirent->holders[i].cnt == 0) {
 				dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
 				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){0, 0};
 				dirent->holder_cnt -= 1;
+				rmed = 1;
 			}
 			break;
 		}
@@ -123,7 +150,7 @@ void dput(Dirent *dirent) {
 
 #ifdef REFCNT_DEBUG
 	mtx_lock_sleep(&mtx_file);
-	warn("dput: %s, process: %s\n", dirent->name, cpu_this()->cpu_running->td_name);
+	warn("dput: %s, process: %s, cur_hold_cnt: %d\n", dirent->name, cpu_this()->cpu_running->td_name, rmed == 1 ? 0 : dirent->holders[i].cnt);
 	mtx_unlock_sleep(&mtx_file);
 #endif
 	dirent->refcnt -= 1;
@@ -143,7 +170,8 @@ static Dirent *get_parent_dirent(Dirent *dirent) {
 		if (fs->mountPoint != NULL) {
 			ans = get_parent_dirent(fs->mountPoint);
 		} else {
-			panic("reach root directory. can\'t reach its parent dir!\n");
+			warn("reach root directory. it\'s parent dirent is self!\n");
+			ans = dirent;
 		}
 	} else {
 		// 包括上一级是根目录的情况，默认只导向到根目录，不导向挂载点
@@ -283,6 +311,8 @@ int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent
 		// 如果不是目录，则直接报错
 		if (!IS_DIRECTORY(&dir->raw_dirent)) {
 			// 中途扫过的一个路径不是目录
+			// 放掉中途所有引用
+			dput_path(dir);
 			return -ENOTDIR;
 		}
 
@@ -304,8 +334,12 @@ int walk_path(FileSystem *fs, char *path, Dirent *baseDir, Dirent **pdir, Dirent
 			dir = get_parent_dirent(dir);
 			file = get_parent_dirent(file);
 
-			dput(old_dir);
-			if (old_dir == old_dir->file_system->root) {
+			if (dir != old_dir) { // 排除dir是根目录的情况（根目录的上一级目录是自己）
+				dput(old_dir);
+			}
+
+			// 挂载的目录
+			if (old_dir == old_dir->file_system->root && old_dir->file_system->mountPoint) {
 				dput(old_dir->file_system->mountPoint);
 			}
 			continue;
@@ -403,7 +437,11 @@ static int createItemAt(struct Dirent *baseDir, char *path, Dirent **file, int i
 		return r;
 	}
 
-	// 3. 分配Dirent
+	// 获取新创建的文件父级目录及之前的引用
+	// todo: 完全的并发环境下这里会产生引用空洞（导致dir可能被删除），需要在walk_path中就保留dir的引用！
+	dget_path(dir);
+
+	// 3. 分配Dirent，并获取新创建文件的引用
 	if ((r = dir_alloc_file(dir, &f, lastElem)) < 0) {
 		mtx_unlock_sleep(&mtx_file);
 		return r;

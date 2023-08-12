@@ -115,6 +115,9 @@ void bufTest(u64 blockno) {
  * @brief 同步buf中所有的页到磁盘，同时把所有buf中的页都标记为非脏页
  */
 void bufSync() {
+	// 可以作为后台任务，由内核线程运行
+	// 为了运行速度暂时关闭
+	/*
 	log(LEVEL_GLOBAL, "begin sync all pages to disk!\n");
 	for (int i = 0; i < BGROUP_NUM; i++) {
 		BufferGroup *b = &bufferGroups[i];
@@ -127,4 +130,5 @@ void bufSync() {
 		}
 	}
 	log(LEVEL_GLOBAL, "sync all pages to disk done!\n");
+	*/
 }
