@@ -21,6 +21,7 @@
 #include <dev/timer.h>
 #include <fs/pipe.h>
 #include <proc/tsleep.h>
+#include <fs/socket.h>
 
 int sys_write(int fd, u64 buf, size_t count) {
 	return write(fd, buf, count);
@@ -40,8 +41,8 @@ int sys_close(int fd) {
 
 // 关闭一个socket fd
 // TODO: 未来可能要根据
-int sys_shutdown(int fd) {
-	// return closeFd(fd);
+int sys_shutdown(int fd, int how) {
+	return shutdown(fd, how);
 }
 
 int sys_dup(int fd) {
