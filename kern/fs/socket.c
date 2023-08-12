@@ -422,6 +422,7 @@ static int fd_socket_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 			      "wait another socket to write");
 		} else {
 			mtx_unlock(&localSocket->state.state_lock);
+			warn("target has closed or target writer is closed.");
 			break;
 		}
 	}
@@ -689,10 +690,10 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flags, SocketAddr *src_ad
 	if (user) {
 		int sfd = cur_proc_fs_struct()->fdList[sockfd];
 
-		if (sfd >= 0 && fds[sfd].type != dev_socket) {
+		if (sfd < 0 || (sfd >= 0 && fds[sfd].socket == NULL)) {
 			warn("target fd is not a socket fd, please check\n");
 			return -1;
-		} // 检查Fd类型是否匹配
+		}
 
 		local_socket = fds[sfd].socket;
 		if (local_socket->type == 1) {
@@ -885,14 +886,17 @@ int socket_read_check(struct Fd *fd) {
 		ret = (socket->waiting_h != socket->waiting_t);
 	} else if ((socket->type & 0xf) == SOCK_STREAM) {
 		// TCP
-		mtx_lock(&socket->state.state_lock);
-		ret = ((socket->socketReadPos != socket->socketWritePos) || (socket->state.is_close));
-		mtx_unlock(&socket->state.state_lock);
+		if (socket->self_read_close) {
+			ret = 1;
+		} else {
+			mtx_lock(&socket->state.state_lock);
+			ret = ((socket->socketReadPos != socket->socketWritePos) || (socket->state.is_close) || (socket->state.opposite_write_close));
+			mtx_unlock(&socket->state.state_lock);
+		}
 	} else {
 		// UDP
 		ret = (!TAILQ_EMPTY(&socket->messages));
 	}
-
 	mtx_unlock(&socket->lock);
 	return ret;
 }
@@ -915,16 +919,17 @@ int socket_write_check(struct Fd* fd) {
 		mtx_unlock(&socket->lock);
 		ret = 0;
 	} else if ((socket->type & 0xf) == SOCK_STREAM) {
+
+		if (socket->self_write_close) {
+			ret = 1;
+			mtx_unlock(&socket->lock);
+			goto out;
+		}
+
 		mtx_unlock(&socket->lock);
 
 		// TCP
 		Socket *targetSocket = remote_find_peer_socket(socket);
-
-		// 对方已关闭
-		if (targetSocket == NULL) {
-			ret = 1;
-			goto out;
-		}
 
 		mtx_lock(&socket->state.state_lock);
 		if (socket->state.is_close) {
@@ -934,6 +939,16 @@ int socket_write_check(struct Fd* fd) {
 			goto out;
 		}
 		mtx_unlock(&socket->state.state_lock);
+
+		// 对方已关闭
+		if (targetSocket == NULL) {
+			ret = 1;
+			goto out;
+		}else if (targetSocket->self_read_close) {
+			ret = 1;
+			mtx_unlock(&targetSocket->lock);
+			goto out;
+		}
 
 		ret = (targetSocket->socketWritePos - targetSocket->socketReadPos != PAGE_SIZE);
 		mtx_unlock(&targetSocket->lock);
@@ -950,11 +965,17 @@ out:
 int shutdown(int sockfd, int how) {
 
 	int sfd = cur_proc_fs_struct()->fdList[sockfd];
-
-	if (sfd >= 0 && fds[sfd].type != dev_socket) {
+	warn("%d, %d",sockfd, sfd);
+	// assert(fds[sfd].socket != NULL);
+	if (sfd < 0 || (sfd >= 0 && fds[sfd].socket == NULL)) {
 		warn("target fd is not a socket fd, please check\n");
 		return -1;
 	}
+
+	// if (sfd >= 0 && fds[sfd].type != dev_socket) {
+	// 	warn("target fd is not a socket fd, please check\n");
+	// 	return -1;
+	// }
 
 	Socket *local_socket = fds[sfd].socket;
 

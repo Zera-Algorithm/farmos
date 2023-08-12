@@ -15,9 +15,9 @@ int main() {
 	    //(char *const[]){"/time-test", NULL},
 
 		// iperf
-	    //(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+	    (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 
-		(char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
+		//(char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
 
 	    //(char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
 		// (char *const[]) {"./lmbench_all", "lat_ctx", "-P", "1", "-s", "32", "2", "4", "8", "16", "24", "32", "64", "96", NULL},
@@ -34,7 +34,7 @@ int main() {
 	    // (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
 
 		// libc-bench测试
-		(char *const[]){"/libc-bench", NULL},
+		// (char *const[]){"/libc-bench", NULL},
 
 		// lua测试：pass
 	    //(char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},

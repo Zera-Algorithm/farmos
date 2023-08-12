@@ -37,6 +37,7 @@ int sys_openat(int fd, u64 filename, int flags, mode_t mode) {
 }
 
 int sys_close(int fd) {
+	warn("ufd: %d", fd);
 	return closeFd(fd);
 }
 

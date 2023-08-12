@@ -133,7 +133,9 @@ void dget(Dirent *dirent) {
  */
 void dput(Dirent *dirent) {
 	u16 index = get_proc_index(cpu_this()->cpu_running->td_proc);
+	#ifdef REFCNT_DEBUG
 	u16 rmed = 0;
+	#endif
 	int i;
 	for (i = 0; i < dirent->holder_cnt; i++) {
 		if (dirent->holders[i].proc_index == index) {
@@ -142,7 +144,9 @@ void dput(Dirent *dirent) {
 				dirent->holders[i] = dirent->holders[dirent->holder_cnt - 1];
 				dirent->holders[dirent->holder_cnt - 1] = (struct holder_info){0, 0};
 				dirent->holder_cnt -= 1;
+				#ifdef REFCNT_DEBUG
 				rmed = 1;
+				#endif
 			}
 			break;
 		}
