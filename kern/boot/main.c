@@ -27,6 +27,7 @@
 #include <signal/signal.h>
 #include <trap/trap.h>
 #include <types.h>
+#include <lib/profiling.h>
 
 #ifdef SIFIVE
 #define IGNORE_HART0 1
@@ -213,6 +214,11 @@ void main() {
 		plicInit();	// 设置中断控制器
 		fd_init();	// include kload lock init
 		kmalloc_init();
+
+#ifdef PROFILING_DEBUG
+		profiling_init();
+#endif
+
 		shm_init();
 		log(LEVEL_GLOBAL, "kmalloc_init done\n");
 		socket_init();

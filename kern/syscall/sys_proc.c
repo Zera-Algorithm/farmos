@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <proc/procarg.h>
 #include <proc/tsleep.h>
+#include <lib/profiling.h>
 
 void sys_exit(err_t code) {
 	thread_t *td = cpu_this()->cpu_running;
@@ -123,6 +124,8 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 	safestrcpy(td->td_name, pathbuf, MAX_PROC_NAME_LEN);
 	void *bin;
 	size_t size;
+
+	// 判定文件存在
 	fileid_t file_id = file_load(pathbuf, &bin, &size);
 	if (file_id < 0) {
 		return file_id;
@@ -143,6 +146,10 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
 		file_id = file_load(pathbuf, &bin, &size);
 		assert(file_id >= 0);
 	} else { // 判定为ELF文件
+		if (getElfFrom(bin, size) == NULL) {
+			file_unload(file_id);
+			return -ENOEXEC;
+		}
 		// 加载参数
 		stack_arg = copy_arg(p, td, argv, envp, exec_elf_callback);
 	}
@@ -215,7 +222,7 @@ u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain) {
 			log(0, "clock_nanosleep: clock_id = %d, %d, %d\n", clock_id, timeVal.tv_sec, timeVal.tv_nsec);
 			tsleep(&timeVal, NULL, "clock_nanosleep2", TS_USEC(timeVal));
 		}
-		
+
 	} else {
 		tsleep(&timeVal, NULL, "clock_nanosleep3", TS_USEC(timeVal) + time_mono_us());
 	}
@@ -319,5 +326,8 @@ pid_t sys_setsid() {
 }
 
 void sys_reboot() {
+#ifdef PROFILING_DEBUG
+	profiling_report();
+#endif
 	cpu_halt();
 }

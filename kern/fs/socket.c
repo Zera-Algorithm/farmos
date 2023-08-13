@@ -584,6 +584,7 @@ static Message * message_alloc() {
 	mtx_lock(&mtx_messages);
 	if (TAILQ_EMPTY(&message_free_list)) {
 		warn("no free message struct\n");
+		mtx_unlock(&mtx_messages);
 		return NULL;
 	}
 	message = TAILQ_FIRST(&message_free_list);

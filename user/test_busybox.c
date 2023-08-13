@@ -39,7 +39,7 @@ int main() {
 
 		// (char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
 
-	    (char *const[]) {"/busybox", "ash", "lmbench_testcode_part.sh", NULL},
+	    (char *const[]) {"/busybox", "ash", "lmbench_testcode.sh", NULL},
 		// (char *const[]) {"./lmbench_all", "lat_ctx", "-P", "1", "-s", "32", "2", "4", "8", "16", "24", "32", "64", "96", NULL},
 		(char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 	    NULL};
@@ -70,6 +70,7 @@ int main() {
 		}
 	}
 	printf("!TEST FINISH!\n");
+	sync();
 	reboot();
 	return 0;
 }

@@ -40,8 +40,11 @@ void cons_putc(int c) {
 }
 
 int cons_getc() {
-	// return SBI_GETCHAR();
+#ifdef VIRT
+	return SBI_GETCHAR();
+#else
 	return uart_getchar();
+#endif
 }
 
 void disk_rw(Buffer *buf, int write) {

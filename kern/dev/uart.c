@@ -8,6 +8,7 @@
 #include <lock/mutex.h>
 #include <lib/error.h>
 #include <dev/uart.h>
+#include <lib/printf.h>
 
 
 static inline u32 __raw_readl(const volatile void *addr)

@@ -252,3 +252,7 @@ int setitimer(int which, const struct itimerval *new_value,
 void reboot() {
 	syscall(SYS_reboot);
 }
+
+void sync() {
+	syscall(SYS_sync);
+}

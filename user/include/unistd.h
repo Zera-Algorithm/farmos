@@ -75,5 +75,6 @@ int accept(int sockfd, SocketAddr *addr);
 int futex(int *uaddr, int futex_op, int val, void *timeout, int *uaddr2, int val3);
 int gettid();
 void reboot();
+void sync();
 
 #endif // __UNISTD_H__

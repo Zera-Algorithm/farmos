@@ -7,6 +7,7 @@
 #include <param.h>
 #include <proc/times.h>
 #include <trap/trapframe.h>
+#include <lib/error.h>
 
 typedef struct thread thread_t;
 
@@ -85,5 +86,16 @@ void proc_free(proc_t *p);
 #define PID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000) << 16))
 #define PID_TO_INDEX(tid) (tid & 0xffff)
 #define PID_INIT (PID_GENERATE(1, 0))
+
+static inline u16 get_proc_index(proc_t *proc) {
+	extern proc_t *procs;
+	return proc - procs + 1;
+}
+
+static inline proc_t *get_proc_by_index(u16 index) {
+	assert(index >= 1);
+	extern proc_t *procs;
+	return &procs[index-1];
+}
 
 #endif /* !_PROC_H_ */

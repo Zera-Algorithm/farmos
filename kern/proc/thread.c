@@ -9,6 +9,7 @@
 #include <proc/sleep.h>
 #include <proc/thread.h>
 #include <trap/trap.h>
+#include <lib/printf.h>
 
 mutex_t td_tid_lock;
 
@@ -112,6 +113,19 @@ void td_destroy(err_t exitcode) {
 		TAILQ_REMOVE(&td->td_proc->p_threads, td, td_plist);
 		proc_unlock(td->td_proc);
 	}
+
+	/*
+	// 调试每个线程结束时根目录的引用数
+	extern FileSystem *fatFs;
+	Dirent *dirent = fatFs->root;
+	printf("\n\n$$ root's refcnt: %d\n", fatFs->root->holder_cnt);
+	for (int i = 0; i < dirent->holder_cnt; i++) {
+		printf("dget: %s, process: %s, holder: %s, hold_cnts: %d\n", dirent->name,
+			cpu_this()->cpu_running->td_name,
+			dirent->holders[i].proc_name,
+			dirent->holders[i].cnt);
+	}
+	*/
 
 	// 此时线程转为悬垂线程（不归属于任何进程），回收线程资源
 	mtx_lock(&td->td_lock);

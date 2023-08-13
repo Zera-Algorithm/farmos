@@ -107,6 +107,14 @@ void init_root_fs() {
 	fat32_init(fatFs);
 }
 
+static void create_bind_device(const char *path, struct FileDev *dev, u16 type) {
+	Dirent *file1;
+	createFile(fatFs->root, (char *)path, &file1);
+	file1->dev = dev;
+	file1->type = type;
+	file_close(file1);
+}
+
 static void init_dev_fs() {
 	makeDirAt(fatFs->root, "/dev", 0);
 
@@ -121,23 +129,14 @@ static void init_dev_fs() {
 	extern struct FileDev file_dev_null;
 	extern struct FileDev file_dev_zero;
 	extern struct FileDev file_dev_urandom;
+	extern struct FileDev file_dev_tty;
+	extern struct FileDev file_dev_vda;
 
-	Dirent *file1, *file2, *file3;
-	createFile(fatFs->root, "/dev/null", &file1);
-	createFile(fatFs->root, "/dev/zero", &file2);
-	createFile(fatFs->root, "/dev/urandom", &file3);
-
-	file1->dev = &file_dev_null;
-	file2->dev = &file_dev_zero;
-	file3->dev = &file_dev_urandom;
-
-	file1->type = DIRENT_CHARDEV;
-	file2->type = DIRENT_CHARDEV;
-	file3->type = DIRENT_CHARDEV;
-
-	file_close(file1);
-	file_close(file2);
-	file_close(file3);
+	create_bind_device("/dev/null", &file_dev_null, DIRENT_CHARDEV);
+	create_bind_device("/dev/zero", &file_dev_zero, DIRENT_CHARDEV);
+	create_bind_device("/dev/urandom", &file_dev_urandom, DIRENT_CHARDEV);
+	create_bind_device("/dev/tty", &file_dev_tty, DIRENT_CHARDEV);
+	create_bind_device("/dev/vda", &file_dev_vda, DIRENT_BLKDEV);
 }
 
 static void init_proc_fs() {
@@ -156,6 +155,7 @@ static void init_proc_fs() {
 
 	// 设置系统发行版本，越大越好，过小会FATAL
 	makeDirAt(fatFs->root, "/proc/sys", 0);
+	create_file_and_close("/proc/filesystems");
 	makeDirAt(fatFs->root, "/proc/sys/kernel", 0);
 	create_chardev_file("/proc/sys/kernel/osrelease", "10.2.0", NULL, NULL);
 }
@@ -178,6 +178,8 @@ static void init_fs_other() {
 	makeDirAt(fatFs->root, "/etc", 0);
 	makeDirAt(fatFs->root, "/tmp", 0);
 
+	create_file_and_close("/etc/filesystems");
+
 	// 将默认的动态链接库链接到/lib目录
 	makeDirAt(fatFs->root, "/lib", 0);
 	linkat(fatFs->root, "/libc.so", fatFs->root, "/lib/ld-musl-riscv64-sf.so.1");
@@ -189,6 +191,7 @@ static void init_fs_other() {
 	makeDirAt(fatFs->root, "/sbin", 0);
 	linkat(fatFs->root, "/lmbench_all", fatFs->root, "/sbin/lmbench_all");
 	linkat(fatFs->root, "/busybox", fatFs->root, "/sbin/busybox");
+	linkat(fatFs->root, "/lua", fatFs->root, "/sbin/lua");
 
 	// 两个部分的sh脚本
 	extern const unsigned char bin2c_iperf_testcode_sh[637];
