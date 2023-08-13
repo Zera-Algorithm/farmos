@@ -38,6 +38,7 @@ struct pm_allocator {
 inline void *pma_rawpushbottom(u64 size) {
 	u64 start = pma.pma_bottom;
 	pma.pma_bottom += PGROUNDUP(size);
+	log(MM_GLOBAL, "FarmOS Pushup Memory: %d MB, [%016lx, %016lx)\n", size / (1024 * 1024), start, pma.pma_bottom);
 	panic_on(pma.pma_bottom >= pma.pma_top);
 	return memset((void *)start, 0, size);
 }
@@ -60,6 +61,9 @@ inline void *pma_pushup(u64 size) {
 inline Page *pma_pulldown() {
 	if (pma.pma_bottom == pma.pma_top) {
 		error("FarmOS Out of Memory!");
+	}
+	if (pm_freemem() % (1024 * 1024 * 10) == 0) {
+		log(MM_GLOBAL, "FarmOS Free Memory: %d MB, [%016lx, %016lx)\n", pm_freemem() / (1024 * 1024), pma.pma_bottom, pma.pma_top);
 	}
 	pma.pma_top -= PAGE_SIZE;
 	memset((void *)pma.pma_top, 0, PAGE_SIZE);
@@ -119,7 +123,7 @@ void pmmInit() {
 	for (size_t i = 0; i < avail; i++) {
 		pages[i].ref = 1;
 	}
-	log(MM_GLOBAL, "Physical Memory Allocator Now Available: [%0lx, %0lx)\n", pma.pma_bottom, pma.pma_top);
+	log(MM_GLOBAL, "Physical Memory Allocator Now Available: [%0lx, %0lx), total %d MB\n", pma.pma_bottom, pma.pma_top, pm_freemem() / (1024 * 1024));
 
 	// Legacy：初始化各种数组
 	#define pmInitPush(dummy1, size, dummy2) pma_pushup(size)

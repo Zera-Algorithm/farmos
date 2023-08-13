@@ -45,7 +45,7 @@ typedef struct DirentPointer {
 } DirentPointer;
 
 // 用于调试Dirent引用计数次数的开关
-#define REFCNT_DEBUG
+// #define REFCNT_DEBUG
 
 struct file_time;
 
@@ -109,7 +109,7 @@ struct Dirent {
 	struct holder_info holders[DIRENT_HOLDER_CNT];
 	int holder_cnt;
 };
-
+// #define PEEEEk sizeof(struct Dirent)
 // 有当前dirent引用时不变的项（只读，无需加锁）：parent_dirent, name, file_system,
 
 #define MAX_LONGENT 8

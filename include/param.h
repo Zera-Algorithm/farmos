@@ -11,7 +11,7 @@
 #define MAX_DIRENT 160000
 #else
 #define NPROC 10240		  // maximum number of processes
-#define MAX_DIRENT 160000
+#define MAX_DIRENT 80000
 #endif
 
 #define MAXARG 256		  // max exec arguments

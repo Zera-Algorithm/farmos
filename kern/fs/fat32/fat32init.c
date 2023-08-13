@@ -198,8 +198,10 @@ static void init_fs_other() {
 	extern const unsigned char bin2c_unixbench_testcode_sh[4556];
 	extern const unsigned char bin2c_sort_src[8546];
 	extern const unsigned char bin2c_lmbench_testcode_sh[1170];
+	extern const unsigned char binary_unixbench_looper[491];
 	create_chardev_file("/iperf_testcode_part.sh", (char *)bin2c_iperf_testcode_sh, NULL, NULL);
 	create_chardev_file("/unixbench_testcode_part.sh", (char *)bin2c_unixbench_testcode_sh, NULL, NULL);
+	create_chardev_file("/unixbench_looper.sh", (char *)binary_unixbench_looper, NULL, NULL);
 
 	// 写入一个空格文件
 	char *cont = kmalloc(PAGE_SIZE);

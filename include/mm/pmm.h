@@ -25,5 +25,6 @@ u64 pmTop() __attribute__((warn_unused_result));
 u64 pageToPpn(Page *p) __attribute__((warn_unused_result));
 u64 pageToPa(Page *p) __attribute__((warn_unused_result));
 Page *paToPage(u64 pa) __attribute__((warn_unused_result));
+u64 pm_freemem();
 
 #endif // _PMM_H

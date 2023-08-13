@@ -31,11 +31,15 @@ int main() {
 		// // iozone
 	    // (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
 
+		// ./looper 20 ./multi.sh 1 | ./busybox grep -o "COUNT|[[:digit:]]\+|" | ./busybox grep -o "[[:digit:]]\+" | ./busybox awk '{print "Unixbench SHELL1 test(lpm): "$0}'
+		// ./looper 20 ./multi.sh 8 | ./busybox grep -o "COUNT|[[:digit:]]\+|" | ./busybox grep -o "[[:digit:]]\+" | ./busybox awk '{print "Unixbench SHELL8 test(lpm): "$0}'
+		// ./looper 20 ./multi.sh 16 | ./busybox grep -o "COUNT|[[:digit:]]\+|" | ./busybox grep -o "[[:digit:]]\+" | ./busybox awk '{print "Unixbench SHELL16 test(lpm): "$0}'
+
 		// unixbench测试
-		(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},
+		// (char *const[]) {"/busybox", "ash", "unixbench_looper.sh", NULL},
 
 		// iperf
-		(char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
+		// (char *const[]) {"/busybox", "ash", "iperf_testcode.sh", NULL},
 
 		// (char *const[]) {"/busybox", "ash", "netperf_testcode.sh", NULL},
 
