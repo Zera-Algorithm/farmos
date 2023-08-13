@@ -79,13 +79,7 @@ inline void pma_recycle(Page *pp) {
 	if (pa == pma.pma_top) {
 		// 触发分配器回拉
 		pma.pma_top += PAGE_SIZE;
-		// 尝试继续回拉空闲页面链表中的内存
-		pp = paToPage(pma.pma_top);
-		while (pp->ref == 0) {
-			LIST_REMOVE(pp, link);
-			pma.pma_top += PAGE_SIZE;
-			pp = paToPage(pma.pma_top);
-		}
+		// 此处不能继续进行回拉，因为 ref = 0 不是页面可用的充分条件
 	} else {
 		// 直接回收
 		LIST_INSERT_HEAD(&pma.pma_freelist, pp, link);
