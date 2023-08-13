@@ -68,6 +68,7 @@ void wakeup(void *chan) {
 	tdq_critical_exit(&thread_sleepq);
 
 	// 将唤醒的进程加入就绪队列
+	TAILQ_CONCAT(&readyq.tq_head, &thread_runq.tq_head, td_runq);
 	TAILQ_CONCAT(&thread_runq.tq_head, &readyq.tq_head, td_runq);
 	tdq_critical_exit(&thread_runq);
 }
@@ -91,6 +92,6 @@ void wakeup_td(thread_t *td) {
 	tdq_critical_exit(&thread_sleepq);
 
 	tdq_critical_enter(&thread_runq);
-	TAILQ_INSERT_TAIL(&thread_runq.tq_head, td, td_runq);
+	TAILQ_INSERT_HEAD(&thread_runq.tq_head, td, td_runq);
 	tdq_critical_exit(&thread_runq);
 }

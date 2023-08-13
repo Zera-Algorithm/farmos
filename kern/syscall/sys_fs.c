@@ -451,6 +451,7 @@ int sys_fcntl(int fd, int cmd, int arg) {
 		break;
 	case FCNTL_SETFL:
 		// TODO: 未实现
+		kfd->flags = arg; // 主要是O_NONBLOCK
 		warn("fcntl: FCNTL_SETFL not implemented\n");
 		break;
 	default:

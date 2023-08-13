@@ -16,6 +16,10 @@
 #include <sys/errno.h>
 #include <mm/kmalloc.h>
 
+// 整体TODO：判别是否为非阻塞模式（fd->flags & O_NONBLOCK），
+// 如果是，直接返回错误码(-EAGAIN)，不阻塞
+// 涉及的syscall：read, write, connect, accept(已实现), recvfrom, sendto
+
 static uint socket_bitmap[SOCKET_COUNT / 32] = {0};
 Socket sockets[SOCKET_COUNT];
 struct mutex mtx_socketmap;
@@ -305,11 +309,16 @@ int accept(int sockfd, SocketAddr *p_addr, socklen_t * addrlen) {
 		warn("target fd is not a socket fd, please check\n");
 		return -1;
 	} // 检查Fd类型是否匹配
-
 	Socket *local_socket = fds[sfd].socket;
 
 	mtx_lock(&local_socket->lock);
 	// 得到服务端socket的锁
+
+	// 如果是无阻塞模式下的socket，那么直接返回即可
+	if ((fds[sfd].flags & O_NONBLOCK) && local_socket->waiting_h == local_socket->waiting_t) {
+		mtx_unlock(&local_socket->lock);
+		return -EAGAIN;
+	}
 
 	while (local_socket->waiting_h == local_socket->waiting_t) {
 		// 此时代表没有连接请求，释放服务端socket锁，进入睡眠
@@ -468,7 +477,7 @@ static int fd_socket_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 		return -EPIPE;
 	}
 	mtx_unlock(&localSocket->lock);
-	
+
 	Socket *targetSocket = remote_find_peer_socket(localSocket);
 	if (targetSocket == NULL || targetSocket->self_read_close) {
 		warn("socket write error: can\'t find target socket.\n");
@@ -789,7 +798,7 @@ int sendto(int sockfd, const void * buffer, size_t len, int flags, const SocketA
 	} else {
 		socketaddr = *dst_addr;
 	}
-	
+
 
 	Socket * target_socket = find_udp_remote_socket(&socketaddr, local_socket->type, local_socket - sockets);
 
@@ -1000,7 +1009,7 @@ int shutdown(int sockfd, int how) {
 		mtx_unlock(&local_socket->lock);
 
 	} else if (how == SHUT_RDWR) {
-	
+
 		Socket *target_socket = remote_find_peer_socket(local_socket);
 		if (target_socket != NULL) {
 			mtx_lock(&target_socket->state.state_lock);
