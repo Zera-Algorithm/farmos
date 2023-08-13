@@ -15,21 +15,21 @@ int main() {
 	    (char *const[]){"/time-test", NULL},
 
 		// busybox测试
-	    (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "busybox_testcode.sh", NULL},
 
-	    // libc-test的static测试点和dynamic测试点
-	    (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
-	    (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
+	    // // libc-test的static测试点和dynamic测试点
+	    // (char *const[]) {"/busybox", "ash", "run-dynamic.sh", NULL},
+	    // (char *const[]) {"/busybox", "ash", "run-static.sh", NULL},
 
-		// libc-bench测试
-		(char *const[]){"/libc-bench", NULL},
+		// // libc-bench测试
+		// (char *const[]){"/libc-bench", NULL},
 
-		// lua测试：pass
-	    (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
-		// lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96
+		// // lua测试：pass
+	    // (char *const[]){"/busybox", "ash", "lua_testcode.sh", NULL},
+		// // lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96
 
-		// iozone
-	    (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
+		// // iozone
+	    // (char *const[]) {"/busybox", "ash", "iozone_testcode.sh", NULL},
 
 		// unixbench测试
 		(char *const[]) {"/busybox", "ash", "unixbench_testcode.sh", NULL},

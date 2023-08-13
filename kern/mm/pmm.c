@@ -61,9 +61,9 @@ inline Page *pma_pulldown() {
 	if (pma.pma_bottom == pma.pma_top) {
 		error("FarmOS Out of Memory!");
 	}
-	pma.pma_bottom -= PAGE_SIZE;
-	memset((void *)pma.pma_bottom, 0, PAGE_SIZE);
-	return paToPage(pma.pma_bottom);
+	pma.pma_top -= PAGE_SIZE;
+	memset((void *)pma.pma_top, 0, PAGE_SIZE);
+	return paToPage(pma.pma_top);
 }
 
 /**
@@ -72,7 +72,9 @@ inline Page *pma_pulldown() {
 inline void pma_recycle(Page *pp) {
 	assert(pp->ref == 0);
 	u64 pa = pageToPa(pp);
-	assert(pa >= pma.pma_top);
+	if (pa < pma.pma_top) {
+		error("FarmOS Page Recycle Error! pp = %lp, pa = %lp, pma_top = %lp", pp, pa, pma.pma_top);
+	}
 	// 尝试回拉分配器顶部内存
 	if (pa == pma.pma_top) {
 		// 触发分配器回拉
