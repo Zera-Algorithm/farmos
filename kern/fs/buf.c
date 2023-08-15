@@ -66,14 +66,18 @@ static Buffer *bufAlloc(u32 dev, u64 blockno) {
 	error("No Buffer Available!\n");
 }
 
-Buffer *bufRead(u32 dev, u64 blockno) {
+/**
+ * @brief 当is_read为1时，首次获取时，只获取buffer，而不读取buffer，适合于clusterAlloc
+ */
+Buffer *bufRead(u32 dev, u64 blockno, bool is_read) {
 	Buffer *buf = bufAlloc(dev, blockno);
 	if (!buf->valid) {
-		disk_rw(buf, 0);
+		if (is_read) disk_rw(buf, 0);
 		buf->valid = true;
 	}
 	return buf;
 }
+
 
 void bufWrite(Buffer *buf) {
 	buf->dirty = true;
@@ -94,7 +98,7 @@ void bufTest(u64 blockno) {
 	log(LEVEL_GLOBAL, "begin buf test!\n");
 
 	// 测试写入0号扇区（块）
-	Buffer *b0 = bufRead(0, blockno);
+	Buffer *b0 = bufRead(0, blockno, true);
 	for (int i = 0; i < BUF_SIZE; i++) {
 		b0->data->data[i] = (u8)(blockno % 0xff) + i % 10;
 	}
@@ -104,7 +108,7 @@ void bufTest(u64 blockno) {
 	bufRelease(b0);
 
 	// 测试读出0号扇区
-	b0 = bufRead(0, blockno);
+	b0 = bufRead(0, blockno, true);
 	assert(strncmp((const char *)b0->data, (const char *)b0_copy.data, BUF_SIZE) == 0);
 	bufRelease(b0);
 

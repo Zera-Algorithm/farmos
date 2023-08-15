@@ -151,7 +151,7 @@ static int sd_cmd16(void) {
 
 int sdRead(u8 *buf, u64 startSector, u32 sectorNumber) {
 	startSector = startSector + SD_FAT_FS_OFFSET;
-	// printf("[SD Read]Read: %x\n", startSector);
+	// log(999, "[SD Read]Read: %x\n", startSector);
 	int readTimes = 0;
 	int tot = 0;
 
@@ -222,7 +222,7 @@ retry:
 
 int sdWrite(u8 *buf, u64 startSector, u32 sectorNumber) {
 	startSector = startSector + SD_FAT_FS_OFFSET;
-	// printf("[SD Write]Write: %x %d\n", startSector, sectorNumber);
+	log(999, "[SD Write]Write: %x %d\n", startSector, sectorNumber);
 	u8 *p = buf;
 	u8 x;
 	int writeTimes = 0;

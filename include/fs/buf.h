@@ -10,7 +10,7 @@
 #ifdef FEATURE_LESS_MEMORY
 #define BUF_SUM_SIZE (64 * 1024 * 1024) // 64MB
 #else
-#define BUF_SUM_SIZE (128 * 1024 * 1024) // 128MB
+#define BUF_SUM_SIZE (256 * 1024 * 1024) // 256MB
 #endif
 
 
@@ -53,7 +53,7 @@ typedef struct BufferGroup {
 void bufInit();
 void bufTest(u64 blockno);
 
-Buffer *bufRead(u32 dev, u64 blockno) __attribute__((warn_unused_result));
+Buffer *bufRead(u32 dev, u64 blockno, bool is_read) __attribute__((warn_unused_result));
 void bufWrite(Buffer *buf);
 void bufRelease(Buffer *buf);
 void bufSync();

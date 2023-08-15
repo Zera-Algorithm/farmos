@@ -14,6 +14,7 @@
  * @return 此函数只能成功不能失败
  */
 void tlbFlush(u64 va) {
+	va = PGROUNDDOWN(va);
 	// 调用SBI，命令所有核都执行tlb刷新命令
 	struct sbiret ret = SBI_RFENCE_SFENCE_VMA((1 << NCPU) - 1, 0, va, PAGE_SIZE);
 	if (ret.error) {

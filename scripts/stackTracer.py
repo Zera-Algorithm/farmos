@@ -40,10 +40,11 @@ def get_func_by_pc(pc):
 		if pc < symbol_list[i][0]:
 			return symbol_list[i-1][1]
 
+	print("find pc %x in func %s" % (pc, symbol_list[-1][1]))
 	# 如果最后仍没有找到地址比pc大的符号起始处，就默认返回最后一个符号的名称
 	return symbol_list[-1][1]
 
-def get_ra_offset(func):
+def get_sp_offset(func):
 	global asm
 	to_search = f"<{func}>:"
 	on = False
@@ -51,7 +52,22 @@ def get_ra_offset(func):
 		if on:
 			if "addi\tsp,sp,-" in line:
 				off = int(line.split(",")[2][1:-1])
-				return off - 8
+				return off
+		elif to_search in line:
+			on = True
+	print("func %s not found in asm" % func)
+	exit(0)
+
+def get_ra_offset(func):
+	global asm
+	to_search = f"<{func}>:"
+	on = False
+	for line in asm:
+		if on:
+			# sd	ra,136(sp)
+			if "sd\tra," in line:
+				off = int(line.split(",")[1].split("(")[0])
+				return off
 		elif to_search in line:
 			on = True
 	print("func %s not found in asm" % func)
@@ -100,16 +116,18 @@ def main():
 
 	while True:
 		func = get_func_by_pc(pc)
+		sp_offset = get_sp_offset(func)
 		ra_offset = get_ra_offset(func)
 		func_start = get_func_start(func)
-		print("func %s: pc = %x (%s+%x)" % (func, pc, func, pc-func_start))
-		print(f"ra_off = {ra_offset}")
+		print( "> FUNC %s: PC = %x (%s+%x)" % (func, pc, func, pc-func_start))
+		print(f"  sp_off = {sp_offset}")
+		print(f"  ra_off = {ra_offset}")
 
 		# 计算本函数存储的ra的位置（即上层函数pc存放的位置）
 		ra_addr = sp + ra_offset
 		pc = fetch_mem_in_u64(ra_addr)
 		# 计算上一个函数的起始sp
-		sp = sp + ra_offset + 8
+		sp = sp + sp_offset
 
 		# 最多追溯到main函数
   		# 如果是muslc写的程序，可以追溯到__libc_start_main

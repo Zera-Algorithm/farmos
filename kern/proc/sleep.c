@@ -58,6 +58,7 @@ void wakeup(void *chan) {
 			sleep_debug("wakeup %s\n", td->td_name);
 			td->td_status = RUNNABLE;
 			TAILQ_REMOVE(&thread_sleepq.tq_head, td, td_sleepq);
+			// todo: 唤醒进程放到队头，这样管道和socket的latency会降低
 			TAILQ_INSERT_TAIL(&readyq.tq_head, td, td_runq);
 		}
 		mtx_unlock(&td->td_lock);

@@ -4,7 +4,10 @@
 #include <lib/vprint.h>
 #include <lock/mutex.h>
 #include <proc/cpu.h>
+#include <proc/thread.h>
 #include <riscv.h>
+#include <mm/memlayout.h>
+#include <mm/kmalloc.h>
 
 // 建立一个printf的锁，保证同一个printf中的数据都能在一次输出完毕
 mutex_t pr_lock;
@@ -89,9 +92,44 @@ void _warn(const char *file, int line, const char *func, const char *fmt, ...) {
 	va_end(ap);
 }
 
+static void print_stack(u64 kstack) {
+	printf("panic in Thread %s. kernel sp = %lx\n", cpu_this()->cpu_running->td_name, kstack);
+
+	extern thread_t *threads;
+	extern void *kstacks;
+	u64 stackTop = (u64)kstacks + TD_KSTACK_SIZE * (cpu_this()->cpu_running - threads + 1);
+	u64 epc;
+	asm volatile("auipc %0, 0" : "=r"(epc));
+
+	char *buf = kmalloc(32 * PAGE_SIZE);
+	buf[0] = 0;
+	char *pbuf = buf;
+	if (stackTop - TD_KSTACK_SIZE < kstack && kstack <= stackTop) {
+		printf("Kernel Stack Used: 0x%lx\n", stackTop - kstack);
+		printf(pbuf, "Memory(Start From 0x%016lx)\n", kstack);
+		sprintf(pbuf, "0x%016lx \'[", kstack);
+		pbuf += 21;
+		for (u64 sp = kstack; sp < stackTop; sp++) {
+			char ch = *(char *)sp; // 内核地址，可以直接访问
+			sprintf(pbuf, "0x%02x, ", ch);
+			pbuf += 6;
+		}
+		sprintf(pbuf, "]\' kern/kernel.asm 0x%016lx", epc);
+		printf("%s\n", buf);
+	} else {
+		printf("[ERROR] sp is out of ustack range[0x%016lx, 0x%016lx]. Maybe program has crashed!\n", stackTop - TD_KSTACK_SIZE, stackTop);
+	}
+	kfree(buf);
+}
+
+
 void _error(const char *file, int line, const char *func, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
+
+	u64 sp;
+	asm volatile("mv %0, sp" : "=r"(sp));
+	print_stack(sp);
 
 	mtx_lock(&pr_lock);
 	// 输出日志头

@@ -13,10 +13,6 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
-# 系统编译时参数
-ifndef NCPU
-NCPU := 5
-endif
 
 # 配置默认MACHINE(virt/sifive_u)
 ifndef MACHINE
@@ -43,8 +39,12 @@ ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
 endif
 
+# 系统编译时参数
 ifneq ($(MODE), board)
 CFLAGS += -DQEMU
+NCPU := 3
+else
+NCPU := 5
 endif
 
 # 机器类型：

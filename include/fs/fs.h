@@ -148,7 +148,7 @@ struct FileSystem {
 	struct Dirent *image;					    // mount对应的文件描述符
 	struct Dirent *mountPoint;				    // 挂载点
 	int deviceNumber;					    // 对应真实设备的编号
-	struct Buffer *(*get)(struct FileSystem *fs, u64 blockNum); // 读取FS的一个Buffer
+	struct Buffer *(*get)(struct FileSystem *fs, u64 blockNum, bool is_read); // 读取FS的一个Buffer
 	// 强制规定：传入的fs即为本身的fs
 	// 稍后用read返回的这个Buffer指针进行写入和释放动作
 	// 我们默认所有文件系统（不管是挂载的，还是从virtio读取的），都需要经过缓存层

@@ -19,7 +19,7 @@ err_t clusterInit(FileSystem *fs) {
 	assert(fs != NULL);
 	assert(fs->get != NULL);
 
-	Buffer *buf = fs->get(fs, 0);
+	Buffer *buf = fs->get(fs, 0, true);
 	if (buf == NULL) {
 		log(FAT_MODULE, "buf == NULL\n");
 		return -E_DEV_ERROR;
@@ -108,7 +108,7 @@ void clusterRead(FileSystem *fs, u64 cluster, off_t offset, void *dst, size_t n,
 
 	// 读扇区
 	for (u64 i = 0; i < n; secno++, secoff = 0) {
-		Buffer *buf = fs->get(fs, secno);
+		Buffer *buf = fs->get(fs, secno, true);
 		// 计算本次读写的长度
 		size_t len = min(fs->superBlock.bpb.bytes_per_sec - secoff, n - i);
 		if (isUser) {
@@ -136,7 +136,7 @@ void clusterWrite(FileSystem *fs, u64 cluster, off_t offset, void *src, size_t n
 
 	// 写扇区
 	for (u64 i = 0; i < n; secno++, secoff = 0) {
-		Buffer *buf = fs->get(fs, secno);
+		Buffer *buf = fs->get(fs, secno, true);
 		// 计算本次读写的长度
 		size_t len = min(fs->superBlock.bpb.bytes_per_sec - secoff, n - i);
 		if (isUser) {
@@ -157,7 +157,7 @@ void fatWrite(FileSystem *fs, u64 cluster, u32 content) {
 	// fatno从0开始
 	for (u8 fatno = 0; fatno < fs->superBlock.bpb.fat_cnt; fatno++) {
 		u64 fatSec = clusterFatSec(fs, cluster, fatno);
-		Buffer *buf = fs->get(fs, fatSec);
+		Buffer *buf = fs->get(fs, fatSec, true);
 		u32 *fat = (u32 *)buf->data->data;
 		// 写入 FAT 表中的内容
 		fat[clusterFatSecIndex(fs, cluster)] = content;
@@ -172,7 +172,7 @@ u32 fatRead(FileSystem *fs, u64 cluster) {
 		return 0;
 	}
 	u64 fatSec = clusterFatSec(fs, cluster, 0);
-	Buffer *buf = fs->get(fs, fatSec);
+	Buffer *buf = fs->get(fs, fatSec, true);
 
 	if (buf == NULL) {
 		error("buf is NULL! cluster = %d\n", cluster);
@@ -197,7 +197,7 @@ static void clusterZero(FileSystem *fs, u64 cluster) {
 
 	// 写扇区
 	for (u64 i = 0; i < n; secno++) {
-		Buffer *buf = fs->get(fs, secno);
+		Buffer *buf = fs->get(fs, secno, false);
 		// 计算本次读写的长度
 		size_t len = fs->superBlock.bpb.bytes_per_sec;
 		memset(&buf->data->data[0], 0, len);

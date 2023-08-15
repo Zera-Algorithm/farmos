@@ -15,18 +15,18 @@ static struct FileSystem fs[MAX_FS_COUNT];
 // FS分配锁
 struct mutex mtx_fs;
 
-static Buffer *getBlock(FileSystem *fs, u64 blockNum) {
+static Buffer *getBlock(FileSystem *fs, u64 blockNum, bool is_read) {
 	assert(fs != NULL);
 
 	if (fs->image == NULL) {
 		// 是挂载了根设备，直接读取块缓存层的数据即可
-		return bufRead(fs->deviceNumber, blockNum);
+		return bufRead(fs->deviceNumber, blockNum, is_read);
 	} else {
 		// 处理挂载了文件的情况
 		Dirent *img = fs->image;
 		FileSystem *parentFs = fs->image->file_system;
 		int blockNo = fileBlockNo(parentFs, img->first_clus, blockNum);
-		return bufRead(parentFs->deviceNumber, blockNo);
+		return bufRead(parentFs->deviceNumber, blockNo, is_read);
 	}
 }
 

@@ -65,13 +65,12 @@ static inline u64 get_perm_by_prot(int prot) {
 /**
  * @brief 将文件映射到进程的虚拟内存空间
  * @note 如果start == 0，则由内核指定虚拟地址
- * @todo 实现匿名映射（由flags的MAP_ANONYMOUS标志决定），即不映射到文件
+ * @note 支持匿名映射（由flags的MAP_ANONYMOUS标志决定），即不映射到文件
  */
 // TODO: 需要考虑flags的其他字段，但暂未考虑
 // TODO: 实现将映射地址区域与文件结合，实现msync同步内存到文件
 void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	mtx_lock(&cur_proc()->p_lock);
-	// TODO: 实现MAP_SHARED在父子进程之间共享内存
 
 	// 打印参数
 	log(LEVEL_GLOBAL,
@@ -109,6 +108,7 @@ void *sys_mmap(u64 start, size_t len, int prot, int flags, int fd, off_t off) {
 	// 2. 指定权限位
 	perm = get_perm_by_prot(prot);
 
+	// Note: MAP_SHARED标志位会在父子进程之间共享内存
 	if (flags & MAP_SHARED) {
 		perm |= PTE_SHARED;
 	}

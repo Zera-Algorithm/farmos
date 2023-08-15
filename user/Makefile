@@ -2,10 +2,7 @@ INCLUDES		:= -I./include/ -I../include
 BINTOC			:= ../scripts/binToC.py
 USER_LIB		:= libMain.o syscallLib.o clone.o stdio.o stdlib.o string.o
 
-USER_TARGET		:= test_while.x test_clone.x test_init.x \
-					test_argv.x test_pipe.x test_printf.x test_pthread.x \
-					test_busybox.x test_file.x \
-					test_futex.x test_setitimer.x
+USER_TARGET		:= test_while.x test_busybox.x
 
 .PHONY: clean
 
