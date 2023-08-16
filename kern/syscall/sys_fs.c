@@ -577,7 +577,7 @@ int sys_readlinkat(int dirfd, u64 pathname, u64 buf, size_t bufsiz) {
 	copyInStr(pathname, path, MAX_NAME_LEN);
 	unwrap(getFile(dir, path, &file));
 
-	log(999, "readlinkat: %s\n", path);
+	log(LEVEL_GLOBAL, "readlinkat: %s\n", path);
 
 	// 不是链接文件
 	if (!IS_LINK(&file->raw_dirent)) {

@@ -38,3 +38,4 @@ output0.txt
 lmbench_testcode.sh
 os.bin
 linux-test
+!rootfs/**

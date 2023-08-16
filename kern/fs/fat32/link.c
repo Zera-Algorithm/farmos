@@ -40,15 +40,23 @@ int linkat(struct Dirent *oldDir, char *oldPath, struct Dirent *newDir, char *ne
 
 	char path[MAX_NAME_LEN];
 	dirent_get_path(oldFile, path);
+	file_close(oldFile);
 
-	unwrap(createFile(newDir, newPath, &newFile));
+	if ((ret = createFile(newDir, newPath, &newFile)) < 0) {
+		warn("createFile %s failed!\n", newPath);
+		mtx_unlock_sleep(&mtx_file);
+		return ret;
+	}
+
 	newFile->raw_dirent.DIR_Attr |= ATTR_LINK;
 	sync_dirent_rawdata_back(newFile);
 
 	oldFile->linkcnt += 1;
 	int r = file_write(newFile, 0, (u64)path, 0, strlen(path) + 1);
 
+	file_close(newFile);
 	mtx_unlock_sleep(&mtx_file);
+
 	if (r != strlen(path) + 1) {
 		warn("linkat: write path %s to link file %s failed!\n", path, newPath);
 		return -EIO; // 暂时想不出其他返回值了就返回这个吧

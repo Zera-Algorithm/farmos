@@ -93,7 +93,7 @@ static fileid_t file_load_by_dirent(Dirent *dirent, void **bin, size_t *size) {
 fileid_t file_load(const char *path, void **bin, size_t *size) {
 	Dirent *file;
 	// load时加锁，unload时解锁
-	if (getFile(NULL, (char *)path, &file)) {
+	if (getFile(get_cwd_dirent(cur_proc_fs_struct()), (char *)path, &file)) {
 		return -ENOENT;
 	}
 	log(DEBUG, "kload file: %s\n", file->name);
