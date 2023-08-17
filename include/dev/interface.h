@@ -6,6 +6,7 @@ void dev_init();
 
 void cons_putc(int c);
 int cons_getc();
+int cons_test_getc();
 
 typedef struct Buffer Buffer;
 

@@ -116,6 +116,14 @@ static int fd_console_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	return n;
 }
 
+int console_check_read() {
+	return cons_test_getc();
+}
+
+int console_check_write() {
+	return 1;
+}
+
 /**
  * @brief 从设备侧关闭console
  * @note 并不清理Fd结构体

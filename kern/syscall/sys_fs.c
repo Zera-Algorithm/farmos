@@ -22,6 +22,10 @@
 #include <dev/timer.h>
 #include <fs/pipe.h>
 #include <proc/tsleep.h>
+#include <fs/console.h>
+
+static inline int check_pselect_r(int fd);
+static inline int check_pselect_w(int fd);
 
 int sys_write(int fd, u64 buf, size_t count) {
 	return write(fd, buf, count);
@@ -203,27 +207,46 @@ int sys_ppoll(u64 p_fds, int nfds, u64 tmo_p, u64 sigmask) {
 	struct pollfd poll_fd;
 	struct timespec tmo;
 	int ret = 0;
-	if (tmo_p)
+	if (tmo_p) {
 		copyIn(tmo_p, &tmo, sizeof(tmo));
+		if (TS_USEC(tmo) != 0) tsleep(NULL, NULL, "ppoll", TS_USEC(tmo));
+	}
 
-	for (int i = 0; i < nfds; i++) {
-		u64 cur_fds = p_fds + i * sizeof(poll_fd);
-		copyIn(cur_fds, &poll_fd, sizeof(poll_fd));
-		if (poll_fd.fd < 0) {
+	while (1) {
+		ret = 0;
+		for (int i = 0; i < nfds; i++) {
+			u64 cur_fds = p_fds + i * sizeof(poll_fd);
+			copyIn(cur_fds, &poll_fd, sizeof(poll_fd));
 			poll_fd.revents = 0;
-		} else {
-			// 目前只处理POLLIN和POLLOUT两种等待事件
-			if (poll_fd.events & POLLIN) {
-				poll_fd.revents |= POLLIN;
-			}
-			if (poll_fd.events & POLLOUT) {
-				poll_fd.revents |= POLLOUT;
-			}
-		}
-		copyOut(cur_fds, &poll_fd, sizeof(poll_fd));
 
-		if (poll_fd.revents != 0)
-			ret += 1;
+			if (poll_fd.fd < 0) {
+				poll_fd.revents = 0;
+			} else {
+				// 目前只处理POLLIN和POLLOUT两种等待事件
+				if (poll_fd.events & POLLIN) {
+					int r = check_pselect_r(poll_fd.fd);
+					if (r < 0) return r;
+					if (r) poll_fd.revents |= POLLIN;
+				}
+				if (poll_fd.events & POLLOUT) {
+					int r = check_pselect_w(poll_fd.fd);
+					if (r < 0) return r;
+					if (r) poll_fd.revents |= POLLOUT;
+				}
+			}
+			copyOut(cur_fds, &poll_fd, sizeof(poll_fd));
+
+			if (poll_fd.revents != 0)
+				ret += 1;
+		}
+
+		if (ret || tmo_p) {
+			break;
+		}
+
+		// if (!tmo_p) {
+		// 	tsleep(NULL, NULL, "ppoll", 100);
+		// }
 	}
 	return ret;
 }
@@ -244,6 +267,8 @@ static inline int check_pselect_r(int fd) {
 		ret = socket_read_check(kfd);
 	} else if (kfd->type == dev_pipe) {
 		ret = pipe_check_read(kfd->pipe);
+	} else if (kfd->type == dev_console) {
+		ret = console_check_read();
 	} else {
 		ret = 1;
 	}
@@ -268,6 +293,8 @@ static inline int check_pselect_w(int fd) {
 		ret = socket_write_check(kfd);
 	} else if (kfd->type == dev_pipe) {
 		ret = pipe_check_write(kfd->pipe);
+	} else if (kfd->type == dev_console) {
+		ret = console_check_write();
 	} else {
 		ret = 1;
 	}

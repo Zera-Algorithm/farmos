@@ -39,7 +39,25 @@ void cons_putc(int c) {
 	uart_putchar(c);
 }
 
+#define GETC_EMPTY ((char)255)
+
+static char getc_buf = GETC_EMPTY;
+int cons_test_getc() {
+	if (getc_buf == GETC_EMPTY) {
+		getc_buf = cons_getc();
+		return !(getc_buf == GETC_EMPTY);
+	} else {
+		return 1;
+	}
+}
+
 int cons_getc() {
+	if (getc_buf != GETC_EMPTY) {
+		char ret = getc_buf;
+		getc_buf = GETC_EMPTY;
+		return ret;
+	}
+
 #ifdef VIRT
 	return SBI_GETCHAR();
 #else

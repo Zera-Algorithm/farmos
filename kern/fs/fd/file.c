@@ -46,6 +46,10 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	int r;
 	int kernFd, userFd = -1;
 
+	if (filename == 0) {
+		return -EFAULT;
+	}
+
 	copyInStr(filename, nameBuf, NAME_MAX_LEN);
 	log(LEVEL_GLOBAL, "openat: filename = %s\n", nameBuf);
 
