@@ -16,7 +16,7 @@
 
 // 中断时间间隔为0.05s(20Hz, 20times/s)
 // 这个时间间隔以周期数计算
-#define INTERVAL (FEATURE_TIMER_FREQ / 20)
+#define INTERVAL (FEATURE_TIMER_FREQ / 200)
 
 #define RTC_OFF (10000000000000ul)
 

@@ -65,7 +65,7 @@ u64 load_dynamic_so(thread_t *td, const void *binary, size_t size, const ElfHead
 	// 2. 加载动态链接库
 	fileid_t file_id = file_load(so_name, &so_binary, &so_size);
 	if (file_id < 0) {
-		panic("load dynamic so failed: %s\n", so_name);
+		panic("dynamic so %s not found, code = %d\n", so_name, file_id);
 	}
 	log(DEBUG, "load dynamic so BEGIN: %s\n", so_name);
 	map_dynamic_so(td, so_binary, so_size);

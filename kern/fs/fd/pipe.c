@@ -13,6 +13,7 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 #include <mm/kmalloc.h>
+#include <types.h>
 
 #define proc_fs_struct (cpu_this()->cpu_running->td_proc->p_fs_struct)
 
@@ -69,9 +70,10 @@ int pipe(int fd[2]) {
 		p->count = 2;
 		p->pipeReadPos = 0;
 		p->pipeWritePos = 0;
+		p->pipeBuf = (void *)kmalloc(PIPE_BUF_SIZE);
+
 		// 初始化管道的锁
 		mtx_init(&p->lock, "pipe", 1, MTX_SPIN);
-		memset(p->pipeBuf, 0, PIPE_BUF_SIZE);
 
 		fds[kernfd1].dirent = NULL;
 		fds[kernfd1].pipe = (struct Pipe *)pipeAlloc;
@@ -103,8 +105,6 @@ int pipe(int fd[2]) {
 static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	mtx_unlock_sleep(&fd->lock);
 
-	int i;
-	char ch;
 	struct Pipe *p = fd->pipe;
 	thread_t *td = cpu_this()->cpu_running;
 
@@ -124,43 +124,56 @@ static int fd_pipe_read(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 		sleep(&p->pipeReadPos, &p->lock, "wait for pipe writer to write");
 	}
-	char read_buf[PAGE_SIZE];
-	assert(PAGE_SIZE > PIPE_BUF_SIZE);
-	for (i = 0; i < n; i++) {
-		if (p->pipeReadPos == p->pipeWritePos) {
-			break;
-		}
-		ch = p->pipeBuf[p->pipeReadPos % PIPE_BUF_SIZE];
-		read_buf[i] = ch;
-		p->pipeReadPos++;
+	
+	if (td->td_killed) {
+		mtx_unlock(&p->lock);
+		warn("read pipe process is destoried.\n");
+		mtx_lock_sleep(&fd->lock);
+		return -EPIPE;
 	}
+	
+	u64 read_size = p->pipeWritePos - p->pipeReadPos; // 实际容量
+	read_size = MIN(n, read_size);
+	u64 read_dst = p->pipeReadPos + read_size;
 
-	if (i != 0) {
-		copyOut(buf, read_buf, i);
+	// 读取数据
+	u64 read_begin = p->pipeReadPos % PIPE_BUF_SIZE;
+	u64 read_end = read_dst % PIPE_BUF_SIZE;
+
+	if (read_size != 0) {
+		if (read_begin < read_end) {
+			copyOut(buf, p->pipeBuf + read_begin, read_size);
+		} else {
+			copyOut(buf, p->pipeBuf + read_begin, PIPE_BUF_SIZE - read_begin);
+			copyOut(buf + PIPE_BUF_SIZE - read_begin, p->pipeBuf, read_end);
+		}
 	} else {
 		warn("read fd %d empty: maybe target pipe closed.\n", fd - fds);
 	}
 
-	fd->offset += i;
+	p->pipeReadPos += read_size;
+	fd->offset +=  read_size;
+
+	// log(999, "Thread %s: pipe read count: %d\n", cpu_this()->cpu_running->td_name, read_size);
 
 	// 唤醒可能在等待的写者
 	wakeup(&p->pipeWritePos);
 	mtx_unlock(&p->lock);
 	mtx_lock_sleep(&fd->lock);
-	return i;
+	
+	return read_size;
 }
 
 static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	mtx_unlock_sleep(&fd->lock);
 	int i = 0;
-	char ch;
 	struct Pipe *p = fd->pipe;
 
 	// SIGKILL时，先设置td->killed，再唤醒，之后td才会继续执行，所以td->killed不需要加锁访问
 	thread_t *td = cpu_this()->cpu_running;
 	mtx_lock(&p->lock);
 	warn("Thread %s: fd_pipe_write pipe %lx, content: %d B\n", cpu_this()->cpu_running->td_name, p, p->pipeWritePos - p->pipeReadPos);
-	char write_buf[PAGE_SIZE];
+
 	while (i < n) {
 		if (pipeIsClose(p) || td->td_killed) {
 			mtx_unlock(&p->lock);
@@ -171,18 +184,25 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 
 		if (p->pipeWritePos - p->pipeReadPos == PIPE_BUF_SIZE) {
 			wakeup(&p->pipeReadPos);
-
 			sleep(&p->pipeWritePos, &p->lock, "pipe writer wait for pipe reader.\n");
 			// 唤醒之后进入下一个while轮次，继续判断管道是否关闭和进程是否结束
 			// 我们采取的唤醒策略是：尽可能地接受唤醒信号，但唤醒信号不一定对本睡眠进程有效，唤醒后还需要做额外检查，若不满足条件(管道非空)应当继续睡眠
 		} else {
-			if (i % PAGE_SIZE == 0) {
-				copyIn(buf + i, write_buf, MIN(PAGE_SIZE, n - i));
+			u64 left_size = PIPE_BUF_SIZE - (p->pipeWritePos - p->pipeReadPos);
+			u64 write_length = MIN(left_size, n);
+			u64 write_dst = p->pipeWritePos + write_length;
+
+			u64 write_begin = p->pipeWritePos % PIPE_BUF_SIZE;
+			u64 write_end = write_dst % PIPE_BUF_SIZE;
+
+			if (write_begin < write_end) {
+				copyIn(buf + i, p->pipeBuf + write_begin, write_length);
+			} else {
+				copyIn(buf + i, p->pipeBuf + write_begin,  PIPE_BUF_SIZE - write_begin);
+				copyIn(buf + i + PIPE_BUF_SIZE - write_begin, p->pipeBuf,  write_end);
 			}
-			ch = write_buf[i % PAGE_SIZE];
-			p->pipeBuf[p->pipeWritePos % PIPE_BUF_SIZE] = ch;
-			p->pipeWritePos++;
-			i++;
+			p->pipeWritePos += write_length;
+			i += write_length;
 		}
 	}
 	fd->offset += i;
@@ -191,6 +211,8 @@ static int fd_pipe_write(struct Fd *fd, u64 buf, u64 n, u64 offset) {
 	wakeup(&p->pipeReadPos);
 	mtx_unlock(&p->lock);
 			mtx_lock_sleep(&fd->lock);
+
+	// log(999, "Thread %s: pipe write count: %d\n", cpu_this()->cpu_running->td_name, i);
 	return i;
 }
 
@@ -203,7 +225,12 @@ static int fd_pipe_close(struct Fd *fd) {
 	// 唤醒读写端的程序。这里不需要考虑当前是读端还是写端，直接全部唤醒就可
 	wakeup(&p->pipeReadPos);
 	wakeup(&p->pipeWritePos);
+
 	if (p && p->count == 0) {
+		if (p->pipeBuf != NULL) {
+			kfree(p->pipeBuf);
+			p->pipeBuf = NULL;
+		}
 		mtx_unlock(&p->lock);
 		// 这里每个pipe占据一个页的空间
 		kvmFree((u64)p); // 释放pipe结构体所在的物理内存

@@ -86,5 +86,9 @@ void stime_end(thread_t *td);
 #define TID_GENERATE(cnt, index) ((index) | ((cnt % 0x1000 + 0x1000) << 16))
 #define TID_TO_INDEX(tid) (tid & 0xffff)
 
+static inline u16 get_td_index(thread_t *td) {
+	extern thread_t *threads;
+	return (td - threads);
+}
 
 #endif // _THREAD_H_

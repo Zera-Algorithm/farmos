@@ -53,7 +53,7 @@ int fdAlloc() {
 
 			memset(&fds[i], 0, sizeof(struct Fd));
 			fds[i].refcnt = 1;
-			mtx_init(&fds[i].lock, "fd_lock", 1, MTX_SLEEP);
+			mtx_init(&fds[i].lock, "fd_lock", 1, MTX_SLEEP | MTX_RECURSE);
 
 			mtx_unlock(&mtx_fd);
 			return i;
@@ -71,12 +71,9 @@ int fdAlloc() {
  * @param i 内核fd编号
  */
 void cloneAddCite(uint i) {
-	mtx_lock(&fds[i].lock);
-
 	assert(i >= 0 && i < FDNUM);
-	fds[i].refcnt += 1; // 0 <= i < 1024
-
-	mtx_unlock(&fds[i].lock);
+	__sync_fetch_and_add(&fds[i].refcnt, 1); // 0 <= i < 1024
+	__sync_synchronize();
 }
 
 /**
@@ -147,12 +144,12 @@ void free_ufd(int ufd) {
  * @brief 将内核fd引用计数减一，如果引用计数归零，则回收
  */
 void freeFd(uint i) {
-	assert(i >= 0 && i < FDNUM);
+	warn("Thread %s: free Fd: kernFd = %d\n", cpu_this()->cpu_running->td_name, i);
+	assert (i >= 0 && i < FDNUM);
 	Fd *fd = &fds[i];
 
 	mtx_lock_sleep(&fd->lock);
-	fd->refcnt -= 1;
-	if (fd->refcnt == 0) {
+	if (__sync_sub_and_fetch(&fd->refcnt, 1) == 0) {
 		// Note 如果是file,不需要回收Dirent
 		// Note 如果是pipe对应的fd关闭，则需要回收struct pipe对应的内存
 
@@ -514,6 +511,11 @@ int getdents64(int fd, u64 buf, int len) {
 	Dirent *dir, *file;
 	int kernFd = 0, ret, offset;
 	unwrap(getDirentByFd(fd, &dir, &kernFd));
+
+	if (dir->type != DIRENT_DIR) {
+		warn("getdents64: file %s is not a directory\n", dir->name);
+		return -ENOTDIR;
+	}
 
 	DirentUser *direntUser = kmalloc(DIRENT_USER_SIZE);
 	direntUser->d_ino = 0;

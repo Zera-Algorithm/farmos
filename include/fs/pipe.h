@@ -3,7 +3,7 @@
 #include <lock/mutex.h>
 #include <types.h>
 
-#define PIPE_BUF_SIZE 3072
+#define PIPE_BUF_SIZE (PAGE_SIZE * 32)
 struct thread;
 
 struct Pipe {
@@ -15,7 +15,7 @@ struct Pipe {
 	u32 count;		   // kernFd引用数
 	u64 pipeReadPos;	   // read position
 	u64 pipeWritePos;	   // write position
-	u8 pipeBuf[PIPE_BUF_SIZE]; // data buffer
+	void * pipeBuf; // data buffer
 	struct thread *waitProc;
 };
 

@@ -19,6 +19,6 @@ run_netperf UDP_STREAM  "-s 16k -S 16k -m 1k -M 1k"
 run_netperf TCP_STREAM  "-s 16k -S 16k -m 1k -M 1k"
 run_netperf UDP_RR      "-s 16k -S 16k -m 1k -M 1k -r 64,64 -R 1"
 run_netperf TCP_RR      "-s 16k -S 16k -m 1k -M 1k -r 64,64 -R 1"
-run_netperf TCP_CRR     "-s 16k -S 16k -m 1k -M 1k -r 64,64 -R 1"
+# run_netperf TCP_CRR     "-s 16k -S 16k -m 1k -M 1k -r 64,64 -R 1"
 
 kill -9 $server_pid

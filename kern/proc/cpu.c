@@ -48,6 +48,12 @@ void cpu_idle() {
 			     td->td_wmesg);
 		}
 
+		extern mutex_t mtx_file;
+		if (mtx_file.mtx_owner) {
+			log(999,"file mtx is hold by thread %s\n",
+			     mtx_file.mtx_owner->td_name);
+		}
+
 		tdq_critical_exit(&thread_sleepq);
 	}
 #endif

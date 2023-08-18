@@ -22,6 +22,7 @@
 #include <dev/timer.h>
 #include <fs/pipe.h>
 #include <proc/tsleep.h>
+#include <fs/socket.h>
 #include <fs/console.h>
 
 static inline int check_pselect_r(int fd);
@@ -40,7 +41,14 @@ int sys_openat(int fd, u64 filename, int flags, mode_t mode) {
 }
 
 int sys_close(int fd) {
+	warn("ufd: %d", fd);
 	return closeFd(fd);
+}
+
+// 关闭一个socket fd
+// TODO: 未来可能要根据
+int sys_shutdown(int fd, int how) {
+	return shutdown(fd, how);
 }
 
 int sys_dup(int fd) {
@@ -209,7 +217,7 @@ int sys_ppoll(u64 p_fds, int nfds, u64 tmo_p, u64 sigmask) {
 	int ret = 0;
 	if (tmo_p) {
 		copyIn(tmo_p, &tmo, sizeof(tmo));
-		if (TS_USEC(tmo) != 0) tsleep(NULL, NULL, "ppoll", TS_USEC(tmo));
+		if (TS_USEC(tmo) != 0) tsleep(&tmo, NULL, "ppoll", time_mono_us() + TS_USEC(tmo));
 	}
 
 	while (1) {
@@ -245,7 +253,7 @@ int sys_ppoll(u64 p_fds, int nfds, u64 tmo_p, u64 sigmask) {
 		}
 
 		// if (!tmo_p) {
-		// 	tsleep(NULL, NULL, "ppoll", 100);
+		// 	tsleep(&tmo, NULL, "ppoll", 100);
 		// }
 	}
 	return ret;
@@ -410,7 +418,7 @@ int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p
 		} else {
 			if (timeout_us >= 10000) {
 				// 小睡10ms
-				tsleep(&timeout, NULL, "pselect", 10000);
+				tsleep(&timeout, NULL, "pselect", time_mono_us() + 10000);
 			}
 			// 否则，循环消耗时间即可
 		}
@@ -470,6 +478,7 @@ int sys_fcntl(int fd, int cmd, int arg) {
 		break;
 	case FCNTL_SETFL:
 		// TODO: 未实现
+		kfd->flags = arg; // 主要是O_NONBLOCK
 		warn("fcntl: FCNTL_SETFL not implemented\n");
 		break;
 	default:
@@ -564,8 +573,8 @@ int sys_statfs(u64 ppath, struct statfs *buf) {
 		statfs.f_blocks = fs->superBlock.bpb.tot_sec / fs->superBlock.bpb.sec_per_clus;
 		statfs.f_bfree = MAX(statfs.f_blocks / 2 - alloced_clus, 0);		 // TODO: 空闲块数（有意偏少）
 		statfs.f_bavail = statfs.f_bfree;		 // 空闲块数
-		statfs.f_files = 10000;			 // 虚构的文件数
-		statfs.f_ffree = MAX(2000 - used_dirents, 0);				 // 虚构的空闲file node数（有意偏少）
+		statfs.f_files = MAX_DIRENT;			 // 虚构的文件数
+		statfs.f_ffree = MAX(MAX_DIRENT - used_dirents, 0);				 // 虚构的空闲file node数（有意偏少）
 		statfs.f_fsid.val[0] = statfs.f_fsid.val[1] = 0; // fsid，一般不用
 		statfs.f_namelen = MAX_NAME_LEN;
 		statfs.f_frsize = 0; // unknown

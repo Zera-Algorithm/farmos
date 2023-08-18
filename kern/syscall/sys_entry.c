@@ -118,6 +118,7 @@ static syscall_function_t sys_table[] = {
 	[SYS_shmctl] = {sys_shmctl, "shmctl"},
     [SYS_clock_nanosleep] = {sys_clock_nanosleep, "clock_nanosleep"},
     [SYS_socketpair] = {sys_socketpair, "socketpair"},
+    [SYS_shutdown] = {sys_shutdown, "shutdown"},
 	[SYS_readlinkat] = {sys_readlinkat, "readlinkat"},
 };
 

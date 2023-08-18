@@ -44,12 +44,53 @@ void tsleep_init() {
     }
 }
 
+static int tse_debug(tsevent_t *check, bool should_used, bool should_free) {
+    tsevent_t *tmp = NULL;
+    // check self loop
+    TAILQ_FOREACH(tmp, &tsevent_usedq.tseq_head, tse_usedq) {
+        if (tmp == tmp->tse_freeq.tqe_next) {
+            return 0;
+        }
+    }
+
+    // check in
+    {
+        bool pass = false;
+        tmp = NULL;
+        TAILQ_FOREACH(tmp, &tsevent_usedq.tseq_head, tse_usedq) {
+            if (tmp == check) {
+                pass = true;
+                break;
+            }
+        }
+        if (pass != should_used) {
+            return 0;
+        }
+    }
+    {
+        bool pass = false;
+        tmp = NULL;
+        TAILQ_FOREACH(tmp, &tsevent_freeq.tseq_head, tse_freeq) {
+            if (tmp == check) {
+                pass = true;
+                break;
+            }
+        }
+        if (pass != should_free) {
+            return 0;
+        }
+    }
+	return 1;
+}
+
 // 资源管理函数
 static tsevent_t *tse_alloc(thread_t *td, void *chan, u64 wakeus) {
     tseq_critical_enter(&tsevent_freeq);
     assert(!TAILQ_EMPTY(&tsevent_freeq.tseq_head));
     tsevent_t *tse = TAILQ_FIRST(&tsevent_freeq.tseq_head);
+    assert(tse_debug(tse, 0, 1));
     TAILQ_REMOVE(&tsevent_freeq.tseq_head, tse, tse_freeq);
+    assert(tse_debug(tse, 0, 0));
     tseq_critical_exit(&tsevent_freeq);
 
     tse->tse_td = td;
@@ -57,8 +98,9 @@ static tsevent_t *tse_alloc(thread_t *td, void *chan, u64 wakeus) {
     tse->tse_wakeus = wakeus;
 
     tseq_critical_enter(&tsevent_usedq);
+    assert(tse_debug(tse, 0, 0));
     if (wakeus) {
-        tsevent_t *temp_tse;
+        tsevent_t *temp_tse = NULL;
         // 从头开始遍历，找到第一个比 wakeus 大的元素，插入到其前面
         TAILQ_FOREACH(temp_tse, &tsevent_usedq.tseq_head, tse_usedq) {
             if (temp_tse->tse_wakeus > wakeus || temp_tse->tse_wakeus == 0) {
@@ -75,13 +117,15 @@ static tsevent_t *tse_alloc(thread_t *td, void *chan, u64 wakeus) {
     } else {
         TAILQ_INSERT_TAIL(&tsevent_usedq.tseq_head, tse, tse_usedq);
     }
+    assert(tse_debug(tse, 1, 0));
     return tse;
 }
 
 static void tse_set_unused(tsevent_t *tse, bool timeout) {
     assert(mtx_hold(&tsevent_usedq.tseq_lock));
+    assert(tse_debug(tse, 1, 0));
     TAILQ_REMOVE(&tsevent_usedq.tseq_head, tse, tse_usedq);
-
+    assert(tse_debug(tse, 0, 0));
     // warn("%08x(%08x) WAS WAKEUP(%d) at %d before %d\n", tse->tse_td->td_tid, tse->tse_td->td_proc->p_pid, timeout, getUSecs(), tse->tse_wakeus);
     tse->tse_wchan = timeout ? (void *)-1 : NULL;
 }
@@ -93,7 +137,9 @@ static err_t tse_free(tsevent_t *tse) {
     tse->tse_wakeus = 0;
 
     tseq_critical_enter(&tsevent_freeq);
+    assert(tse_debug(tse, 0, 0));
     TAILQ_INSERT_HEAD(&tsevent_freeq.tseq_head, tse, tse_freeq);
+    assert(tse_debug(tse, 0, 1));
     tseq_critical_exit(&tsevent_freeq);
 
     return r;
@@ -125,12 +171,33 @@ err_t tsleep(void *chan, mutex_t *mtx, const char *msg, u64 wakeus) {
 void twakeup(void *chan) {
     tseq_critical_enter(&tsevent_usedq);
     tsevent_t *tse;
-    TAILQ_FOREACH(tse, &tsevent_usedq.tseq_head, tse_usedq) {
-        if (tse->tse_wchan == chan) {
-            tse_set_unused(tse, false);
-        }
-    }
+	while (1) {
+		int removed = 0;
+		TAILQ_FOREACH(tse, &tsevent_usedq.tseq_head, tse_usedq) {
+			if (tse->tse_wchan == chan) {
+				tse_set_unused(tse, false);
+				removed = 1;
+			}
+		}
+		if (!removed) break;
+	}
     wakeup(chan);
+    tseq_critical_exit(&tsevent_usedq);
+}
+
+void tcleanup(thread_t *td) {
+    tseq_critical_enter(&tsevent_usedq);
+    tsevent_t *tse;
+    while (1) {
+        int removed = 0;
+        TAILQ_FOREACH(tse, &tsevent_usedq.tseq_head, tse_usedq) {
+            if (tse->tse_td == td) {
+                tse_set_unused(tse, false);
+                removed = 1;
+            }
+        }
+        if (!removed) break;
+    }
     tseq_critical_exit(&tsevent_usedq);
 }
 
@@ -142,8 +209,9 @@ void tsleep_check() {
         if (tse->tse_wakeus > now || tse->tse_wakeus == 0) {
             break;
         }
-        wakeup(tse->tse_wchan);
+        void *chan = tse->tse_wchan;
         tse_set_unused(tse, true);
+        wakeup(chan);
     }
     tseq_critical_exit(&tsevent_usedq);
 }

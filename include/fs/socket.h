@@ -9,7 +9,7 @@
 #define SOCKET_COUNT 128
 #define PENDING_COUNT 128
 #define MESSAGE_COUNT 512
-
+#define SOCKET_BUFFER_SIZE (PAGE_SIZE * 32)
 
 #define AF_UNIX 1  /* Unix domain sockets 		*/
 #define AF_LOCAL 1 /* POSIX name for AF_UNIX	*/
@@ -23,6 +23,10 @@
 #define SO_RCVBUF 8
 #define SO_SNDBUF 7
 
+#define SHUT_RD 0
+#define SHUT_WR 1
+#define SHUT_RDWR 2
+
 typedef struct SocketAddr {
 	u16 family;
 	u16 port;
@@ -33,6 +37,7 @@ typedef struct SocketAddr {
 typedef struct SocketState {
 	mutex_t state_lock;
 	bool is_close;
+	bool opposite_write_close;
 } SocketState;
 
 
@@ -65,6 +70,8 @@ typedef struct Socket {
 	// bool is_close; 由首先关闭连接的socket来写另一socket的is_close属性
 	u64 tid; // 归属的tid
 
+	bool self_read_close;
+	bool self_write_close;
 	Message_list messages;
 
 	int udp_is_connect;
@@ -89,6 +96,7 @@ int recvfrom(int sockfd, void *buffer, size_t len, int flgas, SocketAddr * src_a
 int socket_read_check(struct Fd *fd);
 int socket_write_check(struct Fd* fd);
 int getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
+int shutdown(int sockfd, int how);
 
 #define SOCKET_TYPE_MASK 0xf
 #define SOCK_IS_UDP(type) (((type) & SOCKET_TYPE_MASK) == SOCK_DGRAM)

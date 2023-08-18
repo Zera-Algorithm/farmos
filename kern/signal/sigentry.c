@@ -113,7 +113,7 @@ void sig_check() {
 		} else {
 			// 已注册的信号处理函数
 			// 第一步：保存当前上下文
-			warn("%s handling signal %d\n", td->td_name, se->se_signo);
+			warn("%s handling signal %d, handler = %x\n", td->td_name, se->se_signo, sa->sa_handler);
 			sig_beforestart(td, se, sa);
 			// 跳出循环，返回用户态处理信号
 			break;

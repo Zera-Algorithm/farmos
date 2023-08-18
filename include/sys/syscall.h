@@ -126,6 +126,8 @@ int sys_getsocketname(int sockfd, SocketAddr * addr, socklen_t addrlen);
 int sys_getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen);
 int sys_setsockopt(int sockfd, int lever, int optname, const void * optval, socklen_t optlen);
 int sys_getpeername(int sockfd, SocketAddr * addr, socklen_t* addrlen);
+int sys_shutdown(int sockfd, int how);
+
 // 调度（sys_sched）
 u64 sys_sched_getaffinity();
 u64 sys_sched_setaffinity();

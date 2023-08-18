@@ -23,7 +23,7 @@ KERNEL_UIMAGE := hifive.uImage
 OBJS := $(KERN)/*/*.o $(LIB)/*.o $(USER)/*.x $(KERN)/*/*/*.o
 modules := $(KERN) $(LIB) $(USER)
 
-.PHONY: all clean $(modules) fs.img sdcard.img
+.PHONY: all clean $(modules)
 
 all: $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $(KERNEL_ELF) os.bin
@@ -46,15 +46,15 @@ mkimage: objcopy
 	mkimage -A riscv -O linux -C none -a 0x80200000 -e 0x80200000 \
 		-n farmos -d $(KERNEL_BIN) $(KERNEL_UIMAGE)
 
-# TODO: 需要实现。现在仅仅是使用了一个使用mkfs创建的默认镜像
-fs.img:
-	cp backup_fs.img fs.img
-	# dd if=/dev/zero of=fs.img bs=16k count=1024
-	# mkfs.vfat -F 12 fs.img
+fs.img: sdcard.img
+	cp sdcard.img fs.img
 
 sdcard.img:
-	cp sdcard.img fs.img
-	qemu-img resize fs.img 64M
+	dd if=/dev/zero of=sdcard.img bs=1M count=512
+	mkfs.vfat -F 32 sdcard.img
+	sudo mount sdcard.img sdcard
+	sudo cp -r rootfs/* sdcard
+	sudo umount sdcard
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
@@ -70,8 +70,7 @@ fsrun: $(KERNEL_ELF) fs.img
 
 # qemu-img resize sdcard.img 64M
 # 以sd卡运行
-qemu: sdcard.img $(KERNEL_ELF)
-	cp sdcard.img fs.img
+qemu: fs.img $(KERNEL_ELF)
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv

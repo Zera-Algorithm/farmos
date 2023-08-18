@@ -4,6 +4,7 @@
 #include <proc/thread.h>
 #include <signal/signal.h>
 #include <proc/sleep.h>
+#include <proc/tsleep.h>
 
 bool sig_td_canhandle(thread_t *td, int signo) {
 	assert(td != NULL);
@@ -28,6 +29,7 @@ void sig_send_td(thread_t *td, int signo) {
 		mtx_lock(&td->td_lock);
 		td->td_killed = 1;
 		mtx_unlock(&td->td_lock);
+		tcleanup(td);
 		wakeup_td(td);
 	}
 }

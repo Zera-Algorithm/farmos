@@ -6,6 +6,7 @@
 
 void tsleep_init();
 err_t tsleep(void *chan, mutex_t *mtx, const char *msg, u64 wakeus);
+void tcleanup(thread_t *td);
 void twakeup(void *chan);
 void tsleep_check();
 

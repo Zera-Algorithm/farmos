@@ -57,7 +57,7 @@ userVec:
 	sd  t5,  OFFSET_T5(a0)
 	sd  t6,  OFFSET_T6(a0)
 
-	/*
+
 	// 保存浮点寄存器
 	fsd ft0, OFFSET_FT0(a0)
 	fsd ft1, OFFSET_FT1(a0)
@@ -91,7 +91,7 @@ userVec:
 	fsd ft9, OFFSET_FT9(a0)
 	fsd ft10, OFFSET_FT10(a0)
 	fsd ft11, OFFSET_FT11(a0)
-	*/
+
 
 	csrr t0, sscratch
 	sd t0, OFFSET_A0(a0)
@@ -174,7 +174,7 @@ userRet:
 	ld  t5,  OFFSET_T5(a0)
 	ld  t6,  OFFSET_T6(a0)
 
-	/*
+
 	// 从 TRAPFRAME 中恢复浮点寄存器
 	fld ft0, OFFSET_FT0(a0)
 	fld ft1, OFFSET_FT1(a0)
@@ -208,7 +208,7 @@ userRet:
 	fld ft9, OFFSET_FT9(a0)
 	fld ft10, OFFSET_FT10(a0)
 	fld ft11, OFFSET_FT11(a0)
-	*/
+
 
 	csrrw a0, sscratch, a0
 

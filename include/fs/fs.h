@@ -7,7 +7,7 @@
 #include <mm/memlayout.h>
 #include <types.h>
 
-#define MAX_NAME_LEN 64
+#define MAX_NAME_LEN 128
 #define DIRENT_HOLDER_CNT 256
 
 typedef struct FileSystem FileSystem;
@@ -45,7 +45,7 @@ typedef struct DirentPointer {
 } DirentPointer;
 
 // 用于调试Dirent引用计数次数的开关
-#define REFCNT_DEBUG
+// #define REFCNT_DEBUG
 
 struct file_time;
 

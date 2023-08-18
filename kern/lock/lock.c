@@ -70,7 +70,7 @@ inline void lo_acquire(lock_object_t *lo) {
 		cnt += 1;
 		// 在自旋锁长时间获取不到时，打印信息
 		if (cnt >= THRESHOLD_LOCK && cnt % THRESHOLD_LOCK == 0) {
-			warn("wait too long of spinlock[%s]\n", lo->lo_name);
+			log(9999, "wait too long of spinlock[%s]\n", lo->lo_name);
 		}
 	}
 	atomic_barrier();
@@ -95,6 +95,9 @@ inline void lo_release(lock_object_t *lo) {
 }
 
 inline bool lo_acquired(lock_object_t *lo) {
+	if ((u64)lo <= 0x80000000ul) {
+		asm volatile("nop");
+	}
 	assert(intr_get() == 0);
 	return lo->lo_locked && lo->lo_data == cpu_this();
 }

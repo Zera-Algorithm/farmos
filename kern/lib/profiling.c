@@ -29,7 +29,11 @@ void profiling_end(const char *file, const char *func, u64 begin) {
 		// 此时hashmap未初始化好，直接跳过
 		return;
 	}
+	u64 time = end - begin;
+	profiling_end_with_time(file, func, time);
+}
 
+void profiling_end_with_time(const char *file, const char *func, u64 time) {
 	profiling_t *profiling = hashmap_get(hashmap, (void *)func);
 	if (profiling == NULL) {
 		profiling = kmalloc(sizeof(profiling_t));
@@ -40,7 +44,7 @@ void profiling_end(const char *file, const char *func, u64 begin) {
 		hashmap_put(hashmap, (void *)func, profiling);
 	}
 	mtx_lock(&profiling->lock);
-	profiling->total_runtime_us += end - begin;
+	profiling->total_runtime_us += time;
 	profiling->run_count++;
 	mtx_unlock(&profiling->lock);
 }
