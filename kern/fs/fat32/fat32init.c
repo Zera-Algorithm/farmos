@@ -209,6 +209,7 @@ static void init_fs_other() {
 
 	create_file_and_write("sort.src", (void *)bin2c_sort_src, sizeof(bin2c_sort_src));
 	create_file_and_write("/lmbench_testcode_part.sh", (void *)bin2c_lmbench_testcode_sh, sizeof(bin2c_lmbench_testcode_sh));
+	create_file_and_write("/etc/passwd", "sshd:x:0:0::/var/run/sshd:/usr/sbin/nologin\n", 51);
 }
 
 void init_files() {

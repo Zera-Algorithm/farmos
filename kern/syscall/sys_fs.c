@@ -192,6 +192,16 @@ size_t sys_copy_file_range(int fd_in, off_t *off_in,
 	return copy_file_range(fd_in, off_in, fd_out, off_out, len, flags);
 }
 
+size_t sys_getrandom(u64 buf, size_t buflen, unsigned int flags) {
+	u8 prime = 251;
+	u64 now = time_rtc_clock();
+	for (int i = 0; i < buflen; i++) {
+		u8 ch = (now * (u64)i + i * i) % prime;
+		copyOut(buf, &ch, 1);
+	}
+	return buflen;
+}
+
 int sys_fstatat(int dirFd, u64 pPath, u64 pkstat, int flags) {
 	return fileStatAtFd(dirFd, pPath, pkstat, flags);
 }
@@ -635,8 +645,9 @@ int sys_readlinkat(int dirfd, u64 pathname, u64 buf, size_t bufsiz) {
 	return ret;
 }
 
-void sys_sync() {
+int sys_sync() {
 	bufSync();
+	return 0;
 }
 
 int sys_syncfs(int fd) {

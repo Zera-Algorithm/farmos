@@ -121,6 +121,8 @@ static syscall_function_t sys_table[] = {
     [SYS_shutdown] = {sys_shutdown, "shutdown"},
 	[SYS_readlinkat] = {sys_readlinkat, "readlinkat"},
 	[SYS_copy_file_range] = {sys_copy_file_range, "copy_file_range"},
+	[SYS_getrandom] = {sys_getrandom, "getrandom"},
+	[SYS_setgroups] = {sys_setgroups, "setgroups"},
 };
 
 /**

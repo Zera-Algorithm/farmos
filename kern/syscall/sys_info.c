@@ -10,7 +10,7 @@
 #include <lib/string.h>
 #include <dev/dtb.h>
 
-void sys_uname(u64 upuname) {
+int sys_uname(u64 upuname) {
 	static utsname_t utsname = {
 	    .sysname = "FarmOS",
 	    .nodename = "farmos_machine",
@@ -20,12 +20,13 @@ void sys_uname(u64 upuname) {
 	};
 	thread_t *td = cpu_this()->cpu_running;
 	copy_out(td->td_pt, upuname, &utsname, sizeof(utsname));
+	return 0;
 }
 
 /**
  * @brief 获取当前时间，当uptv和uptz不为0时，将时间和时区写入用户态
  */
-void sys_gettimeofday(u64 uptv, u64 uptz) {
+int sys_gettimeofday(u64 uptv, u64 uptz) {
 	timeval_t tv = time_rtc_tv();
 	timezone_t tz;
 	tz.tz_minuteswest = 0; // todo
@@ -36,6 +37,7 @@ void sys_gettimeofday(u64 uptv, u64 uptz) {
 		copy_out(td->td_pt, uptv, &tv, sizeof(tv));
 	if (uptz)
 		copy_out(td->td_pt, uptz, &tz, sizeof(tz));
+	return 0;
 }
 
 // 此处不校验clockid,直接返回cpu时间

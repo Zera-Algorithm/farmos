@@ -23,7 +23,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp);
 u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
 u64 sys_wait4(u64 pid, u64 status, u64 options);
 u64 sys_nanosleep(u64 pTimeSpec);
-void sys_sched_yield();
+int sys_sched_yield();
 u64 sys_gettid();
 u64 sys_getpid();
 u64 sys_getppid();
@@ -42,8 +42,8 @@ struct rusage;
 struct sysinfo;
 
 // 系统信息（sys_info）
-void sys_uname(u64 upuname);
-void sys_gettimeofday(u64 uptv, u64 uptz);
+int sys_uname(u64 upuname);
+int sys_gettimeofday(u64 uptv, u64 uptz);
 u64 sys_clock_gettime(u64 clockid, u64 tp);
 u64 sys_geteuid();
 u64 sys_getegid();
@@ -53,6 +53,7 @@ u64 sys_setpgid(u64 pid, u64 pgid);
 int sys_getrusage(int who, struct rusage *p_usage);
 int sys_syslog(int priority, const char *format, ...);
 int sys_sysinfo(struct sysinfo *info);
+u64 sys_setgroups();
 
 struct iovec;
 struct statfs;
@@ -89,7 +90,7 @@ int sys_renameat2(int olddirfd, u64 oldpath, int newdirfd, u64 newpath, unsigned
 int sys_statfs(u64 ppath, struct statfs *buf);
 int sys_ftruncate(int fd, off_t length);
 int sys_fsync(int fd);
-void sys_sync();
+int sys_sync();
 int sys_syncfs(int fd);
 int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
 int sys_socketpair(int domain, int type, int protocol, int *fds);
@@ -97,6 +98,7 @@ int sys_readlinkat(int dirfd, u64 pathname, u64 buf, size_t bufsiz);
 size_t sys_copy_file_range(int fd_in, off_t *off_in,
                         int fd_out, off_t *off_out,
                         size_t len, unsigned int flags);
+size_t sys_getrandom(u64 buf, size_t buflen, unsigned int flags);
 
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);

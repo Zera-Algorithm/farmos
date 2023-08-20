@@ -229,8 +229,9 @@ u64 sys_clock_nanosleep(u64 clock_id, u64 flags, u64 request, u64 remain) {
 	return 0;
 }
 
-void sys_sched_yield() {
+int sys_sched_yield() {
 	yield();
+	return 0;
 }
 
 u64 sys_getpid() {
@@ -243,6 +244,10 @@ u64 sys_getuid() {
 
 u64 sys_gettid() {
 	return cpu_this()->cpu_running->td_tid;
+}
+
+u64 sys_setgroups() {
+	return 0;
 }
 
 // pTid是int *的指针
