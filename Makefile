@@ -31,6 +31,7 @@ all: $(KERNEL_ELF)
 $(KERNEL_ELF): $(modules) $(KERNEL_LD)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LD) -o $(KERNEL_ELF) $(OBJS)
 	$(OBJDUMP) -xS $(KERNEL_ELF) > $(KERN)/kernel.asm
+	cp os.bin /srv/tftp
 
 transfer: os.bin
 	cp os.bin /srv/tftp

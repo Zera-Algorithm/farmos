@@ -51,7 +51,7 @@ int openat(int fd, u64 filename, int flags, mode_t mode) {
 	}
 
 	copyInStr(filename, nameBuf, NAME_MAX_LEN);
-	log(LEVEL_GLOBAL, "openat: filename = %s\n", nameBuf);
+	log(999, "openat: filename = %s\n", nameBuf);
 
 	if (fd == AT_FDCWD) {
 		dirent = get_cwd_dirent(cur_proc_fs_struct());

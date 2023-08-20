@@ -102,6 +102,8 @@ struct Dirent {
 	struct Dirent *
 	    parent_dirent; // 即使是mount的目录，也指向其上一级目录。如果该字段为NULL，表示为总的根目录
 
+	mode_t mode;
+
 	// 各种计数
 	u16 linkcnt; // 链接计数
 	u16 refcnt;  // 引用计数

@@ -5,7 +5,7 @@
 # Required-Start:	$remote_fs $syslog
 # Required-Stop:	$remote_fs $syslog
 # Default-Start:	2 3 4 5
-# Default-Stop:		
+# Default-Stop:
 # Short-Description:	OpenBSD Secure Shell server
 ### END INIT INFO
 
@@ -28,6 +28,8 @@ if [ -n "$2" ]; then
     SSHD_OPTS="$SSHD_OPTS $2"
 fi
 
+echo 'after check'
+
 # Are we running from init?
 run_by_init() {
     ([ "$previous" ] && [ "$runlevel" ]) || [ "$runlevel" = S ]
@@ -35,7 +37,7 @@ run_by_init() {
 
 check_for_no_start() {
     # forget it if we're trying to start, and /etc/ssh/sshd_not_to_be_run exists
-    if [ -e /etc/ssh/sshd_not_to_be_run ]; then 
+    if [ -e /etc/ssh/sshd_not_to_be_run ]; then
 	if [ "$1" = log_end_msg ]; then
 	    log_end_msg 0 || true
 	fi

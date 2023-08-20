@@ -52,7 +52,7 @@ Dirent *dirent_alloc() {
 	LIST_REMOVE(dirent, dirent_link);
 	memset(dirent, 0, sizeof(Dirent));
 	used_dirents += 1;
-
+	dirent->mode = 0777;
 	mtx_unlock(&mtx_dirent);
 	return dirent;
 }

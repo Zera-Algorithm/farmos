@@ -329,7 +329,15 @@ void file_shrink(Dirent *file, u64 newsize) {
 
 static mode_t get_file_mode(struct Dirent *file) {
 	// 默认给予RWX权限
-	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO;
+	mode_t mode = file->mode;
+
+	if (strncmp(file->name, "ssh_host_", 9) == 0) {
+		// ssh_host_*文件的权限为600
+		mode = 0600;
+	} else if (strncmp(file->name, "empty", 5) == 0) {
+		mode = 0711;
+	}
+
 	if (file->type == DIRENT_DIR) {
 		mode |= __S_IFDIR;
 	} else if (file->type == DIRENT_FILE) {

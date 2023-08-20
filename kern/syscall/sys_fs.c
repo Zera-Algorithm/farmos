@@ -40,8 +40,16 @@ int sys_openat(int fd, u64 filename, int flags, mode_t mode) {
 	return openat(fd, filename, flags, mode);
 }
 
+int sys_fchmod(int fd, mode_t mode) {
+	Dirent *file;
+	unwrap(getDirentByFd(fd, &file, NULL));
+	log(999, "fchmod: fd = %d, mode = %x, file = %s\n", fd, mode, file->name);
+	file->mode = mode;
+	return 0;
+}
+
 int sys_close(int fd) {
-	warn("ufd: %d", fd);
+	warn("ufd: %d\n", fd);
 	return closeFd(fd);
 }
 

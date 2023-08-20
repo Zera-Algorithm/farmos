@@ -73,7 +73,7 @@ err_t sigaction_register(int signo, u64 act, u64 oldact, int sigset_size) {
 		if (!(kact->sa_flags & SA_RESTORER)) {
 			kact->sa_restorer = 0;
 		}
-		if (0x1 < (u64)kact->sa_handler && (u64)kact->sa_handler < 0x10000ul) {
+		if (0x1 < (u64)kact->sa_handler && (u64)kact->sa_handler < 0x10ul) {
 			error("sigaction_register: invalid handler %p", kact->sa_handler);
 		}
 	}

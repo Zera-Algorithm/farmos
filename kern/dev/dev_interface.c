@@ -52,17 +52,21 @@ int cons_test_getc() {
 }
 
 int cons_getc() {
+	char ret;
 	if (getc_buf != GETC_EMPTY) {
-		char ret = getc_buf;
+		ret = getc_buf;
 		getc_buf = GETC_EMPTY;
-		return ret;
+	} else {
+	#ifdef VIRT
+		ret = SBI_GETCHAR();
+	#else
+		ret = uart_getchar();
+	#endif
 	}
-
-#ifdef VIRT
-	return SBI_GETCHAR();
-#else
-	return uart_getchar();
-#endif
+	if (ret == '\r') {
+		return '\n';
+	}
+	return ret;
 }
 
 void disk_rw(Buffer *buf, int write) {

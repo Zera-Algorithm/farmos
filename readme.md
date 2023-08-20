@@ -126,6 +126,11 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [进程与线程](./docs/FarmOS%20-%20进程与线程.md)
 * [多核同步互斥机制设计](./docs/FarmOS%20-%20多核同步互斥机制.md)
 
+### 现场赛文档
+
+[sshd适配记录](./docs/现场赛-sshd适配记录.md)
+
+
 ## 一些说明
 1. Qemu默认加载的OpenSBI位于
     `/usr/local/share/qemu/opensbi-riscv64-generic-fw_dynamic.bin` (对于128MB内存，其位置位于 `0x0000000080000000` - `0x0000000080019b50`)”

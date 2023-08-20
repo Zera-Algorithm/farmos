@@ -194,7 +194,8 @@ int read(int fd, u64 buf, size_t count) {
 
 	// 判断是否能读取
 	if ((pfd->flags & O_ACCMODE) == O_WRONLY) {
-		warn("fd %d can not be read\n", fd);
+		// socket: type 4
+		warn("fd %d can not be read(type: %d, %d)\n", fd, pfd->type, pfd->socket ? pfd->socket->type : -10);
 
 		mtx_unlock_sleep(&pfd->lock);
 		return -EINVAL; // fd链接的对象不可读

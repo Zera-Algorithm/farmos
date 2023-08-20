@@ -11,7 +11,18 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
+	    (char *const[]) {"/busybox", "--install", "/bin", NULL},
+	    (char *const[]) {"/openssh-build/ssh-keygen", "-A", NULL},
+	    (char *const[]) {"/busybox", "mkdir", "/var/run/sshd/.ssh", NULL},
+	    (char *const[]) {"busybox", "cp", "/usr/local/etc/ssh_host_ed25519_key.pub", "/var/run/sshd/.ssh/id_ed25519.pub", NULL},
+	    (char *const[]) {"busybox", "cp", "/usr/local/etc/ssh_host_ed25519_key", "/var/run/sshd/.ssh/id_ed25519", NULL},
+	    (char *const[]) {"/busybox", "mkdir", "/var/empty", NULL},
+	    (char *const[]) {"/openssh-build/sshd", NULL}, // for debug
+	    (char *const[]) {"/busybox", "ash", "/bin/ssh-copy-id", "-i", "/var/run/sshd/.ssh/id_ed25519.pub", "127.0.0.1", NULL},
+	    // (char *const[]) {"/openssh-build/ssh", "127.0.0.1", NULL}, // for debug
 	    (char *const[]) {"/busybox", "ash", NULL},
+	    // (char *const[]) {"/openssh-build/ssh", "127.0.0.1", NULL}, NULL,
+	    // (char *const[]) {"/openssh-build/ssh-keygen",  NULL}, NULL,
 
 	    (char *const[]) {"/interrupts-test-1", NULL},
 	    (char *const[]) {"/interrupts-test-2", NULL},
@@ -54,7 +65,7 @@ int main() {
 		(char *const[]) {"/busybox", "ash", "cyclictest_testcode.sh", NULL},
 	    NULL};
 
-	char *const envp[] = {"LD_LIBRARY_PATH=/", "UB_BINDIR=./", "PATH=/:/usr/bin:/musl-gcc/include:/bin/", NULL};
+	char *const envp[] = {"LD_LIBRARY_PATH=/", "UB_BINDIR=./", "PATH=/:/usr/bin:/musl-gcc/include:/bin/:/openssh-build/", NULL};
 
 	int child = fork();
 	if (child) {

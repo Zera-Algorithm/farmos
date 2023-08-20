@@ -26,7 +26,7 @@
 #define LEVEL_GLOBAL 11
 
 // 当前允许输出的日志级别
-#define LOG_LEVEL 111
+#define LOG_LEVEL 1111
 #define DEBUG 11
 
 #define DISABLE_WARN 1

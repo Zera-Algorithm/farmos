@@ -99,6 +99,7 @@ size_t sys_copy_file_range(int fd_in, off_t *off_in,
                         int fd_out, off_t *off_out,
                         size_t len, unsigned int flags);
 size_t sys_getrandom(u64 buf, size_t buflen, unsigned int flags);
+int sys_fchmod(int fd, mode_t mode);
 
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);

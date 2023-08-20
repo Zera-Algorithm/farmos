@@ -123,6 +123,7 @@ static syscall_function_t sys_table[] = {
 	[SYS_copy_file_range] = {sys_copy_file_range, "copy_file_range"},
 	[SYS_getrandom] = {sys_getrandom, "getrandom"},
 	[SYS_setgroups] = {sys_setgroups, "setgroups"},
+	[SYS_fchmod] = {sys_fchmod, "fchmod"},
 };
 
 /**
@@ -137,10 +138,10 @@ void syscall_entry(trapframe_t *tf) {
     thread_t *td = cpu_this()->cpu_running;
 
 	if (sys_func != NULL && sys_func->name != NULL) {
-		if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
+		// if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
 			log(LEVEL_GLOBAL, "Hart %d Thread %s called '%s', epc = %lx\n", cpu_this_id(),
 		    	td->td_name, sys_func->name, tf->epc);
-        if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
+        // if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
         	log(LEVEL_GLOBAL, "Thread %08x(p %08x) called '%s' start\n", td->td_tid, td->td_proc->p_pid, sys_func->name);
 	}
 
@@ -157,7 +158,7 @@ void syscall_entry(trapframe_t *tf) {
 		// TODO: 未实现的syscall应当默认返回-1
 		tf->a0 = -1;
         if (sysno != SYS_exit_group && sysno != SYS_umask) {
-		    printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
+		    // printf(FARM_WARN"Unimplemented syscall: %s(%d)"SGR_RESET"\n", sys_names[sysno], sysno);
         }
         return;
 		// sys_exit(SYSCALL_ERROR);
@@ -172,9 +173,9 @@ void syscall_entry(trapframe_t *tf) {
 	PROFILING_END_WITH_NAME(syscall_name)
 
 	if ((i64)tf->a0 < 0) {
-		warn("ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
+		log(999, "ERROR: syscall %s(%d) returned %d\n", sys_names[sysno], sysno, tf->a0);
 	}
-    if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
+    // if (sysno != SYS_brk && sysno != SYS_read && sysno != SYS_write && sysno != SYS_lseek && sysno != SYS_readv && sysno != SYS_writev && sysno != SYS_pread64 && sysno != SYS_pwrite64)
     	log(LEVEL_GLOBAL, "Thread %s %08x called '%s' return 0x%lx\n", cpu_this()->cpu_running->td_name, cpu_this()->cpu_running->td_tid, sys_func->name, tf->a0);
 
 }

@@ -89,7 +89,7 @@ void td_destroy(err_t exitcode) {
 		mtx_unlock(&td->td_lock);
 	}
 
-	log(LEVEL_GLOBAL, "destroy thread %s\n", td->td_name);
+	log(999, "destroy thread %s\n", td->td_name);
 
 	proc_t *p = td->td_proc;
 	bool is_last_thread = false;

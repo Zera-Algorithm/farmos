@@ -94,7 +94,7 @@ static void exec_elf_callback(char *kstr_arr[]) {
 		strcat(buf, kstr_arr[i]);
 		strcat(buf, " ");
 	}
-	log(PROC_GLOBAL, "%s\n", buf);
+	log(999, "%s\n", buf);
 
 	// td改名，加后缀
 	thread_t *td = cpu_this()->cpu_running;
@@ -184,7 +184,7 @@ err_t sys_exec(u64 path, char **argv, u64 envp) {
  * @return 成功返回子进程的id，失败返回-1
  */
 u64 sys_clone(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid) {
-	warn("params: flags = %lx, stack = %lx, ptid = %lx, tls = %lx, ctid = %lx\n", flags, stack,
+	log(999, "clone: params: flags = %lx, stack = %lx, ptid = %lx, tls = %lx, ctid = %lx\n", flags, stack,
 	     ptid, tls, ctid);
 	if (flags & CLONE_VM) {
 		return td_fork(cpu_this()->cpu_running, stack, ptid, tls, ctid);
