@@ -15,6 +15,8 @@
 #include <proc/thread.h>
 #include <sys/errno.h>
 #include <sys/syscall_fs.h>
+#include <mm/vmm.h>
+#include <sys/syscall.h>
 
 struct mutex mtx_fd;
 
@@ -221,6 +223,7 @@ int read(int fd, u64 buf, size_t count) {
 	return ret;
 }
 
+// position read，不维护偏移
 size_t pread64(int fd, u64 buf, size_t count, off_t offset) {
 	int kernFd;
 	Fd *pfd;
@@ -400,6 +403,55 @@ size_t writev(int fd, const struct iovec *iov, int iovcnt) {
 
 	mtx_unlock_sleep(&pfd->lock);
 	return total;
+}
+
+
+size_t copy_file_range(int fd_in, off_t *off_in,
+                        int fd_out, off_t *off_out,
+                        size_t len, unsigned int flags) {
+	off_t koff_in, koff_out;
+	if (off_in != NULL) copyIn((u64)off_in, &koff_in, sizeof(off_t));
+	if (off_out != NULL) copyIn((u64)off_out, &koff_out, sizeof(off_t));
+	u64 r;
+
+	if (ptLookup(cur_proc_pt(), U_KTEMPSPACE) == 0) {
+		// 为用户态分配临时空间
+		sys_map(U_KTEMPSPACE, 64 * PAGE_SIZE, PTE_R | PTE_W | PTE_U);
+	}
+
+	// 读取
+	if (off_in == NULL) {
+		// 维护偏移
+		r = read(fd_in, U_KTEMPSPACE, len);
+	} else {
+		r = pread64(fd_in, U_KTEMPSPACE, len, koff_in);
+		koff_in += r;
+	}
+
+	// 处理读取错误
+	if (r <= 0) {
+		return r;
+	}
+
+	len = r; // 约束复制量
+
+	// 写入
+	if (off_out == NULL) {
+		// 维护偏移
+		r = write(fd_out, U_KTEMPSPACE, len);
+	} else {
+		r = pwrite64(fd_out, U_KTEMPSPACE, len, koff_out);
+		koff_out += r;
+	}
+
+	// 处理写入错误
+	if (r < 0) {
+		return r;
+	}
+
+	if (off_in != NULL) copyOut((u64)off_in, &koff_in, sizeof(off_t));
+	if (off_out != NULL) copyOut((u64)off_out, &koff_out, sizeof(off_t));
+	return len;
 }
 
 int dup(int fd) {

@@ -144,4 +144,9 @@ int fileStatAtFd(int dirFd, u64 pPath, u64 pkstat, int flags);
 off_t lseekFd(int fd, off_t offset, int whence);
 int faccessatFd(int dirFd, u64 pPath, int mode, int flags);
 
+// new
+size_t copy_file_range(int fd_in, off_t *off_in,
+                        int fd_out, off_t *off_out,
+                        size_t len, unsigned int flags);
+
 #endif

@@ -21,6 +21,12 @@ void trap_device();
 void utrap_timer();
 void ktrap_timer();
 
+typedef struct thread thread_t;
 void trap_pgfault(thread_t *td, u64 exc_code);
+
+#define SCAUSE_EXCEPTION 0
+#define SCAUSE_INTERRUPT 1
+#define INTERRUPT_TIMER 5
+#define INTERRUPT_EXTERNEL 9
 
 #endif

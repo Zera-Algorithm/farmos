@@ -21,11 +21,6 @@ extern void kernelvec();
 
 extern void yield();
 
-#define SCAUSE_EXCEPTION 0
-#define SCAUSE_INTERRUPT 1
-#define INTERRUPT_TIMER 5
-#define INTERRUPT_EXTERNEL 9
-
 #define SCAUSE_INT_MASK (1ul << 63)
 #define SCAUSE_EXC_MASK ((1ul << 63) - 1)
 #define UTRAP_IS_INT(scause) ((scause)&SCAUSE_INT_MASK)

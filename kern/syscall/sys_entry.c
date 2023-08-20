@@ -120,6 +120,7 @@ static syscall_function_t sys_table[] = {
     [SYS_socketpair] = {sys_socketpair, "socketpair"},
     [SYS_shutdown] = {sys_shutdown, "shutdown"},
 	[SYS_readlinkat] = {sys_readlinkat, "readlinkat"},
+	[SYS_copy_file_range] = {sys_copy_file_range, "copy_file_range"},
 };
 
 /**

@@ -186,6 +186,12 @@ size_t sys_writev(int fd, const struct iovec *iov, int iovcnt) {
 	return writev(fd, iov, iovcnt);
 }
 
+size_t sys_copy_file_range(int fd_in, off_t *off_in,
+                        int fd_out, off_t *off_out,
+                        size_t len, unsigned int flags) {
+	return copy_file_range(fd_in, off_in, fd_out, off_out, len, flags);
+}
+
 int sys_fstatat(int dirFd, u64 pPath, u64 pkstat, int flags) {
 	return fileStatAtFd(dirFd, pPath, pkstat, flags);
 }

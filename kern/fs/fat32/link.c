@@ -184,6 +184,14 @@ int unlinkat(struct Dirent *dir, char *path) {
 		mtx_unlock_sleep(&mtx_file);
 		return ret;
 	}
+
+	// 拒绝删除字符设备文件
+	if (file->type == DIRENT_CHARDEV) {
+		warn("can't unlink chardev file %s!\n", path);
+		file_close(file);
+		mtx_unlock_sleep(&mtx_file);
+		return -EINVAL;
+	}
 	ret = rmfile(file);
 
 	mtx_unlock_sleep(&mtx_file);
@@ -273,6 +281,14 @@ int renameat2(Dirent *oldDir, char *oldPath, Dirent *newDir, char *newPath, u32 
 		warn("renameat2: oldFile %s not found!\n", oldPath);
 		mtx_unlock_sleep(&mtx_file);
 		return ret;
+	}
+
+	// 不能移动字符设备文件
+	if (oldFile->type == DIRENT_CHARDEV) {
+		warn("renameat2: can't rename chardev file %s!\n", oldPath);
+		file_close(oldFile);
+		mtx_unlock_sleep(&mtx_file);
+		return -EINVAL;
 	}
 
 	if ((ret = getFile(newDir, newPath, &newFile)) == 0) {

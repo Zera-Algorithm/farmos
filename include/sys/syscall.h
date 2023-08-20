@@ -94,6 +94,9 @@ int sys_syncfs(int fd);
 int sys_pselect6(int nfds, u64 p_readfds, u64 p_writefds, u64 p_exceptfds, u64 p_timeout, u64 sigmask);
 int sys_socketpair(int domain, int type, int protocol, int *fds);
 int sys_readlinkat(int dirfd, u64 pathname, u64 buf, size_t bufsiz);
+size_t sys_copy_file_range(int fd_in, off_t *off_in,
+                        int fd_out, off_t *off_out,
+                        size_t len, unsigned int flags);
 
 // 信号（sys_signal）
 int sys_sigaction(int signum, u64 act, u64 oldact, int sigset_size);

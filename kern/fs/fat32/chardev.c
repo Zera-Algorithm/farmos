@@ -12,6 +12,7 @@
 #include <lib/transfer.h>
 #include <lock/mutex.h>
 #include <mm/kmalloc.h>
+#include <sys/errno.h>
 
 extern mutex_t mtx_file;
 
@@ -46,6 +47,8 @@ static int chardev_read(struct Dirent *file, int user, u64 dst, uint off, uint n
 }
 
 static int chardev_write(struct Dirent *file, int user, u64 src, uint off, uint n) {
+	return -EINVAL;
+	/*
 	mtx_lock_sleep(&mtx_file);
 
 	chardev_data_t *pdata = file->dev->data;
@@ -72,6 +75,7 @@ static int chardev_write(struct Dirent *file, int user, u64 src, uint off, uint 
 
 	mtx_unlock_sleep(&mtx_file);
 	return n;
+	*/
 }
 
 /**

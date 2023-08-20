@@ -11,6 +11,13 @@ int main() {
 	int wstatus = 0;
 
 	char *const *argvs[] = {
+	    (char *const[]) {"/interrupts-test-1", NULL},
+	    (char *const[]) {"/interrupts-test-2", NULL},
+	    (char *const[]) {"/copy-file-range-test-1", NULL},
+	    (char *const[]) {"/copy-file-range-test-2", NULL},
+	    (char *const[]) {"/copy-file-range-test-3", NULL},
+	    // (char *const[]) {"/busybox", "sleep", "3", NULL},
+
 		// time-test
 	    (char *const[]){"/time-test", NULL},
 

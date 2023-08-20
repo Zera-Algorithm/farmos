@@ -6,6 +6,7 @@
 #include "types.h"
 #include <dev/timer.h>
 #include <sys/time.h>
+#include <trap/trap.h>
 
 /**
  * @brief 打开全局中断，设置核内时钟下一Tick的时间，以初始化时钟
@@ -25,6 +26,9 @@ static void timer_set_next_tick() {
  * @brief 处理时钟中断：设置下一个tick的时间，并尝试唤醒nanosleep
  */
 void handler_timer_int() {
+	extern u64 interrupts_count[];
+	u64 *addr = &interrupts_count[INTERRUPT_TIMER];
+	__sync_add_and_fetch(addr, 1);
 	timer_set_next_tick();
 }
 
