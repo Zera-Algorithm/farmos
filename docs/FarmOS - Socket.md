@@ -111,13 +111,59 @@ typedef	struct Message {
 
 ​	当进程调用`recvfrom()`时，内核将从本socket的 `messages` 队列选取一个最早发送的信息，将其内容和数据报发送地址返回给用户程序。
 
+## Socket 的同步
+
+​	FarmOs在多核上运行，所以socket在设计时需要注意数据的并发互斥问题。
+
+​	在socket结构体中，我们增加了lock这一属性，任何想要访问某socket的进程（线程），必须首选获得该socket对应的锁。
+
+### read
+
+​	socket调用read函数时，首先将尝试获得自身的`lock`锁。获得自身锁后，可访问自身记录缓冲区读写位置`socketReadPos`、`socketWritePos`：若当前 `socketReadPos == socketWritePos`， 表明当前缓存区没有内容可读，此时判断对端socket是否已关闭、或者对端已关闭写连接，若对端没有关闭socket且写连接也未关闭，则释放自身的`lock`锁， 转入睡眠状态，睡眠以自身的`socketReadPos`为chan，等待对端写后唤醒。值得一提的是，我们为了便于判断对端的状态（由于socket关闭后，在`sockets`列表内将找不到该socket结构体，所以我们将socket的状态保存了对端socket，使得自身socket关闭后，对端可以快速获取本socket的状态），在自身socket内设立一个结构体记录对端状态：
+
+```c
+struct SocketState {
+	bool is_close;
+	bool opposite_write_close;
+} SocketState;
+```
+
+所以，我们通过本socket内的`state.is_close`、 `state.opposite_write_close`来判断对端的状态；若当前 `socketReadPos != socketWritePos`, 将正常读取缓冲区内容，读取完成后，释放自身`lock`锁 。同时，由于对端可能由于无法写入而陷入睡眠，我们在读取完成后，需要以本socket的`socketWritePos`为chan，唤醒可能正在睡眠的对端socket。
+
+### write
+
+​	首先，对于write的发送逻辑，我们采用阻塞式发送，即尽量写满系统调用给出的长度参数，如果无法写入对端（缓冲区已写入内容等于缓冲区大小）但此时并没有写满长度，发送线程将陷入睡眠。与read函数不同的是，socket调用write时，由于需要获知对端缓冲区读写的位置，所以需要获得对端的`lock`锁。同时，发送线程每一次尝试发送（可能会从睡眠中醒来继续发送）时，都需要获得对方的状态。我们已在上述内容中提过，对方的状态设置在自身的socket内，所以如果要访问对方的状态，需要获得自己的`lock`锁，此时可能会产生死锁问题。所以，为了避免锁，我们引入状态锁`state_lock`，将SocketState结构体修改为以下格式：
+
+```C
+struct SocketState {
+	mutex_t state_lock;
+	bool is_close;
+	bool opposite_write_close;
+} SocketState;
+```
+
+引入之后，如需访问对端的连接状态，仅需要获得状态锁，而并不需要获得socket结构体锁。
+
+​	当写入线程每一次尝试写入时，首先需要对端没有关闭并且对端没有关闭读连接，确认可以写入后再判断缓冲区大小，若缓冲区已满则陷入睡眠，睡眠时以对端的`socketWritePos`为`chan`。同时，由于对端可能由于无法读到新内容而陷入睡眠，我们在写入完成后，需要以对端socket的`socketReadPos`为`chan`，唤醒可能正在睡眠的对端socket。
+
+### receivefrom
+
+​	数据报式socket在接受数据时，需要访问socket结构体中的messages队列，我们仅通过获得socket结构体`lock`锁，实现同一socket下的messages消息队列的互斥访问。但如果本socket的messages队列为空，当前读进程将以本socoekt的`messages`为`chan` 陷入睡眠状态。
+
+### sendto
+
+​	与receivefrom类似，sendto的原理也是先申请一个消息结构体Message，将其插入到目的socket的messages队列中，所以我们在发送消息前，需要获得目的socket的`lock`锁。在sendto函数完成后，对端可能处于receivefrom的睡眠状态，需要以对端socket的`messages`为`chan` 进行`wakeup`。UDP在sendto时允许丢包，所以在sendto中，我们并没有设计睡眠等待的逻辑。
+
 ### 其余socket系统调用
 
 ​	除上述用于socket间通信系统调用外，FarmOs还实现了：
 
-	 - `int socket_read_check(struct Fd *fd)` 检查socket是否可读
-	 - `int socket_write_check(struct Fd *fd)`检查socket是否可写
-	 - `int getsocketname(int sockfd, SocketAddr * addr, socklen_t *addrlen)`获得 socket地址
-	 - `int getpeername(int sockfd, SocketAddr * addr, socklen_t *addrlen)`获得对等连接socket的地址
-	 - `int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen)`获得socket option属性值
+- `int socket_read_check(struct Fd *fd)` 检查socket是否可读
 
+ - `int socket_write_check(struct Fd *fd)`检查socket是否可写
+ - `int getsocketname(int sockfd, SocketAddr * addr, socklen_t *addrlen)`获得 socket地址
+ - `int getpeername(int sockfd, SocketAddr * addr, socklen_t *addrlen)`获得对等连接socket的地址
+ - `int getsockopt(int sockfd, int lever, int optname, void * optval, socklen_t * optlen)`获得socket option属性值
+ - `int shutdown(int sockfd, int how)`关闭socket的读、写连接
+
+​	
