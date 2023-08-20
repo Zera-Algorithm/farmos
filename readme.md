@@ -103,27 +103,35 @@ riscv64-unknown-elf-gdb kernel-qemu
 
 ### 区域赛文档
 
-* [引导](./docs/FarmOS%20-%20boot.md)
-* [Trap和中断](./docs/FarmOS%20-%20Trap%E4%B8%8E%E6%97%B6%E9%92%9F%E4%B8%AD%E6%96%AD.md)
+* [启动与引导](./docs/FarmOS%20-%20boot.md)
+* [中断及异常处理](./docs/FarmOS%20-%20Trap%E4%B8%8E%E6%97%B6%E9%92%9F%E4%B8%AD%E6%96%AD.md)
 * [内存管理](./docs/FarmOS%20-%20%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86.md)
 * [用户进程与调度](./docs/FarmOS%20-%20%E7%94%A8%E6%88%B7%E8%BF%9B%E7%A8%8B%E4%B8%8E%E8%B0%83%E5%BA%A6.md)
 * [系统调用的处理](./docs/FarmOS%20-%20%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E7%9A%84%E5%AE%9E%E7%8E%B0.md)
 * [VFS](./docs/FarmOS%20-%20VFS.md)
 
-### 全国赛第一阶段文档
-
-说明：我们国赛的第一阶段qemu赛道的提交放置在本仓库的archive/final1-qemu分支；hifive unmatched开发板赛道的提交放置在本仓库的archive/final2-unmatced分支。
+### 全国赛文档
 
 * [文件系统](./docs/第一阶段-文件系统.md)
 * [sd卡驱动](./docs/FarmOS%20-%20SD%20卡驱动.md)
-* [Socket](./docs/FarmOS%20-%20Socket.md)
+* [网络层](./docs/FarmOS%20-%20Socket.md)
 * [内存管理](./docs/FarmOS%20-%20内存管理.md)
 * [进程与线程](./docs/FarmOS%20-%20进程与线程.md)
 * [多核同步互斥机制设计](./docs/FarmOS%20-%20多核同步互斥机制.md)
+- [同步互斥调试笔记](./docs/FarmOS%20-%20%E5%90%8C%E6%AD%A5%E4%BA%92%E6%96%A5%E8%B0%83%E8%AF%95.md)
+- [`memset` 优化](./docs/memset%E6%8F%90%E9%80%9F.md)
+- [`kmalloc` 内存分配](./docs/kmalloc.md)
 
-### 全国赛第二阶段文档
+#### 全国赛现场赛文档
 
-[sshd适配记录](./docs/现场赛-sshd适配记录.md)
+- [`sshd for linux` 适配文档](./docs/现场赛-sshd适配记录.md)
+
+## 各阶段代码存档
+
+- [全国赛第一阶段 QEMU 赛道](https://gitlab.eduxiji.net/202310006101080/zhongtianos/-/tree/archive/final1-qemu)
+- [全国赛第一阶段 Hifive Unmatched 赛道](https://gitlab.eduxiji.net/202310006101080/zhongtianos/-/tree/archive/final1-unmatched)
+- [全国赛第二阶段 QEMU 赛道](https://gitlab.eduxiji.net/202310006101080/zhongtianos/-/tree/archive/final2-qemu)
+- [全国赛第二阶段 Hifive Unmatched 赛道（现场赛题目）](https://gitlab.eduxiji.net/202310006101080/zhongtianos/-/tree/archive/final2-syzkaller)
 
 
 ## 参考资料
