@@ -1,22 +1,21 @@
 # FarmOS
 
-## FarmOS 简介
-FarmOS是北京航空航天大学的三名本科生共同开发的基于RISC-V的宏内核类Unix操作系统，现已支持区域赛阶段的所有系统调用。
+FarmOS 是北京航空航天大学的三名本科生共同开发的基于 RISC-V 的宏内核类 Unix 操作系统。
 
 ## 快速开始
 
 ### 环境准备
 
 * 安装基础构建工具 GNU/make、GNU/Bash
-* 安装 Python3
+* 安装 Python 3
 * 安装 RISCV 64位 gcc 编译工具链
-	* riscv64-unknown-elf-gcc
-	* riscv64-unknown-elf-ld
+	* `riscv64-unknown-elf-gcc`
+	* `riscv64-unknown-elf-ld`
 	* ...
-	* riscv64-unknown-elf-gdb
+	* `riscv64-unknown-elf-gdb`
 * 安装 Qemu-7.0.0 for Riscv64
 
-在 Ubuntu22.04 下安装 riscv64-unknown-elf-* 系列编译器：
+在 Ubuntu 22.04 下安装 `riscv64-unknown-elf-*` 系列编译器：
 
 ```
 sudo apt install gcc-riscv64-unknown-elf
@@ -24,13 +23,13 @@ sudo apt install gcc-riscv64-unknown-elf
 
 调试器则需要自行编译安装。
 
-安装Qemu：
+安装 Qemu：
 
 ```
 sudo apt install qemu-system-riscv64
 ```
 
-### 编译FarmOS
+### 编译 FarmOS
 
 克隆本仓库代码到本地，然后运行：
 
@@ -40,7 +39,7 @@ make
 
 即可编译得到 FarmOS 内核二进制文件 `kernel-qemu`.
 
-### 运行FarmOS
+### 运行 FarmOS
 
 运行：
 
@@ -50,7 +49,7 @@ make qemu
 
 可以运行FarmOS操作系统。
 
-### 调试FarmOS
+### 调试 FarmOS
 
 运行：
 ```
@@ -111,11 +110,7 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [系统调用的处理](./docs/FarmOS%20-%20%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8%E7%9A%84%E5%AE%9E%E7%8E%B0.md)
 * [VFS](./docs/FarmOS%20-%20VFS.md)
 
-### 初赛第一阶段文档
-
-
-
-### 第一阶段文档
+### 全国赛第一阶段文档
 
 说明：我们国赛的第一阶段qemu赛道的提交放置在本仓库的archive/final1-qemu分支；hifive unmatched开发板赛道的提交放置在本仓库的archive/final2-unmatced分支。
 
@@ -126,44 +121,15 @@ riscv64-unknown-elf-gdb kernel-qemu
 * [进程与线程](./docs/FarmOS%20-%20进程与线程.md)
 * [多核同步互斥机制设计](./docs/FarmOS%20-%20多核同步互斥机制.md)
 
-### 现场赛文档
+### 全国赛第二阶段文档
 
 [sshd适配记录](./docs/现场赛-sshd适配记录.md)
 
 
-## 一些说明
-1. Qemu默认加载的OpenSBI位于
-    `/usr/local/share/qemu/opensbi-riscv64-generic-fw_dynamic.bin` (对于128MB内存，其位置位于 `0x0000000080000000` - `0x0000000080019b50`)”
-    所以加载的内核需要避开这段内存区域。
-2. 我们约定内核加载的位置为 `0x80200000`. 因为Qemu加载的默认OpenSBI的跳转位置为 `0x80200000`.
-    (其实可以设置，见 https://zhuanlan.zhihu.com/p/578765652)
-3. 使用OpenSBI作为BIOS启动时，其他核默认是关闭的，需要使用HSM SBI Call来打开。
-4. 参考 https://zhuanlan.zhihu.com/p/501901665 可以实现直接使用vscode的gdb功能来调试内核。
-5. 注意：我们使用的用户程序是通过 `riscv64-unknown-elf-gcc` 编译的，所以加载的ELF结构里面的大部分参数都是64位的。
+## 参考资料
 
-## 参考的仓库列表
+- [XV6(RISC-V)](https://github.com/mit-pdos/xv6-riscv)
+- [MOS - 北京航空航天大学操作系统课程实验](https://gitee.com/osbuaa/mos)
+- [图漏图森破 - 2022 年参赛作品](https://gitlab.eduxiji.net/educg-group-13484-858191/19373469-1384)
 
-* xv6-riscv源码：https://github.com/mit-pdos/xv6-riscv
-* 北航MOS操作系统：https://gitee.com/osbuaa/mos
-* 2022年一等奖得主"图漏图森破"操作系统：https://gitlab.eduxiji.net/educg-group-13484-858191/19373469-1384
 
-## 未来想做的事情
-<!-- 打钩： -->
-<!-- [&#10004;] -->
-[x] 做一个工具，能够自动从.c文件生成其对应的.h文件，并在Makefile中实现（gcc本身可实现）
-
-[x] 引入分级日志，能够显示INFO, WARNING, FATAL三种类型的信息
-
-[x] 实现内核的动态内存分配，可参考Linux的buddy systemh和slab等
-
-[x] 更改Makefile的逻辑，将 `.c` 文件引入的 `.h` 加入到 `.c` 文件的依赖中，从而支持根据日期决定是否编译。教训：之前没有写 `.c` 到 `.h` 的依赖，结果 `.h` 中的定义改变之后 `.c` 编译成的 `.o` 文件并没有改变，导致出问题。
-
-[x] 检测内核栈溢出是否会发出告警，之后设置一个尽量大的内核栈
-
-[ ] 解决make不能多线程编译的问题
-
-[ ] Syscall的Profiling
-
-[ ] 发送SIGKILL信号后，将阻塞在IO上的syscall唤醒，继续完成接下来的事务，待syscall结束时才会最终kill。
-syscall要保证自己只会进入一个阻塞IO，即被唤醒后就能立刻返回用户空间。现在一般的睡眠过程是睡眠等待某个条件成立，
-比如管道读取是等待管道不为空或者管道关闭这二者之一成立。那么由SIGKILL完成的唤醒肯定不会满足这个条件，需要加一个额外的条件(td->td_killed)，帮助其顺利完成**拖尾**的syscall返回用户空间。TODO：之后需要检查每一个IO等待的睡眠是否存在这个问题。

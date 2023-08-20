@@ -1,1 +1,0 @@
-Thread ./netserver_12865: bind addr: sockfd = 5, type = 1, family = 2, addr = 16777343, port = 16690
